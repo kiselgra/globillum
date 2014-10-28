@@ -40,6 +40,8 @@ PKG_CHECK_MODULES(GLEW, glew)
 AC_SUBST(GLEW_CFLAGS)
 AC_SUBST(GLEW_LDFLAGS)
 
+AC_CHECK_LIB([hyb], [main])
+
 cgldata="$(pkg-config --variable=datadir libcgl)"
 AC_SUBST([cgldata])
 
@@ -72,6 +74,15 @@ AC_SUBST(RTA_LIBS)
 
 RTA_PLUGIN_DIR="$(pkg-config rta --variable=plugindir)"
 AC_SUBST([RTA_PLUGIN_DIR])
+
+AX_WITH_CUDA
+AM_CONDITIONAL([cuda], [test "x$ac_cv_lib_cudart_main" == "xyes"])
+
+AC_ARG_WITH(compute-capability,
+			[AS_HELP_STRING([--with-compute-capability], 
+				[What compute capability sould be used to compile the cuda files. We require at least 20, which is the default.])],
+			compute_cap="$withval", compute_cap="20")
+AC_SUBST([compute_cap])
 
 
 # Checks for header files.
