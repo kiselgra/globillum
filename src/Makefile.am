@@ -4,6 +4,7 @@ bin_PROGRAMS = gi
 BUILT_SOURCES = cmdline.x
 # libconfigfiles_la_SOURCES = grammar.yy  lexer.ll  parser.h  token.h lexer.h config_creator.h configfile.h configfile.cpp
 gi_SOURCES = 	main.cpp \
+				material.cu material-conversion.cpp material.h \
 				gi_algorithm.cpp gi_algorithm.h \
 				gpu_cgls_lights.cpp gpu_cgls_lights.h \
 				cmdline.cpp cmdline.h
@@ -40,6 +41,6 @@ gi_LDFLAGS = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS)
 LINES=-lineinfo
 cuda_CPPFLAGS = $(DEFAULT_INCLUDES) $(gi_CPPFLAGS) $(CPPFLAGS)
 .cu.o:
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  $(LINES) -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math -G
 
 
