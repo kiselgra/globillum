@@ -4,10 +4,13 @@
 #include <libcgls/console.h>
 #include <libcgl/wall-time.h>
 
+#include <libhyb/rta-cgls-connection.h>
+
 #include "cmdline.h"
 #include "noscm.h"
 
 #include "gi_algorithm.h"
+#include "gpu_cgls_lights.h"
 
 #include <GL/freeglut.h>
 #include <string.h>
@@ -70,18 +73,55 @@ void show_fps(interaction_mode *m, int x, int y) {
 	printf("average render time: %.3f ms, %.1f fps \t(sum %f, n %d)\n", avg, 1000.0f/avg, (float)sum, valid_pos);
 }
 
-void advance_anim(interaction_mode *m, int x, int y) {
-	skeletal_animation_ref ar = { 0 };
-	static float time = 0;
-	time += 0.01;
-
-	evaluate_skeletal_animation_at(ar, time);
+void compute_trace(interaction_mode *m, int x, int y) {
+	gi_algorithm::selected->compute();
 }
+
+static rta::cgls::connection *rta_connection = 0;
+rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
+rta::cgls::connection::cuda_triangle_data *ctd = 0;
+
+void setup_rta(std::string plugin) {
+	bool use_cuda = true;
+	if (plugin == "default/choice")
+		if (use_cuda)
+			plugin = "bbvh-cuda";
+		else
+			plugin = "bbvh";
+
+	vector<string> args;
+// 	args.push_back("-b");
+// 	args.push_back("lbvh");
+	rta_connection = new rta::cgls::connection(plugin, args);
+	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
+	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
+	ftl = &the_ftl;
+	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
+	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
+
+	if (!use_cuda) {
+// 		use_case = new example::simple_lighting_with_shadows<rta::simple_aabb, rta::simple_triangle>(set, rays_w, rays_h, the_scene);
+	}
+	else {
+		if (!set->basic_ctor<rta::cuda::simple_aabb, rta::cuda::simple_triangle>()->expects_host_triangles()) {
+			cout << "does not want host tris!" << endl;
+			typedef rta::cuda::simple_aabb box_t;
+			typedef rta::cuda::simple_triangle tri_t;
+			set->as = set->basic_ctor<box_t,tri_t>()->build((rta::cuda::simple_triangle::input_flat_triangle_list_t*)&ctd->ftl);
+			set->basic_rt<box_t,tri_t>()->acceleration_structure(dynamic_cast<rta::basic_acceleration_structure<box_t,tri_t>*>(set->as));
+			cout << "done!" << endl;
+		}
+// 		use_case = new example::simple_lighting_with_shadows<rta::cuda::simple_aabb, rta::cuda::simple_triangle>(set, rays_w, rays_h, the_scene);
+	}
+
+	gi_algorithm::original_rt_set = set;
+}
+
 
 interaction_mode* make_viewer_mode() {
 	interaction_mode *m = make_interaction_mode("viewer");
 	add_function_key_to_mode(m, 'p', cgls_interaction_no_button, show_fps);
-	add_function_key_to_mode(m, ' ', cgls_interaction_no_button, advance_anim);
+	add_function_key_to_mode(m, ' ', cgls_interaction_no_button, compute_trace);
 	return m;
 }
 
@@ -154,11 +194,12 @@ static char* console_algo(console_ref ref, int argc, char **argv) {
 
 	list<string> names = gi_algorithm::list();
 	string found = "";
-	for (string name : names)
+	for (string name : names) {
 		if (name.find(argv[1]) != string::npos) {
 			found = name;
 			break;
 		}
+	}
 	if (found != "") {
 		gi_algorithm::select(found);
 		return strdup(found.c_str());
@@ -237,6 +278,10 @@ void actual_main()
 	add_vi_console_command(viconsole, "a", console_algo);
 	push_interaction_mode(console_interaction_mode(viconsole));
 
+
+	setup_rta("bbvh-cuda");
+
+	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y);
 
 	enter_glut_main_loop();
 }
