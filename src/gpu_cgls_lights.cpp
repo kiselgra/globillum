@@ -18,8 +18,10 @@ namespace local {
 		cuda::material_t *materials;
 		cuda::simple_triangle *tri_ptr;
 		float3 *material_colors;
-		gpu_material_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles)
-			: cuda::gpu_ray_bouncer<forward_traits>(w, h), materials(materials), material_colors(0), tri_ptr(triangles) {
+		cuda::cam_ray_generator_shirley *crgs;
+		gpu_material_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, cuda::cam_ray_generator_shirley *crgs)
+			: cuda::gpu_ray_bouncer<forward_traits>(w, h), materials(materials), material_colors(0), tri_ptr(triangles),
+			  crgs(crgs) {
 			checked_cuda(cudaMalloc(&material_colors, sizeof(float3)*w*h));
 		}
 		~gpu_material_evaluator() {
@@ -29,7 +31,9 @@ namespace local {
 			return false;
 		}
 		virtual void bounce() {
-			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors);
+			float dy = (2.0f/this->h) * tanf(crgs->fovy*0.5f*M_PI/180.0f);
+			float2 diff = make_float2(crgs->aspect * dy, dy);
+			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors, diff, crgs->gpu_direction);
 		}
 		virtual std::string identification() {
 			return "cuda primary intersection collector.";
@@ -41,9 +45,9 @@ namespace local {
 		set.rt = set.rt->copy();
 // 		set.bouncer = collector = new cuda::primary_intersection_collector<B,T>(w, h);
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
-		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles);
-// 		set.bouncer = collector = new cuda::primary_intersection_downloader<B,T, primary_intersection_collector<B,T>>(w, h);
 		set.rgen = crgs = new cuda::cam_ray_generator_shirley(w, h);
+		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
+// 		set.bouncer = collector = new cuda::primary_intersection_downloader<B,T, primary_intersection_collector<B,T>>(w, h);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 		cout << "-----BAS: " << set.as->identification() << endl;
