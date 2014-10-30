@@ -20,11 +20,14 @@ gi_SOURCES = 	main.cpp \
 # setting c++ flags:
 # AM_CXXFLAGS = -Wall -ansi -pedantic -ggdb -pg
 
+gi_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$(cglsdata)\" @GUILE_DEF@ $(GUILE_CFLAGS) $(CGLS_CFLAGS) $(CGL_CFLAGS) $(RTA_CFLAGS)
+gi_LDFLAGS = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS)
+
 SUFFIXES: .x
 cmdline.x: cmdline.cpp
 
 if CAN_USE_GUILE
-snarf_opts = @GUILE_DEF@ $(AM_CPPFLAGS) $(CPPFLAGS) $(barebones_cgls_CPPFLAGS)
+snarf_opts = @GUILE_DEF@ $(AM_CPPFLAGS) $(CPPFLAGS) $(gi_CPPFLAGS)
 .c.x:
 	guile-snarf $< $(snarf_opts) > $@
 .cpp.x:
@@ -34,8 +37,6 @@ endif
 #scheme_def.c: cmdline.x
 
 # setting c preprocessor flags for main project
-gi_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$(cglsdata)\" @GUILE_DEF@ $(GUILE_CFLAGS) $(CGLS_CFLAGS) $(CGL_CFLAGS) $(RTA_CFLAGS)
-gi_LDFLAGS = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS)
 
 #LINES=
 LINES=-lineinfo

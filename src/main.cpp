@@ -1,3 +1,4 @@
+#define PNG_SKIP_SETJMP_CHECK
 #include <libcgls/cgls.h>
 #include <libcgls/picking.h>
 #include <libcgls/interaction.h>
