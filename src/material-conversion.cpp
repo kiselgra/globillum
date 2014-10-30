@@ -34,13 +34,16 @@ namespace rta {
 					unsigned char *data = new unsigned char[t->w*t->h*4];
 					for (int y = 0; y < t->h; ++y)
 						for (int x = 0; x < t->w; ++x) {
-							vec3f c = t->sample(x/float(t->w),y/float(t->h));
+							vec3f c = t->sample(x/float(t->w),1.0f-y/float(t->h));
 							data[4*(y*t->w+x)+0] = (unsigned char)(255.0f * c.x);
 							data[4*(y*t->w+x)+1] = (unsigned char)(255.0f * c.y);
 							data[4*(y*t->w+x)+2] = (unsigned char)(255.0f * c.z);
 							data[4*(y*t->w+x)+3] = 255;
 						}
 					m->diffuse_texture->upload(data);
+					checked_cuda(cudaDeviceSynchronize());
+					compute_mipmaps(m->diffuse_texture);
+					checked_cuda(cudaDeviceSynchronize());
 					cuda::texture_data *gpu_tex;
 					checked_cuda(cudaMalloc(&gpu_tex, sizeof(cuda::texture_data)));
 					checked_cuda(cudaMemcpy(gpu_tex, m->diffuse_texture, sizeof(cuda::texture_data), cudaMemcpyHostToDevice));
@@ -53,6 +56,7 @@ namespace rta {
 			checked_cuda(cudaMalloc(&gpu_mats, coll.size()*sizeof(cuda::material_t)));
 			checked_cuda(cudaMemcpy(gpu_mats, materials, sizeof(cuda::material_t)*coll.size(), cudaMemcpyHostToDevice));
 			delete [] materials;
+			cout << coll.size() << " materials." << endl;
 			return gpu_mats;
 		}
 
