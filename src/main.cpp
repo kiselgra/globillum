@@ -34,6 +34,7 @@ framebuffer_ref gbuffer;
 picking_buffer_ref picking;
 
 console_ref viconsole = { -1 };
+bool gb_debug = false;
 
 void display() {
 	glDisable(GL_DEBUG_OUTPUT);
@@ -44,12 +45,23 @@ void display() {
 
     bind_framebuffer(gbuffer);
 
+// 	glClearColor(0,0,0.25,1);
+// 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+// 	render_scene(the_scene);
+//     unbind_framebuffer(gbuffer);
+// 
+// 	render_scene_deferred(the_scene, gbuffer);
+
+	bind_framebuffer(gbuffer);
 	glClearColor(0,0,0.25,1);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	render_scene(the_scene);
-    unbind_framebuffer(gbuffer);
+	unbind_framebuffer(gbuffer);
 
-	render_scene_deferred(the_scene, gbuffer);
+	render_scene_to_gbuffer(the_scene, gbuffer);
+	if (!gb_debug)
+		render_scene_from_gbuffer(the_scene, gbuffer);
+	else
+		render_gbuffer_visualization(the_scene, gbuffer);
 
 	glFinish();
 	wall_time_t end = wall_time_in_ms();
@@ -66,6 +78,10 @@ void display() {
 
 void idle() {
 	glutPostRedisplay(); 
+}
+
+void gb_dbg(interaction_mode *m, int x, int y) {
+	gb_debug = !gb_debug;
 }
 
 void show_fps(interaction_mode *m, int x, int y) {
@@ -127,6 +143,7 @@ interaction_mode* make_viewer_mode() {
 	interaction_mode *m = make_interaction_mode("viewer");
 	add_function_key_to_mode(m, 'p', cgls_interaction_no_button, show_fps);
 	add_function_key_to_mode(m, ' ', cgls_interaction_no_button, compute_trace);
+	add_function_key_to_mode(m, '~', cgls_interaction_no_button, gb_dbg);
 	return m;
 }
 
@@ -245,6 +262,7 @@ void actual_main()
 		free(config);
 		scene_ref scene = { 0 };
 		the_scene = scene;
+		load_configfile("local.scm");
 #else
 		scene::scene::select(cmdline.config);
 		scene::scene::selected->load();
@@ -283,10 +301,15 @@ void actual_main()
 	add_vi_console_command(viconsole, "a", console_algo);
 	push_interaction_mode(console_interaction_mode(viconsole));
 
+	char *base = basename((char*)cmdline.filename);
+	string expr = string("(select-bookmark \"") + base + "\" \"start\")";
+	SCM r = scm_c_eval_string(expr.c_str());
 
 	setup_rta("bbvh-cuda");
 
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y);
+
+	gi_algorithm::select("gpu_cgls_lights");
 
 	enter_glut_main_loop();
 }

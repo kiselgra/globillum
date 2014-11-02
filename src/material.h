@@ -4,6 +4,11 @@
 #include <librta/cuda-kernels.h>
 #include <librta/cuda-vec.h>
 
+#include <stdio.h>
+#include <assert.h>
+#include <cuda.h>
+#include <cuda_runtime.h>
+
 namespace rta {
 	namespace cuda {
 
@@ -64,6 +69,64 @@ namespace rta {
 				float3 a1x = wx*a10 + (1.0f-wx)*a11;
 				return wy*a0x + (1.0f-wy)*a1x;
 			}
+			__device__ float3 sample_bilin_lod(float s, float t, int lod, int2 gid, uint3 bid, uint3 tid) {
+#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 200)
+				  # error printf is only supported on devices of compute capability 2.0 and higher, please compile with -arch=sm_20 or higher    
+#endif
+				lod = 1;
+				int W = w;
+			   	int H = h;
+// 				int WW = w;
+// 			   	int HH = h;
+// 				    printf("Hello thread %d, f=%f\n", gid.x, 0.1f);
+// 				if (gid.x > 100 && gid.x < 110 && gid.y > 100 && gid.y < 110)
+// 					printf("foo\n");
+// 					printf("WW=%d, W=%u, w=%u, HH=%d, H=%u, h=%u\n", WW, W, w, HH, H, h);
+// 				if (gid.x > 100 && gid.x < 110 && gid.y > 100 && gid.y < 110)
+// 					printf("WW=%d, w=%u, HH=%d, h=%u\n", W, w, H, h);
+				unsigned int offset = 0;
+				float x = s*W;
+				if (t < 0)
+					t += truncf(t);
+				if (t >= 1)
+					t -= truncf(t);
+				float y = (1.0f-t)*H;
+				int nearest_x = int(x);
+				int nearest_y = int(y);
+				int other_x = nearest_x+1;
+				int other_y = nearest_y+1;
+				if (x-floorf(x) < .5) other_x = nearest_x-1;
+				if (y-floorf(y) < .5) other_y = nearest_y-1;
+				// wx = 1.0 at floorf(x)=.5f.
+				// wx = 0.5 at floorf(x)=.0f.
+				float wx = fabsf(float(other_x)+.5 - x);
+				float wy = fabsf(float(other_y)+.5 - y);
+				// nearest is in bounds.
+				if (other_x > W) other_x -= W;
+				if (other_x < 0) other_x += W;
+				if (other_y > H) other_y -= H;
+				if (other_y < 0) other_y += H;
+				if (bid.x == 25 && bid.y == 0 && tid.y==4) {
+					printf("gid=(%d,%d)\t%6.6f %6.6f %6.6f %6.6f\n", gid.x, gid.y, s, 1.0f-t, x, y);
+					printf("gid=(%d,%d)\tn_y=%d:%d W=%d n_x=%d:%d\n", gid.x, gid.y, nearest_x, int(x), W, nearest_y, int(y));
+				}
+				float3 a00 = make_float3(float(rgba[4*(offset + nearest_y*W+nearest_x)+0])/255.0f,
+										 float(rgba[4*(offset + nearest_y*W+nearest_x)+1])/255.0f,
+										 float(rgba[4*(offset + nearest_y*W+nearest_x)+2])/255.0f);
+				float3 a01 = make_float3(float(rgba[4*(offset + nearest_y*W+other_x)+0])/255.0f,
+										 float(rgba[4*(offset + nearest_y*W+other_x)+1])/255.0f,
+										 float(rgba[4*(offset + nearest_y*W+other_x)+2])/255.0f);
+				float3 a10 = make_float3(float(rgba[4*(offset + other_y*W+nearest_x)+0])/255.0f,
+										 float(rgba[4*(offset + other_y*W+nearest_x)+1])/255.0f,
+										 float(rgba[4*(offset + other_y*W+nearest_x)+2])/255.0f);
+				float3 a11 = make_float3(float(rgba[4*(offset + other_y*W+other_x)+0])/255.0f,
+										 float(rgba[4*(offset + other_y*W+other_x)+1])/255.0f,
+										 float(rgba[4*(offset + other_y*W+other_x)+2])/255.0f);
+				float3 a0x = wx*a00 + (1.0f-wx)*a01;
+				float3 a1x = wx*a10 + (1.0f-wx)*a11;
+				return wy*a0x + (1.0f-wy)*a1x;
+			}
+			/*
 			__device__ float3 sample_bilin_lod(float s, float t, int lod) {
 				lod = 0;
 				int W = w, H = h, offset = 0;
@@ -103,8 +166,9 @@ namespace rta {
 										 float(rgba[4*(offset+other_y*W+other_x)+2])/255.0f);
 				float3 a0x = wx*a00 + (1.0f-wx)*a01;
 				float3 a1x = wx*a10 + (1.0f-wx)*a11;
-				return wy*a0x + (1.0f-wy)*a1x;
+				return a00;//wy*a0x + (1.0f-wy)*a1x;
 			}
+			*/
 // 			__device__ float3 sample_bilin_lod(float s, float t, int lod) {
 // 				float x = s*W;
 // 				float y = (1.0f-t)*H;

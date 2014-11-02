@@ -89,7 +89,7 @@ namespace rta {
 // 						else if (mm < 5) out.x = out.z = 1, out.z = 0;
 // 						else if (mm < 6) out.y = out.z = 1, out.z = 0;
 // 						else out.y = out.z = out.z = 1;
-						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)mm);
+						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)mm, gid, blockIdx, threadIdx);
 // 						float3 tex = mat.diffuse_texture->sample_bilin(T.x, T.y);
 						out.x *= tex.x;
 						out.y *= tex.y;
