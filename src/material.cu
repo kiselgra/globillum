@@ -51,7 +51,7 @@ namespace rta {
 				dst[gid.y*w+gid.x] = out;
 			}
 
-			__global__ void evaluate_material_trilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float3 *ray_dir, int lod) {
+			__global__ void evaluate_material_trilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float3 *ray_dir) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
@@ -77,13 +77,13 @@ namespace rta {
 						float3 N;
 						barycentric_interpolation(&N, &bc, &na, &nb, &nc);
 						// ray diffs
-						float dx = is.t * rd_xy.x;
-						float dy = is.t * rd_xy.y;
-						float d = dx;
+// 						float dx = is.t;// * rd_xy.x;
+// 						float dy = is.t;// * rd_xy.y;
+						float d = is.t;//(dx>dy?dx:dy);
 						float3 dir = ray_dir[gid.y*w+gid.x];
-// 						d *= (N | -dir);
-						if (dx < dy) d = dy;
-						float mm = 0;//floor(log2f(d));
+						d /= (N | -dir);
+// 						if (dx < dy) d = dy;
+// 						float mm = floor(log2f(d));
 // 						if (mm < 1) out.x = 1, out.y = out.z = 0;
 // 						else if (mm < 2) out.y = 1, out.x = out.z = 0;
 // 						else if (mm < 3) out.z = 1, out.x = out.y = 0;
@@ -91,7 +91,7 @@ namespace rta {
 // 						else if (mm < 5) out.x = out.z = 1, out.z = 0;
 // 						else if (mm < 6) out.y = out.z = 1, out.z = 0;
 // 						else out.y = out.z = out.z = 1;
-							float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)lod, gid, blockIdx, threadIdx);
+							float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)mm, d, gid, blockIdx, threadIdx);
 // 						float3 tex = mat.diffuse_texture->sample_bilin(T.x, T.y);
 						out.x *= tex.x;
 						out.y *= tex.y;
@@ -113,9 +113,7 @@ namespace rta {
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
 // 			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_dir);
-			int l = vars["lod"].int_val;
-			cout << "lod = " << l << endl;
-			k::evaluate_material_trilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_dir, l);
+			k::evaluate_material_trilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_dir);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}
