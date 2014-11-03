@@ -73,7 +73,7 @@ namespace rta {
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 200)
 				  # error printf is only supported on devices of compute capability 2.0 and higher, please compile with -arch=sm_20 or higher    
 #endif
-				lod = 1;
+// 				lod = 1;
 				int W = w;
 			   	int H = h;
 // 				int WW = w;
@@ -85,11 +85,16 @@ namespace rta {
 // 				if (gid.x > 100 && gid.x < 110 && gid.y > 100 && gid.y < 110)
 // 					printf("WW=%d, w=%u, HH=%d, h=%u\n", W, w, H, h);
 				unsigned int offset = 0;
+				for (int i = 0; i < lod; ++i) {
+					offset += W*H;
+					W = (W+1)/2;
+					H = (H+1)/2;
+				}
+				if (s < 0)  s += -truncf(s)+1;
+				if (s >= 1) s -= truncf(s);
+				if (t < 0)  t += -truncf(t)+1;
+				if (t >= 1) t -= truncf(t);
 				float x = s*W;
-				if (t < 0)
-					t += truncf(t);
-				if (t >= 1)
-					t -= truncf(t);
 				float y = (1.0f-t)*H;
 				int nearest_x = int(x);
 				int nearest_y = int(y);
@@ -106,10 +111,27 @@ namespace rta {
 				if (other_x < 0) other_x += W;
 				if (other_y > H) other_y -= H;
 				if (other_y < 0) other_y += H;
-				if (bid.x == 25 && bid.y == 0 && tid.y==4) {
-					printf("gid=(%d,%d)\t%6.6f %6.6f %6.6f %6.6f\n", gid.x, gid.y, s, 1.0f-t, x, y);
-					printf("gid=(%d,%d)\tn_y=%d:%d W=%d n_x=%d:%d\n", gid.x, gid.y, nearest_x, int(x), W, nearest_y, int(y));
-				}
+// 				if (bid.x == 25 && bid.y == 0 && tid.y==4) {
+// 					587,341
+// 					gid=(587,341)   0.226815 0.859818 -8983.741211 880.453125
+// 					gid=(587,341)   n_x=-8983:-8983 W=1024 n_y=880:880
+// 					gid=(587,341)   n_x = -8983,    n_y = 880
+//
+// 					gid=(587,341)   -16.773186 0.859818 -8983.741211 880.453125
+// 					gid=(587,341)   n_y=-8983:-8983 W=1024 n_x=880:880
+// 					gid=(587,341)   n_x = -8983,    n_y = 880
+//
+// 					gid=(587,341)   -8.773185 0.859818 -8983.741211 880.453125
+// 					gid=(587,341)   n_y=-8983:-8983 W=1024 n_x=880:880
+// 					gid=(587,341)   n_x = -8983,    n_y = 880
+//
+// 				if (gid.x == 587 && gid.y == 341) {
+// 					printf("gid=(%d,%d)\t%6.6f %6.6f %6.6f %6.6f\n", gid.x, gid.y, s, 1.0f-t, x, y);
+// 					printf("gid=(%d,%d)\tn_x=%d:%d W=%d n_y=%d:%d\n", gid.x, gid.y, nearest_x, int(x), W, nearest_y, int(y));
+// 					printf("gid=(%d,%d)\tn_x = %d,\tn_y = %d\n", gid.x, gid.y, nearest_x, nearest_y);
+// 				}
+				if (nearest_y >= H || nearest_x >= W || nearest_y < 0 || nearest_x < 0)
+					printf("gid=(%d,%d)\tn_x = %d,\tn_y = %d\n", gid.x, gid.y, nearest_x, nearest_y);
 				float3 a00 = make_float3(float(rgba[4*(offset + nearest_y*W+nearest_x)+0])/255.0f,
 										 float(rgba[4*(offset + nearest_y*W+nearest_x)+1])/255.0f,
 										 float(rgba[4*(offset + nearest_y*W+nearest_x)+2])/255.0f);
@@ -122,6 +144,8 @@ namespace rta {
 				float3 a11 = make_float3(float(rgba[4*(offset + other_y*W+other_x)+0])/255.0f,
 										 float(rgba[4*(offset + other_y*W+other_x)+1])/255.0f,
 										 float(rgba[4*(offset + other_y*W+other_x)+2])/255.0f);
+// 				float3 a00, a01, a10, a11;
+// 				a00 = a01 = a10 = a11 = make_float3(0,0,0);
 				float3 a0x = wx*a00 + (1.0f-wx)*a01;
 				float3 a1x = wx*a10 + (1.0f-wx)*a11;
 				return wy*a0x + (1.0f-wy)*a1x;

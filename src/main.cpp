@@ -14,6 +14,7 @@
 #include "gpu_cgls_lights.h"
 
 #include "material.h"
+#include "vars.h"
 
 #include <GL/freeglut.h>
 #include <string.h>
@@ -35,6 +36,8 @@ picking_buffer_ref picking;
 
 console_ref viconsole = { -1 };
 bool gb_debug = false;
+
+std::map<std::string, var> vars;
 
 void display() {
 	glDisable(GL_DEBUG_OUTPUT);
@@ -229,6 +232,46 @@ static char* console_algo(console_ref ref, int argc, char **argv) {
 	else return strdup("not found");
 }
 
+static char* console_decl(console_ref ref, int argc, char **argv) {
+	if (argc != 3)
+		return strdup("requires variable name and type");
+	string t = argv[2];
+	var v;
+	v.name = argv[1];
+	if (t == "int") v.type = var::t_int;
+	else if (t == "float") v.type = var::t_float;
+	else return strdup(("unrecognized type " + t).c_str());
+	vars[v.name] = v;
+	return 0;
+}
+
+static char* console_set(console_ref ref, int argc, char **argv) {
+	if (argc != 3)
+		return strdup("requires variable name and new value");
+	map<string, var>::iterator v = vars.find(argv[1]);
+	if (v == vars.end())
+		return strdup(("undeclared variable " + string(argv[1])).c_str());
+	if (v->second.type == var::t_int)
+		v->second.int_val = atoi(argv[2]);
+	else
+		v->second.float_val = atof(argv[2]);
+	return 0;
+}
+
+static char* console_show(console_ref ref, int argc, char **argv) {
+	if (argc != 2)
+		return strdup("requires variable name");
+	map<string, var>::iterator v = vars.find(argv[1]);
+	if (v == vars.end())
+		return strdup(("undeclared variable " + string(argv[1])).c_str());
+	ostringstream oss;
+	if (v->second.type == var::t_int)
+		oss << v->second.int_val;
+	else
+		oss << v->second.float_val;
+	return strdup(oss.str().c_str());
+}
+
 
 
 void actual_main() 
@@ -299,6 +342,9 @@ void actual_main()
 	add_vi_console_command(viconsole, "bm", console_bookmark);
 	add_vi_console_command(viconsole, "b", console_select_bookmark);
 	add_vi_console_command(viconsole, "a", console_algo);
+	add_vi_console_command(viconsole, "decl", console_decl);
+	add_vi_console_command(viconsole, "set", console_set);
+	add_vi_console_command(viconsole, "show", console_show);
 	push_interaction_mode(console_interaction_mode(viconsole));
 
 	char *base = basename((char*)cmdline.filename);

@@ -1,6 +1,7 @@
 #include "gpu_cgls_lights.h"
 
 #include "material.h"
+#include "vars.h"
 
 #include <libhyb/trav-util.h>
 
@@ -52,6 +53,7 @@ namespace local {
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 		cout << "-----BAS: " << set.as->identification() << endl;
 		cout << "-----tri: " << set.basic_as<B, T>()->triangle_ptr() << endl;
+		declare_variable<int>("lod", 0);
 // 		material = new vec3f[w*h];
 	}
 
