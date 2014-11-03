@@ -53,7 +53,7 @@ namespace rta {
 				dst[gid.y*w+gid.x] = out;
 			}
 
-			__global__ void evaluate_material_trilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float3 *ray_org, float3 *ray_dir) {
+			__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float3 *ray_org, float3 *ray_dir) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
@@ -78,7 +78,7 @@ namespace rta {
 						const float3 &nc = tri.nc;
 						float3 N;
 						barycentric_interpolation(&N, &bc, &na, &nb, &nc);
-						// eval other ray
+						// eval other rays
 						int ox = 1, oy = 1;
 						if (gid.x == w-1) ox = -1;
 						if (gid.y == h-1) oy = -1;
@@ -102,33 +102,11 @@ namespace rta {
 						diff_x = fmaxf(fabsf(T.x - other_T.x), diff_x);
 						diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
 						float diff = fmaxf(diff_x, diff_y);
-						float3 dir = ray_dir[gid.y*w+gid.x];
-// 						diff *= (1+(N | -dir));
-						// ray diffs
-// 						float dx = is.t;// * rd_xy.x;
-// 						float dy = is.t;// * rd_xy.y;
-// 						float d = is.t;//(dx>dy?dx:dy);
-// 						if (dx < dy) d = dy;
-// 						float mm = floor(log2f(d));
-// 						if (mm < 1) out.x = 1, out.y = out.z = 0;
-// 						else if (mm < 2) out.y = 1, out.x = out.z = 0;
-// 						else if (mm < 3) out.z = 1, out.x = out.y = 0;
-// 						else if (mm < 4) out.x = out.y = 1, out.z = 0;
-// 						else if (mm < 5) out.x = out.z = 1, out.z = 0;
-// 						else if (mm < 6) out.y = out.z = 1, out.z = 0;
-// 						else out.y = out.z = out.z = 1;
-// 						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)mm, gid, blockIdx, threadIdx);
+						// access texture
 						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
-// 						float3 tex = mat.diffuse_texture->sample_bilin(T.x, T.y);
-						out.x = tex.x;
-						out.y = tex.y;
-						out.z = tex.z;
-// 						if (tri.material_index < 9)
-// 							out.x = tri.material_index/8.0f, out.y = out.z = 0;
-// 						else if (tri.material_index < 18)
-// 							out.y = (tri.material_index-9)/8.0f, out.x = out.z = 0;
-// 						else 
-// 							out.z = (tri.material_index-18)/8.0f, out.x = out.y = 0;
+						out.x *= tex.x;
+						out.y *= tex.y;
+						out.z *= tex.z;
 					}
 				}
 				dst[gid.y*w+gid.x] = out;
@@ -140,7 +118,7 @@ namespace rta {
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
 // 			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_dir);
-			k::evaluate_material_trilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_org, (float3*)ray_dir);
+			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_org, (float3*)ray_dir);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}

@@ -70,28 +70,10 @@ namespace rta {
 				return wy*a0x + (1.0f-wy)*a1x;
 			}
 			__device__ float3 sample_bilin_lod(float s, float t, float diff, int2 gid, uint3 bid, uint3 tid) {
-#if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 200)
-				  # error printf is only supported on devices of compute capability 2.0 and higher, please compile with -arch=sm_20 or higher    
-#endif
 				int W = w;
 			   	int H = h;
 				float lod = log2f(diff * fmaxf(w,h));
 				lod = fminf(lod, float(max_mm));
-// 				if (lod < 1) return make_float3(diff,0,0);
-// 				else if (lod < 2) return make_float3(0,1,0);
-// 				else if (lod < 2) return make_float3(0,0,1);
-// 				else if (lod < 2) return make_float3(1,0,1);
-// 				else if (lod < 2) return make_float3(1,1,0);
-// 				return make_float3(1,1,1);
-
-// 				int WW = w;
-// 			   	int HH = h;
-// 				    printf("Hello thread %d, f=%f\n", gid.x, 0.1f);
-// 				if (gid.x > 100 && gid.x < 110 && gid.y > 100 && gid.y < 110)
-// 					printf("foo\n");
-// 					printf("WW=%d, W=%u, w=%u, HH=%d, H=%u, h=%u\n", WW, W, w, HH, H, h);
-// 				if (gid.x > 100 && gid.x < 110 && gid.y > 100 && gid.y < 110)
-// 					printf("WW=%d, w=%u, HH=%d, h=%u\n", W, w, H, h);
 				unsigned int offset = 0;
 				for (int i = 0; i < lod; ++i) {
 					offset += W*H;
@@ -119,27 +101,6 @@ namespace rta {
 				if (other_x < 0) other_x += W;
 				if (other_y > H) other_y -= H;
 				if (other_y < 0) other_y += H;
-// 				if (bid.x == 25 && bid.y == 0 && tid.y==4) {
-// 					587,341
-// 					gid=(587,341)   0.226815 0.859818 -8983.741211 880.453125
-// 					gid=(587,341)   n_x=-8983:-8983 W=1024 n_y=880:880
-// 					gid=(587,341)   n_x = -8983,    n_y = 880
-//
-// 					gid=(587,341)   -16.773186 0.859818 -8983.741211 880.453125
-// 					gid=(587,341)   n_y=-8983:-8983 W=1024 n_x=880:880
-// 					gid=(587,341)   n_x = -8983,    n_y = 880
-//
-// 					gid=(587,341)   -8.773185 0.859818 -8983.741211 880.453125
-// 					gid=(587,341)   n_y=-8983:-8983 W=1024 n_x=880:880
-// 					gid=(587,341)   n_x = -8983,    n_y = 880
-//
-// 				if (gid.x == 587 && gid.y == 341) {
-// 					printf("gid=(%d,%d)\t%6.6f %6.6f %6.6f %6.6f\n", gid.x, gid.y, s, 1.0f-t, x, y);
-// 					printf("gid=(%d,%d)\tn_x=%d:%d W=%d n_y=%d:%d\n", gid.x, gid.y, nearest_x, int(x), W, nearest_y, int(y));
-// 					printf("gid=(%d,%d)\tn_x = %d,\tn_y = %d\n", gid.x, gid.y, nearest_x, nearest_y);
-// 				}
-				if (nearest_y >= H || nearest_x >= W || nearest_y < 0 || nearest_x < 0)
-					printf("gid=(%d,%d)\tn_x = %d,\tn_y = %d\n", gid.x, gid.y, nearest_x, nearest_y);
 				float3 a00 = make_float3(float(rgba[4*(offset + nearest_y*W+nearest_x)+0])/255.0f,
 										 float(rgba[4*(offset + nearest_y*W+nearest_x)+1])/255.0f,
 										 float(rgba[4*(offset + nearest_y*W+nearest_x)+2])/255.0f);
@@ -152,68 +113,12 @@ namespace rta {
 				float3 a11 = make_float3(float(rgba[4*(offset + other_y*W+other_x)+0])/255.0f,
 										 float(rgba[4*(offset + other_y*W+other_x)+1])/255.0f,
 										 float(rgba[4*(offset + other_y*W+other_x)+2])/255.0f);
-// 				float3 a00, a01, a10, a11;
-// 				a00 = a01 = a10 = a11 = make_float3(0,0,0);
 				float3 a0x = wx*a00 + (1.0f-wx)*a01;
 				float3 a1x = wx*a10 + (1.0f-wx)*a11;
 				return wy*a0x + (1.0f-wy)*a1x;
 			}
-			/*
-			__device__ float3 sample_bilin_lod(float s, float t, int lod) {
-				lod = 0;
-				int W = w, H = h, offset = 0;
-// 				for (int i = 0; i < lod; ++i) {
-// 					offset += W*H;
-// 					W = (W+1)/2;
-// 					H = (H+1)/2;
-// 				}
-
-				float x = s*W;
-				float y = (1.0f-t)*H;
-				int nearest_x = int(x);
-				int nearest_y = int(y);
-				int other_x = nearest_x+1;
-				int other_y = nearest_y+1;
-				if (x-floorf(x) < .5) other_x = nearest_x-1;
-				if (y-floorf(y) < .5) other_y = nearest_y-1;
-				// wx = 1.0 at floorf(x)=.5f.
-				// wx = 0.5 at floorf(x)=.0f.
-				float wx = fabsf(float(other_x)+.5 - x);
-				float wy = fabsf(float(other_y)+.5 - y);
-				nearest_x = nearest_x % W;
-				nearest_y = nearest_y % H;
-				other_x = other_x % W;
-				other_y = other_y % H;
-				float3 a00 = make_float3(float(rgba[4*(offset+nearest_y*W+nearest_x)+0])/255.0f,
-										 float(rgba[4*(offset+nearest_y*W+nearest_x)+1])/255.0f,
-										 float(rgba[4*(offset+nearest_y*W+nearest_x)+2])/255.0f);
-				float3 a01 = make_float3(float(rgba[4*(offset+nearest_y*W+other_x)+0])/255.0f,
-										 float(rgba[4*(offset+nearest_y*W+other_x)+1])/255.0f,
-										 float(rgba[4*(offset+nearest_y*W+other_x)+2])/255.0f);
-				float3 a10 = make_float3(float(rgba[4*(offset+other_y*W+nearest_x)+0])/255.0f,
-										 float(rgba[4*(offset+other_y*W+nearest_x)+1])/255.0f,
-										 float(rgba[4*(offset+other_y*W+nearest_x)+2])/255.0f);
-				float3 a11 = make_float3(float(rgba[4*(offset+other_y*W+other_x)+0])/255.0f,
-										 float(rgba[4*(offset+other_y*W+other_x)+1])/255.0f,
-										 float(rgba[4*(offset+other_y*W+other_x)+2])/255.0f);
-				float3 a0x = wx*a00 + (1.0f-wx)*a01;
-				float3 a1x = wx*a10 + (1.0f-wx)*a11;
-				return a00;//wy*a0x + (1.0f-wy)*a1x;
-			}
-			*/
-// 			__device__ float3 sample_bilin_lod(float s, float t, int lod) {
-// 				float x = s*W;
-// 				float y = (1.0f-t)*H;
-// 				
-// 				int nearest_x = int(x);
-// 				int nearest_y = int(y);
-// 				nearest_x = nearest_x % W;
-// 				nearest_y = nearest_y % H;
-// 				return make_float3(float(rgba[4*(offset + nearest_y*W+nearest_x)+0])/255.0f,
-// 								   float(rgba[4*(offset + nearest_y*W+nearest_x)+1])/255.0f,
-// 								   float(rgba[4*(offset + nearest_y*W+nearest_x)+2])/255.0f);
-// 			}
 		};
+		
 		void compute_mipmaps(texture_data *tex);
 
 		struct material_t {

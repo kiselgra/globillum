@@ -44,17 +44,11 @@ namespace local {
 	void gpu_cgls_lights::activate(rt_set *orig_set) {
 		set = *orig_set;
 		set.rt = set.rt->copy();
-// 		set.bouncer = collector = new cuda::primary_intersection_collector<B,T>(w, h);
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::cam_ray_generator_shirley(w, h);
 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
-// 		set.bouncer = collector = new cuda::primary_intersection_downloader<B,T, primary_intersection_collector<B,T>>(w, h);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
-		cout << "-----BAS: " << set.as->identification() << endl;
-		cout << "-----tri: " << set.basic_as<B, T>()->triangle_ptr() << endl;
-		declare_variable<int>("lod", 0);
-// 		material = new vec3f[w*h];
 	}
 
 	void gpu_cgls_lights::compute() {
@@ -67,35 +61,6 @@ namespace local {
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 			set.rt->trace();
 
-			/*
-			cuda::primary_intersection_downloader<B,T, primary_intersection_collector<B,T>> *C = (cuda::primary_intersection_downloader<B,T, primary_intersection_collector<B,T>>*)collector;
-
-			T *triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
-			T::vec3_t bc, tmp;
-			for (int y = 0; y < h; ++y)
-				for (int x = 0; x < w; ++x) {
-					const triangle_intersection<T> &ti = C->intersection(x,y);
-					if (ti.valid()) {
-						T &tri = triangles[ti.ref];
-						ti.barycentric_coord(&bc);
-						const T::vec3_t &va = vertex_a(tri);
-						const T::vec3_t &vb = vertex_b(tri);
-						const T::vec3_t &vc = vertex_c(tri);
-						barycentric_interpolation(&tmp, &bc, &va, &vb, &vc);
-						hitpoints.pixel(x,y) = { tmp.x, tmp.y, tmp.z };
-						const T::vec3_t &na = normal_a(tri);
-						const T::vec3_t &nb = normal_b(tri);
-						const T::vec3_t &nc = normal_c(tri);
-						barycentric_interpolation(&tmp, &bc, &na, &nb, &nc);
-						normals.pixel(x,y) = { tmp.x, tmp.y, tmp.z };
-					}
-					else {
-						make_vec3f(&hitpoints.pixel(x,y), FLT_MAX, FLT_MAX, FLT_MAX);
-						make_vec3f(&normals.pixel(x,y), 0, 0, 0);
-					}
-				}
-			set.basic_as<B, T>()->free_canonical_triangles(triangles);
-			*/
 			cout << "primary visibility took " << set.basic_rt<B, T>()->timings.front() << "ms." << endl;
 	
 			cout << "saving output" << endl;
@@ -110,9 +75,6 @@ namespace local {
 				}
 			}
 			image.write("out.png");
-
-// 			evaluate_material();
-// 			save(material);
 	}
 		
 	/*
