@@ -2,6 +2,8 @@
 
 #include "vars.h"
 
+#include <librta/intersect.h>
+
 #include <stdlib.h>
 
 using namespace std;
@@ -51,7 +53,7 @@ namespace rta {
 				dst[gid.y*w+gid.x] = out;
 			}
 
-			__global__ void evaluate_material_trilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float3 *ray_dir) {
+			__global__ void evaluate_material_trilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float3 *ray_org, float3 *ray_dir) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
@@ -76,12 +78,36 @@ namespace rta {
 						const float3 &nc = tri.nc;
 						float3 N;
 						barycentric_interpolation(&N, &bc, &na, &nb, &nc);
+						// eval other ray
+						int ox = 1, oy = 1;
+						if (gid.x == w-1) ox = -1;
+						if (gid.y == h-1) oy = -1;
+						// upper ray
+						float3 other_org = ray_org[(gid.y+oy)*w+gid.x];
+						float3 other_dir = ray_dir[(gid.y+oy)*w+gid.x];
+						triangle_intersection<cuda::simple_triangle> other_is;
+						intersect_tri_opt_nocheck(tri, (vec3f*)&other_org, (vec3f*)&other_dir, other_is);
+						float2 other_T;
+						float3 other_bc;
+						other_is.barycentric_coord(&other_bc);
+						barycentric_interpolation(&other_T, &other_bc, &ta, &tb, &tc);
+						float diff_x = fabsf(T.x - other_T.x);
+						float diff_y = fabsf(T.y - other_T.y);
+						// right ray
+						other_org = ray_org[(gid.y)*w+gid.x+ox];
+						other_dir = ray_dir[(gid.y)*w+gid.x+ox];
+						intersect_tri_opt_nocheck(tri, (vec3f*)&other_org, (vec3f*)&other_dir, other_is);
+						other_is.barycentric_coord(&other_bc);
+						barycentric_interpolation(&other_T, &other_bc, &ta, &tb, &tc);
+						diff_x = fmaxf(fabsf(T.x - other_T.x), diff_x);
+						diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
+						float diff = fmaxf(diff_x, diff_y);
+						float3 dir = ray_dir[gid.y*w+gid.x];
+// 						diff *= (1+(N | -dir));
 						// ray diffs
 // 						float dx = is.t;// * rd_xy.x;
 // 						float dy = is.t;// * rd_xy.y;
-						float d = is.t;//(dx>dy?dx:dy);
-						float3 dir = ray_dir[gid.y*w+gid.x];
-						d /= (N | -dir);
+// 						float d = is.t;//(dx>dy?dx:dy);
 // 						if (dx < dy) d = dy;
 // 						float mm = floor(log2f(d));
 // 						if (mm < 1) out.x = 1, out.y = out.z = 0;
@@ -91,11 +117,12 @@ namespace rta {
 // 						else if (mm < 5) out.x = out.z = 1, out.z = 0;
 // 						else if (mm < 6) out.y = out.z = 1, out.z = 0;
 // 						else out.y = out.z = out.z = 1;
-							float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)mm, d, gid, blockIdx, threadIdx);
+// 						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, (int)mm, gid, blockIdx, threadIdx);
+						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
 // 						float3 tex = mat.diffuse_texture->sample_bilin(T.x, T.y);
-						out.x *= tex.x;
-						out.y *= tex.y;
-						out.z *= tex.z;
+						out.x = tex.x;
+						out.y = tex.y;
+						out.z = tex.z;
 // 						if (tri.material_index < 9)
 // 							out.x = tri.material_index/8.0f, out.y = out.z = 0;
 // 						else if (tri.material_index < 18)
@@ -108,12 +135,12 @@ namespace rta {
 			}
 		}
 
-		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float *ray_dir) {
+		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float *ray_org, float *ray_dir) {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
 // 			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_dir);
-			k::evaluate_material_trilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_dir);
+			k::evaluate_material_trilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, rd_xy, (float3*)ray_org, (float3*)ray_dir);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}

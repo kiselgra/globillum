@@ -69,13 +69,21 @@ namespace rta {
 				float3 a1x = wx*a10 + (1.0f-wx)*a11;
 				return wy*a0x + (1.0f-wy)*a1x;
 			}
-			__device__ float3 sample_bilin_lod(float s, float t, int lod, int2 gid, uint3 bid, uint3 tid) {
+			__device__ float3 sample_bilin_lod(float s, float t, float diff, int2 gid, uint3 bid, uint3 tid) {
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 200)
 				  # error printf is only supported on devices of compute capability 2.0 and higher, please compile with -arch=sm_20 or higher    
 #endif
-// 				lod = 1;
 				int W = w;
 			   	int H = h;
+				float lod = log2f(diff * fmaxf(w,h));
+				lod = fminf(lod, float(max_mm));
+// 				if (lod < 1) return make_float3(diff,0,0);
+// 				else if (lod < 2) return make_float3(0,1,0);
+// 				else if (lod < 2) return make_float3(0,0,1);
+// 				else if (lod < 2) return make_float3(1,0,1);
+// 				else if (lod < 2) return make_float3(1,1,0);
+// 				return make_float3(1,1,1);
+
 // 				int WW = w;
 // 			   	int HH = h;
 // 				    printf("Hello thread %d, f=%f\n", gid.x, 0.1f);
@@ -221,7 +229,7 @@ namespace rta {
 		
 		
 		//! 
-		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float *ray_dirs);
+		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float2 rd_xy, float *ray_org, float *ray_dirs);
 	}
 }
 

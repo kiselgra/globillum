@@ -34,7 +34,7 @@ namespace local {
 		virtual void bounce() {
 			float dy = (2.0f/this->h) * tanf(crgs->fovy*0.5f*M_PI/180.0f);
 			float2 diff = make_float2(crgs->aspect * dy, dy);
-			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors, diff, crgs->gpu_direction);
+			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors, diff, crgs->gpu_origin, crgs->gpu_direction);
 		}
 		virtual std::string identification() {
 			return "cuda primary intersection collector.";
