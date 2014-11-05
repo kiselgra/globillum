@@ -4,10 +4,12 @@ bin_PROGRAMS = gi
 BUILT_SOURCES = cmdline.x
 # libconfigfiles_la_SOURCES = grammar.yy  lexer.ll  parser.h  token.h lexer.h config_creator.h configfile.h configfile.cpp
 gi_SOURCES = 	main.cpp \
+				arealight-sampler.cu arealight-sampler.h \
 				cgls-lights.cu cgls-lights.h \
 				material.cu material-conversion.cpp material.h \
 				gi_algorithm.cpp gi_algorithm.h \
 				gpu_cgls_lights.cpp gpu_cgls_lights.h \
+				util.cpp util.h \
 				cmdline.cpp cmdline.h
 
 # for bison/flex

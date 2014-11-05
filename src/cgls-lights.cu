@@ -12,12 +12,15 @@ namespace rta {
 	namespace cuda {
 		namespace cgls {
 
-			float3 conv(const vec3f &v) { return make_float3(v.x, v.y, v.z); }
+			static float3 conv(const vec3f &v) { return make_float3(v.x, v.y, v.z); }
 
 			light* convert_and_upload_lights(scene_ref scene, int &N) {
 				N = 0;
-				for (light_list *run = scene_lights(scene); run; run = run->next)
-					++N;
+				for (light_list *run = scene_lights(scene); run; run = run->next) {
+					int t = light_type(run->ref);
+					if (t == hemi_light_t || t == spot_light_t)
+						++N;
+				}
 				light *L;
 				cout << "lights: " << N << endl;
 				checked_cuda(cudaMalloc(&L, sizeof(light)*N));
@@ -45,7 +48,10 @@ namespace rta {
 						l.type = light::spot;
 						l.spot_cos_cutoff = cosf(*(float*)light_aux(run->ref));
 					}
-					else throw std::runtime_error("unknown light type!");
+					else {
+						cerr << "ignoring light '" << light_name(run->ref) << "' because of incompatible type." << endl;
+						continue;
+					}
 					lights.push_back(l);
 					++n;
 				}
