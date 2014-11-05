@@ -48,10 +48,8 @@ namespace local {
 		: gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs), lights(lights), nr_of_lights(nr_of_lights) {
 		}
 		virtual void bounce() {
-			cout << "eval mat" << endl;
 			gpu_material_evaluator<forward_traits>::bounce();
-			cout << "eval shading" << endl;
-// 			rta::cuda::cgls::add_shading(this->w, this->h, this->material_colors, lights, nr_of_lights);
+			rta::cuda::cgls::add_shading(this->w, this->h, this->material_colors, lights, nr_of_lights, this->gpu_last_intersection, this->tri_ptr);
 		}
 		virtual std::string identification() {
 			return "evaluate first-hit material and shade with cgls lights.";

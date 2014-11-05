@@ -17,7 +17,7 @@ namespace rta {
 			unsigned char *rgba;
 			int max_mm;
 			texture_data(int w, int h) : w(w), h(h), rgba(0) {
-				checked_cuda(cudaMalloc(&rgba, 12*w*h));	// 6: 4 components times 1.5 for mip maps.
+				checked_cuda(cudaMalloc(&rgba, 6*w*h));	// 6: 4 components times 1.5 for mip maps.
 				int min = w<h?w:h;
 				max_mm = int(floor(log2f(float(min))));
 			}

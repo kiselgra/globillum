@@ -17,13 +17,13 @@ namespace rta {
 
 		namespace k {
 
-			__device__ inline float3 operator-(const float3 &a) {
-				return make_float3(-a.x, -a.y, -a.z);
-			}
-
-			__device__ inline float operator|(const float3 &a, const float3 &b) {
-				return a.x*b.x + a.y*b.y + a.z*b.z;
-			}
+// 			__device__ inline float3 operator-(const float3 &a) {
+// 				return make_float3(-a.x, -a.y, -a.z);
+// 			}
+// 
+// 			__device__ inline float operator|(const float3 &a, const float3 &b) {
+// 				return a.x*b.x + a.y*b.y + a.z*b.z;
+// 			}
 
 			__global__ void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float3 *ray_dir) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,

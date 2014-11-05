@@ -21,7 +21,8 @@ namespace rta {
 			light* convert_and_upload_lights(scene_ref scene, int &N);
 			void update_lights(scene_ref scene, light *data, int n);
 		
-			void add_shading(int w, int h, float3 *color_data, light *lights, int nr_of_lights);
+			void add_shading(int w, int h, float3 *color_data, light *lights, int nr_of_lights, 
+							 triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles);
 		}
 	}
 }
