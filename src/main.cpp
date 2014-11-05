@@ -353,7 +353,7 @@ void actual_main()
 
 	setup_rta("bbvh-cuda");
 
-	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y);
+	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
 
 	gi_algorithm::select("gpu_cgls_lights");
 
