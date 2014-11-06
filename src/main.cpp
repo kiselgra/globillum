@@ -334,6 +334,7 @@ void actual_main()
 	dir = vec3f(0, -1, 0);
 	up = vec3f(0, 0, 1);
 	light_ref rect = make_rectangular_light("rect", gbuffer, &pos, &dir, &up, 50, 20);
+	change_light_color3f(rect, 1000, 1000, 1000);
 	add_light_to_scene(the_scene, rect);
 	push_drawelement_to_array(light_representation(rect), &picking_des);
 

@@ -88,7 +88,9 @@ namespace rta {
 						ray_dir[id]  = dir;
 						max_t[id]    = len;
 						float ndotl = fmaxf((N|dir), 0.0f);
-						potential_sample_contribution[id] = make_float3(ndotl, ndotl, ndotl);
+						float light_cos = fmaxf((light_dir|-dir), 0.0f);
+						float factor = lights[0].wh.x * lights[0].wh.y * ndotl * light_cos / (len*len);
+						potential_sample_contribution[id] = lights[0].col * factor;
 					}
 					else {
 						ray_dir[id]  = make_float3(0,0,0);
@@ -96,48 +98,6 @@ namespace rta {
 						max_t[id] = -1;
 						potential_sample_contribution[id] = make_float3(0, 0, 0);
 					}
-
-
-					/*
-					float3 material_color = color_data[gid.y*w+gid.x];
-					float3 out = make_float3(0,0,0);
-
-					triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
-					if (is.valid()) {
-						float3 bc; 
-						float3 P, N;
-						cuda::simple_triangle tri = triangles[is.ref];
-						is.barycentric_coord(&bc);
-						barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
-						barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
-
-						for (int i = 0; i < nr_of_lights; ++i) {
-							if (lights[i].type == light::hemi) {
-								float factor = 0.5f * (1.0f + (N | lights[i].dir));
-								out += factor * material_color * lights[i].col;
-							}
-							else if (lights[i].type == light::spot) {
-								float3 l = lights[i].pos - P;
-								float d = length_of_vector(l);
-								l /= d;
-								float3 dir = lights[i].dir;
-								dir /= length_of_vector(dir);
-								float ndotl = fmaxf((N|l), 0.0f);
-								if (ndotl > 0) {
-									float cos_theta = (dir|-l);
-									if (cos_theta > lights[i].spot_cos_cutoff) {
-										float angle = acosf(cos_theta);
-										float cutoff = acosf(lights[i].spot_cos_cutoff);
-										float factor = ndotl * (1.0f - smoothstep(cutoff * .7, cutoff, angle));
-										out += factor * material_color * lights[i].col;
-									}
-								}
-							}
-						}
-					}
-
-					color_data[gid.y*w+gid.x] = out;
-					*/
 				}
 			}
 
