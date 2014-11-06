@@ -2,6 +2,8 @@
 
 #include "util.h"
 
+#include <libhyb/trav-util.h>
+
 #include <vector>
 #include <stdexcept>
 #include <iostream>
@@ -43,6 +45,7 @@ namespace rta {
 						l.dir = conv(dir);
 						l.up = conv(up);
 						l.col = conv(*light_color(run->ref));
+						l.wh = *(float2*)light_aux(run->ref);
 						lights.push_back(l);
 						++n;
 					}
@@ -55,7 +58,7 @@ namespace rta {
 			namespace k {
 				__global__ void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float3 *ray_orig, float3 *ray_dir, float *max_t,
 														  triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-														  gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution) {
+														  gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample) {
 					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 										 blockIdx.y * blockDim.y + threadIdx.y);
 					if (gid.x >= w || gid.y >= h) return;
@@ -70,7 +73,14 @@ namespace rta {
 						barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 						barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
 						float3 light_pos = lights[0].center;
-						float3 dir = light_pos - P;
+						float3 light_dir = lights[0].dir;
+						float3 right = make_tangential(make_float3(1,0,0), light_dir);
+						float3 up = make_tangential(make_float3(0,1,0), light_dir);
+						float2 rnd = uniform01.data[(id + sample) % uniform01.N];
+						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].wh.x,
+													(rnd.y - 0.5f) * lights[0].wh.y);
+						float3 light_sample = light_pos + offset.x * right + offset.y * up;
+						float3 dir = light_sample - P;
 						float len = length_of_vector(dir);
 						dir /= len;
 						P += 0.01*dir;
@@ -133,12 +143,12 @@ namespace rta {
 
 			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution) {
+										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample) {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
 				k::generate_rectlight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-																  ti, triangles, uniform01, potential_sample_contribution);
+																  ti, triangles, uniform01, potential_sample_contribution, sample);
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
 			}

@@ -100,7 +100,8 @@ namespace local {
 		virtual void setup_new_arealight_sample() {
 			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 													   this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
-													   primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution);
+													   primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
+													   curr_bounce);
 		}
 		virtual void integrate_light_sample() {
 			rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
@@ -155,9 +156,17 @@ namespace local {
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 // 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 16);
+		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 128);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
+
+		cout << "pool: " << pool.N << endl;
+			
+		vec3f tng1(1,0,0);
+		vec3f tng2(0,1,0);
+		vec3f n(0,-1,0);
+		cout << "T " << make_tangential(tng1, n) << endl;
+		cout << "T " << make_tangential(tng2, n) << endl;
 	}
 
 	void gpu_cgls_lights::compute() {

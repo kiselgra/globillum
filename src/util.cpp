@@ -26,6 +26,7 @@ namespace gi {
 			for (int i = 0; i < N; ++i) {
 				host[i].x = halton(i+1, 2);
 				host[i].y = halton(i+1, 3);
+				if (i < 1000) cout << host[i].x << ", " << host[i].y << endl;
 			}
 			checked_cuda(cudaMalloc(&pool.data, sizeof(float2)*N));
 			checked_cuda(cudaMemcpy(pool.data, host, sizeof(float2)*N, cudaMemcpyHostToDevice));
