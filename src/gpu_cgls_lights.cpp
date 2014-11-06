@@ -75,6 +75,7 @@ namespace local {
 		int curr_bounce;
 		int samples;
 		float3 *output_color;
+		triangle_intersection<cuda::simple_triangle> *primary_intersection;
 		gpu_cgls_arealight_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, 
 									 cuda::cam_ray_generator_shirley *crgs, cuda::cgls::rect_light *lights, int nr_of_lights,
 									 gi::cuda::halton_pool2f rnd, int samples)
@@ -82,11 +83,13 @@ namespace local {
 		  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), samples(samples) {
 			  checked_cuda(cudaMalloc(&potential_sample_contribution, sizeof(float3)*w*h));
 			  checked_cuda(cudaMalloc(&output_color, sizeof(float3)*w*h));
+			  checked_cuda(cudaMalloc(&primary_intersection, sizeof(triangle_intersection<cuda::simple_triangle>)*w*h));
 			  curr_bounce = 0;
 		}
 		~gpu_cgls_arealight_evaluator() {
 			checked_cuda(cudaFree(potential_sample_contribution));
 			checked_cuda(cudaFree(output_color));
+			checked_cuda(cudaFree(primary_intersection));
 		}
 		virtual void new_pass() {
 			curr_bounce = 0;
@@ -97,7 +100,7 @@ namespace local {
 		virtual void setup_new_arealight_sample() {
 			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 													   this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
-													   this->gpu_last_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution);
+													   primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution);
 		}
 		virtual void integrate_light_sample() {
 			rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
@@ -110,7 +113,12 @@ namespace local {
 			cout << "bounce " << curr_bounce << endl;
 			if (curr_bounce == 0) {
 				cout << "eval mat" << endl;
+				// this has to be done before switching the intersection data.
 				this->evaluate_material();
+				cout << "switch intersection data" << endl;
+				triangle_intersection<cuda::simple_triangle> *tmp = primary_intersection;
+				primary_intersection = this->gpu_last_intersection;
+				this->gpu_last_intersection = tmp;
 				cout << "setup samples" << endl;
 				setup_new_arealight_sample();
 			}
@@ -147,7 +155,7 @@ namespace local {
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 // 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 1);
+		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 16);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 	}
@@ -181,23 +189,6 @@ namespace local {
 			image.write("out.png");
 	}
 		
-
-
-	/*
-		void gpu_cgls_lights::save(vec3f *out) {
-			cout << "saving output" << endl;
-			png::image<png::rgb_pixel> image(w, h);
-			for (int y = 0; y < h; ++y) {
-				int y_out = h - y - 1;
-				for (int x = 0; x < w; ++x) {
-					vec3f *pixel = out+y*w+x;
-					image.set_pixel(w-x-1, y_out, png::rgb_pixel(clamp(255*pixel->x,0,255), clamp(255*pixel->y,0,255), clamp(255*pixel->z,0,255))); 
-				}
-			}
-			image.write("out.png");
-		}
-		*/
-
 }
 
 /* vim: set foldmethod=marker: */
