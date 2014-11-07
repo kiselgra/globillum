@@ -25,8 +25,9 @@ namespace rta {
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample);
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
-										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, bool clear);
-			void normalize_light_samples(int w, int h, float3 *col_accum, int samples);
+										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, int sample);
+			void init_cuda_image_transfer(texture_ref tex);
+			void copy_cuda_image_to_texture(int w, int h, float3 *col, float scale);
 		}
 	}
 }

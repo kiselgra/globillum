@@ -105,35 +105,22 @@ namespace local {
 		}
 		virtual void integrate_light_sample() {
 			rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
-													this->material_colors, output_color, curr_bounce==1);
-		}
-		virtual void normalize_output_color() {
-			rta::cuda::cgls::normalize_light_samples(this->w, this->h, output_color, samples);
+													this->material_colors, output_color, curr_bounce-1);
 		}
 		virtual void bounce() {
 			cout << "bounce " << curr_bounce << endl;
 			if (curr_bounce == 0) {
-				cout << "eval mat" << endl;
 				// this has to be done before switching the intersection data.
 				this->evaluate_material();
-				cout << "switch intersection data" << endl;
 				triangle_intersection<cuda::simple_triangle> *tmp = primary_intersection;
 				primary_intersection = this->gpu_last_intersection;
 				this->gpu_last_intersection = tmp;
-				cout << "setup samples" << endl;
 				setup_new_arealight_sample();
 			}
 			else if (curr_bounce > 0) {
-				cout << "integrate samples" << endl;
 				integrate_light_sample();
-				if (curr_bounce != samples) {
-					cout << "setup samples" << endl;
+				if (curr_bounce < samples)
 					setup_new_arealight_sample();
-				}
-				else {
-					cout << "normalize" << endl;
-					normalize_output_color();
-				}
 			}
 			++curr_bounce;
 		}
@@ -141,9 +128,6 @@ namespace local {
 			return "evaluate first-hit material and shade with cgls lights.";
 		}
 	};
-
-
-
 
 
 	void gpu_cgls_lights::activate(rt_set *orig_set) {
@@ -156,9 +140,11 @@ namespace local {
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 // 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 4);
+		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 32);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
+
+		cuda::cgls::init_cuda_image_transfer(result);
 
 		cout << "pool: " << pool.N << endl;
 			
@@ -169,8 +155,17 @@ namespace local {
 		cout << "T " << make_tangential(tng2, n) << endl;
 	}
 
+	void gpu_cgls_lights::update() {
+		if (set.rt->progressive_trace_running()) {
+			set.rt->trace_progressively(false);
+			gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
+			float3 *colors = bouncer->output_color;
+			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+		}
+	}
+
 	void gpu_cgls_lights::compute() {
-			cout << "tracing..." << endl;
+			cout << "restarting progressive display" << endl;
 			vec3f pos, dir, up;
 			matrix4x4f *lookat_matrix = lookat_matrix_of_cam(current_camera());
 			extract_pos_vec3f_of_matrix(&pos, lookat_matrix);
@@ -179,10 +174,10 @@ namespace local {
 			update_lights(scene, gpu_lights, nr_of_gpu_lights);
 			update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
-			set.rt->trace();
 
-			cout << "primary visibility took " << set.basic_rt<B, T>()->timings.front() << "ms." << endl;
+			set.rt->trace_progressively(true);
 	
+			/*
 			cout << "saving output" << endl;
 			png::image<png::rgb_pixel> image(w, h);
 			vec3f *data = new vec3f[w*h];
@@ -196,6 +191,7 @@ namespace local {
 				}
 			}
 			image.write("out.png");
+			*/
 	}
 		
 }

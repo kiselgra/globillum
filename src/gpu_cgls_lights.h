@@ -35,6 +35,8 @@ namespace local {
 
 		virtual void activate(rta::rt_set *orig_set);
 		virtual void compute();
+		virtual void update();
+		virtual bool progressive() { return true; }
 	};
 
 }

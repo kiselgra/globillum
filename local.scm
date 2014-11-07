@@ -1,3 +1,5 @@
+(load-shader-file "local.shader")
+
 (use-modules (srfi srfi-1))
 
 (define bookmarks '())

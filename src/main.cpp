@@ -39,14 +39,27 @@ bool gb_debug = false;
 
 std::map<std::string, var> vars;
 
+mesh_ref quad;
+shader_ref quad_shader;
+bool show_results = false;
+
 void display() {
+	
+	if (cgl_shader_reload_pending)
+		reload_shaders();
+	reload_modified_shader_files();
+	
+	if (shader_errors_present()) {
+		render_shader_error_message();
+		swap_buffers();
+		return;
+	}
+		
 	glDisable(GL_DEBUG_OUTPUT);
 	glEnable(GL_DEPTH_TEST);
 	
     glFinish();
 	wall_time_t start = wall_time_in_ms();
-
-    bind_framebuffer(gbuffer);
 
 // 	glClearColor(0,0,0.25,1);
 // 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -55,16 +68,34 @@ void display() {
 // 
 // 	render_scene_deferred(the_scene, gbuffer);
 
-	bind_framebuffer(gbuffer);
-	glClearColor(0,0,0.25,1);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	unbind_framebuffer(gbuffer);
+	if (gi_algorithm::selected && gi_algorithm::selected->progressive())
+		gi_algorithm::selected->update();
 
-	render_scene_to_gbuffer(the_scene, gbuffer);
-	if (!gb_debug)
-		render_scene_from_gbuffer(the_scene, gbuffer);
-	else
-		render_gbuffer_visualization(the_scene, gbuffer);
+	if (show_results) {
+		glClearColor(0,0,0,1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		bind_shader(quad_shader);
+		bind_mesh_to_gl(quad);
+		texture_ref tex = gi_algorithm::result;
+// 		tex = find_texture("gbuffer/diffuse");
+		bind_texture(tex, 0);
+		draw_mesh(quad);
+		unbind_texture(tex);
+		unbind_mesh_from_gl(quad);
+		unbind_shader(quad_shader);
+	}
+	else {
+		bind_framebuffer(gbuffer);
+		glClearColor(0,0,0.25,1);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		unbind_framebuffer(gbuffer);
+
+		render_scene_to_gbuffer(the_scene, gbuffer);
+		if (!gb_debug)
+			render_scene_from_gbuffer(the_scene, gbuffer);
+		else
+			render_gbuffer_visualization(the_scene, gbuffer);
+	}
 
 	glFinish();
 	wall_time_t end = wall_time_in_ms();
@@ -87,6 +118,10 @@ void gb_dbg(interaction_mode *m, int x, int y) {
 	gb_debug = !gb_debug;
 }
 
+void showres(interaction_mode *m, int x, int y) {
+	show_results = !show_results;
+}
+
 void show_fps(interaction_mode *m, int x, int y) {
 	double sum = 0;
 	for (int i = 0; i < valid_pos; ++i)
@@ -103,6 +138,7 @@ static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
 rta::cuda::material_t *gpu_materials = 0;
+
 
 void setup_rta(std::string plugin) {
 	bool use_cuda = true;
@@ -138,6 +174,8 @@ void setup_rta(std::string plugin) {
 // 		use_case = new example::simple_lighting_with_shadows<rta::cuda::simple_aabb, rta::cuda::simple_triangle>(set, rays_w, rays_h, the_scene);
 	}
 
+	tex_params_t p = default_fbo_tex_params();
+	gi_algorithm::result = make_empty_texture("gi-res", cmdline.res.x, cmdline.res.y, GL_TEXTURE_2D, GL_RGBA32F, GL_FLOAT, GL_RGBA, &p);
 	gi_algorithm::original_rt_set = set;
 }
 
@@ -147,6 +185,7 @@ interaction_mode* make_viewer_mode() {
 	add_function_key_to_mode(m, 'p', cgls_interaction_no_button, show_fps);
 	add_function_key_to_mode(m, ' ', cgls_interaction_no_button, compute_trace);
 	add_function_key_to_mode(m, '~', cgls_interaction_no_button, gb_dbg);
+	add_function_key_to_mode(m, 'R', cgls_interaction_shift, showres);
 	return m;
 }
 
@@ -360,6 +399,13 @@ void actual_main()
 	SCM r = scm_c_eval_string(expr.c_str());
 
 	setup_rta("bbvh-cuda");
+
+	quad = make_quad("saq", 0);
+	quad_shader = find_shader("show tex on saq");
+	
+	make_shader_error_display(cmdline.res.x, cmdline.res.y);
+	reload_shaders();
+	activate_automatic_shader_reload();
 
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
 

@@ -19,6 +19,8 @@ protected:
 	std::string name;
 
 public:
+	static texture_ref result;
+
 	gi_algorithm(const std::string &name) : activated(false), name(name) {
 		for (auto *a : algorithms)
 			if (a->name == name)
@@ -29,6 +31,8 @@ public:
 		activated = true;
 	}
 	virtual void compute() = 0;
+	virtual bool progressive() { return false; }
+	virtual void update() { compute(); }
 
 	static void select(const std::string &name) {
 		for (int i = 0; i < algorithms.size(); ++i)

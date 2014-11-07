@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <iostream>
 
+#include <cuda_gl_interop.h>
+
 using namespace std;
 
 namespace rta {
@@ -24,7 +26,6 @@ namespace rta {
 						++N;
 				}
 				rect_light *L;
-				cout << "rect lights: " << N << endl;
 				checked_cuda(cudaMalloc(&L, sizeof(rect_light)*N));
 				update_rectangular_area_lights(scene, L, N);
 				return L;
@@ -76,7 +77,7 @@ namespace rta {
 						float3 light_dir = lights[0].dir;
 						float3 right = make_tangential(make_float3(1,0,0), light_dir);
 						float3 up = make_tangential(make_float3(0,1,0), light_dir);
-						float2 rnd = uniform01.data[(id + sample) % uniform01.N];
+						float2 rnd = uniform01.data[(3*id + sample) % uniform01.N];
 						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].wh.x,
 													(rnd.y - 0.5f) * lights[0].wh.y);
 						float3 light_sample = light_pos + offset.x * right + offset.y * up;
@@ -115,7 +116,7 @@ namespace rta {
 			
 			namespace k {
 				__global__ void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
-													   float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, bool clear) {
+													   float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, float sample) {
 					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 										 blockIdx.y * blockDim.y + threadIdx.y);
 					if (gid.x >= w || gid.y >= h) return;
@@ -128,44 +129,64 @@ namespace rta {
 						material = material_col[id];
 					// use accum color if we should not clear
 					float3 out = make_float3(0,0,0);
-					if (!clear)
+					if (sample > 0)
 						out = col_accum[id];
 					// out we go.
-					out += weight * material;
+					out = (sample * out + weight * material) / (sample+1.0f);
 					col_accum[id] = out;
-				}
-			
-				__global__ void normalize_light_samples(int w, int h, float3 *col_accum, int samples) {
-									int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
-										 blockIdx.y * blockDim.y + threadIdx.y);
-					if (gid.x >= w || gid.y >= h) return;
-					int id = gid.y*w+gid.x;
-					float3 col = col_accum[id];
-					col /= float(samples);
-					col_accum[id] = col;
 				}
 			}
 
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
-										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, bool clear) {
-				printf("  (%d)\n", clear?1:0);
+										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, int sample) {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
-				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, col_accum, clear);
+				cout << "integrate " << sample << endl;
+				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, col_accum, float(sample));
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
 			}
 			
-			void normalize_light_samples(int w, int h, float3 *col_accum, int samples) {
+
+			// copy cuda colors to gl texture
+
+			static cudaGraphicsResource *cuda_resource = 0;
+			static cudaArray *cu_array = 0;
+			static surface<void, 2> image_surf;
+
+			namespace k {
+				__global__ void copy_image_to_texture(int w, int h, float3 *colors, float scale) {
+					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+										 blockIdx.y * blockDim.y + threadIdx.y);
+					if (gid.x >= w || gid.y >= h) return;
+					int id = gid.y*w+gid.x;
+					float3 col = colors[id];
+					surf2Dwrite(make_float4(col.x*scale, col.y*scale, col.z*scale, 1.0f), image_surf, gid.x*sizeof(float4), gid.y);
+				}
+			}
+	
+			void init_cuda_image_transfer(texture_ref tex) {
+				checked_cuda(cudaGraphicsGLRegisterImage(&cuda_resource, texture_id(tex), GL_TEXTURE_2D, cudaGraphicsRegisterFlagsSurfaceLoadStore));
+			}
+
+			void copy_cuda_image_to_texture(int w, int h, float3 *col, float scale) {
 				checked_cuda(cudaPeekAtLastError());
+				checked_cuda(cudaGraphicsMapResources(1, &cuda_resource, 0));
+				checked_cuda(cudaGraphicsSubResourceGetMappedArray(&cu_array, cuda_resource, 0, 0));
+				checked_cuda(cudaGetLastError());
+				checked_cuda(cudaDeviceSynchronize());
+				checked_cuda(cudaBindSurfaceToArray(image_surf, cu_array));
+
+				cout << "copy!" << endl;
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
-				k::normalize_light_samples<<<blocks, threads>>>(w, h, col_accum, samples);
+				k::copy_image_to_texture<<<blocks, threads>>>(w, h, col, scale);
+
+				checked_cuda(cudaGraphicsUnmapResources(1, &cuda_resource, 0));
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
 			}
-	
 	
 		}
 	}
