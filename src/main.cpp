@@ -142,15 +142,23 @@ rta::cuda::material_t *gpu_materials = 0;
 
 void setup_rta(std::string plugin) {
 	bool use_cuda = true;
+	vector<string> args;
 	if (plugin == "default/choice")
-		if (use_cuda)
+		if (use_cuda) 
 			plugin = "bbvh-cuda";
 		else
 			plugin = "bbvh";
+			
+	if (plugin == "bbvh-cuda") {
+		args.push_back("-A");
+		args.push_back("-b");
+		args.push_back("bsah");
+		args.push_back("-t");
+		args.push_back("cis");
+		args.push_back("-l");
+		args.push_back("2f4");
+	}
 
-	vector<string> args;
-// 	args.push_back("-b");
-// 	args.push_back("lbvh");
 	rta_connection = new rta::cgls::connection(plugin, args);
 	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();

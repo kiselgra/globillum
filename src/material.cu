@@ -161,8 +161,6 @@ namespace rta {
 				int target_w = (w+1)/2,
 					target_h = (h+1)/2;
 				int d_offset = s_offset + w*h;
-				printf("mm: %d x %d \t --> %d x %d\n", w, h, target_w, target_h);
-				printf("    %d,\t %d\n", s_offset, d_offset);
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(target_w, target_h, threads);
 				k::mipmap<<<blocks, threads>>>(target_w, target_h, d_offset,
