@@ -156,8 +156,8 @@ namespace local {
 	}
 
 	void gpu_cgls_lights::update() {
-		if (set.rt->progressive_trace_running()) {
-			set.rt->trace_progressively(false);
+		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
+			shadow_tracer->trace_progressively(false);
 			gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
 			float3 *colors = bouncer->output_color;
 			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
@@ -176,6 +176,7 @@ namespace local {
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 			set.rt->trace_progressively(true);
+			shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 	
 			/*
 			cout << "saving output" << endl;

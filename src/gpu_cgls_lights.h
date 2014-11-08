@@ -24,10 +24,11 @@ namespace local {
 		rta::cuda::cgls::light *gpu_lights;
 		rta::cuda::cgls::rect_light *gpu_rect_lights;
 		int nr_of_gpu_lights, nr_of_gpu_rect_lights;
+		rta::raytracer *shadow_tracer;
 	public:
 		gpu_cgls_lights(int w, int h, scene_ref scene, const std::string &name = "gpu_cgls_lights")
 			: gi_algorithm(name), w(w), h(h),  /*TMP*/ hitpoints(w,h), normals(w,h),
-			  collector(0), crgs(0), scene(scene), gpu_lights(0), gpu_rect_lights(0) {
+			  collector(0), crgs(0), scene(scene), gpu_lights(0), gpu_rect_lights(0), shadow_tracer(0) {
 		}
 
 		void evaluate_material();
