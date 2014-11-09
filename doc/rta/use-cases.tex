@@ -1,0 +1,248 @@
+\documentclass[a4paper,11pt]{scrartcl}
+
+% packages and settings [[[
+
+% input	[[[
+\usepackage[utf8]{inputenc}
+\usepackage{ngerman}
+% ]]]
+% math/symbols [[[
+
+\usepackage{latexsym}
+\usepackage{amsfonts}	
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% \usepackage{wasysym}	\Smile
+% ]]]
+% tables/graphics/algorithms/listings [[[
+
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{varwidth}
+% \usepackage{xcolor}
+\usepackage[usenames,dvipsnames,svgnames,table]{xcolor}
+
+\usepackage{algorithmicx}
+\usepackage{algorithm} % http://ctan.org/pkg/algorithms
+\usepackage[noend]{algpseudocode} % http://ctan.org/pkg/algorithmicx
+\newcommand*{\Let}[2]{\State #1 $\gets$ \parbox[t]{\linegoal}{#2\strut}}
+% \algnewcommand\algorithmicinput{\textbf{INPUT: }}
+% \algnewcommand\Input{\item[\algorithmicinput]}
+% \algnewcommand\algorithmicoutput{\textbf{OUTPUT: }}
+% \algnewcommand\Output{\item[\algorithmicoutput]}
+
+% \usepackage{algorithmic}
+% \usepackage[boxed]{algorithm}
+\usepackage{subfigure}
+\usepackage[margin=10pt,font=small,labelfont=bf]{caption}		
+	% \caption zb. in \figure wird \small
+
+% settings for listing environment
+\lstset{language=C++,
+		basicstyle=\ttfamily\footnotesize,
+		frame=lines,
+        breaklines=true,
+        breakatwhitespace=true,
+		keywordstyle=\color{OliveGreen},
+		%numbers=left,
+		%numberstyle=\tiny,
+		framexleftmargin=5mm,
+		xleftmargin=5mm,
+		tabsize=4,
+		commentstyle=\color{CadetBlue},
+		stringstyle=\color{Bittersweet},
+		showstringspaces=false,
+		% C++ KEYWORDS
+		morekeywords={
+			std,string,vector},
+		classoffset=1,
+		% RTA KEYWORDS
+		morekeywords={
+			rta,cgls,cuda,simple_triangle,simple_aabb,convert_scene_to_cuda_triangle_data,basic_flat_triangle_list,cpu_ftl,
+			connection,rt_set,plugin_create_rt_set,box_t,tri_t,acceleration_structure,
+			basic_ctor,basic_rt,basic_as,build,basic_acceleration_structure,as,rt,
+			input_flat_triangle_list,expects_host_triangles,
+			raytracer,basic_raytracer,bouncer},
+		keywordstyle=\color{Maroon},
+		classoffset=0
+}
+
+% nicer comment formatting in algorithmic env.
+% \renewcommand{\algorithmiccomment}[1]{\hspace{\stretch{1}}// #1$\quad$}
+% \floatname{algorithm}{Algorithmus}
+
+% drawin trees
+% \usepackage{pstricks,pst-node,pst-tree}
+
+% ]]]
+% paragraph formatting [[[
+\usepackage{a4wide}
+
+\usepackage{parskip}
+\parindent0pt
+\setlength{\parskip}{1ex plus 0.5ex minus 0.2 ex}
+
+% ]]]
+
+% ]]]
+% my commands [[[
+
+% my math commands [[[
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\mts}{\;|\;}
+\newcommand{\eqs}{\;=\;}
+\newcommand{\D}{\mathrm{d}}
+\newcommand{\Z}{\mathbb{Z}}
+\renewcommand{\P}{\mathbb{P}}
+\newcommand{\area}{\mathrm{area}}
+\newcommand{\matrixtwo}[2]{\left(\begin{array}{cc}#1\\#2\end{array}\right)}
+\newcommand{\matrixthree}[3]{\left(\begin{array}{ccc}#1\\#2\\#3\end{array}\right)}
+\newcommand{\matrixfour}[4]{\left(\begin{array}{cccc}#1\\#2\\#3\\#4\end{array}\right)}
+\newcommand{\vect}[3]{\left(\begin{array}{c}#1\\#2\\#3\end{array}\right)}
+\newcommand{\vectfour}[4]{\left(\begin{array}{c}#1\\#2\\#3\\#4\end{array}\right)}
+\newcommand{\norm}{\mathrm{norm}}
+\newcommand{\scalPr}[2]{\left\langle #1|#2 \right\rangle}
+
+% ]]]
+% definitions [[[
+
+\newcounter{currdefinition}
+\newcommand{\defnr}[1]{\arabic{#1}}
+\newcommand{\defref}[1]{Definition \defnr{#1}}
+\newcommand{\definition}[2]
+	{	\addtocounter{currdefinition}{1}%
+		\newcounter{#1}%
+		\setcounter{#1}{\thecurrdefinition}%
+		\label{#1}%
+		\paragraph{\textbf{Definition \thecurrdefinition:}}\ \\#2}
+
+% ]]]
+% misc commands [[[
+
+\newcommand{\ra}{$\rightarrow\ $}
+\newcommand{\wichtig}[1]{\framebox{\begin{minipage}[h]{\textwidth}#1\end{minipage}} }
+\newcommand{\nachvollz}[1]{\paragraph{\textbf{Nachvollziehen:}}\ \\#1}
+\newcommand{\tableitemization}{\hspace{10pt}$\bullet$&}
+\newcommand{\HELP}[1]{\ \\\ \\\Huge Hilfe! \normalsize\\$\rightarrow$\ #1\ \\\ \\}
+
+\newcommand{\inlinecode}[1]{{\tt #1}}
+\newcommand{\inlineshell}[1]{{\tt #1}}
+
+% ]]]
+% levels [[[
+
+\newcommand{\levelA}[1]{\section{#1}}
+\newcommand{\levelB}[1]{\subsection{#1}}
+\newcommand{\levelC}[1]{\subsubsection{#1}}
+\newcommand{\levelD}[1]{\paragraph{#1:}\ \\}
+\newcommand{\levelDn}[1]{\paragraph{#1:}}    % level D ohne "\ \\" --> bei paragraph oder itemization direkt danach sonst zu großer zwischenraum
+\newcommand{\levelE}[1]{\paragraph{#1:}\ \\}
+\newcommand{\levelEn}[1]{\paragraph{#1:}}    % level D ohne "\ \\" --> bei paragraph oder itemization direkt danach sonst zu großer zwischenraum
+
+% ]]]
+
+% ]]]
+
+\title{RTA Use Cases}
+\subtitle{Examples of how we put RTA to use \\to implement certain rendering techniques}
+\author{Kai}
+% \date{\today}
+
+% \setlength{\unitlength}{1mm}
+\newenvironment{alg}{
+	\medskip\hrule
+	\begin{algorithmic}}
+	{\end{algorithmic}
+	\hrule\medskip}
+
+% 	\noindent\fbox{
+% 	\begin{varwidth}{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}
+%	...}
+
+\begin{document}
+
+\maketitle\thispagestyle{empty}
+% \tableofcontents
+
+\section{Area Light Sampling}
+The basic algorithm is as follows:
+
+\begin{alg}
+\State trace primary camera ray
+\ForAll{requested samples} 
+	\State generate uniform sample on area light
+	\State trace shadow ray from primary intersection to sample position
+	\State integrate lighting
+\EndFor
+\end{alg}
+
+The following components are involved:
+\begin{itemize}
+\item A ray tracer to find the closest scene intersection.
+\item A ray tracer for the shadow rays (which finds any hit, not the closest one).
+\item A ray generator for the primary rays.
+\item A ray bouncer to compute samples starting from the primary intersections.
+\end{itemize}
+
+Our implementation will, for the moment, be set to use cuda, only.
+RTA computes the different steps of a rendering algorithm in lock-step, 
+	i.e.\ the steps outlined in the above algorithm are executed for each ray and only then is the next step considered.
+Therefore, when generating samples on the light source, all primary intersections have been found.
+This is a design decision to facilitate loose coupling of the different steps, 
+	as well as to provide a simple mapping to cuda computations using multiple kernel calls.
+
+\subsection{Obtaining a set of RTA Objects}
+Getting the initial set of objects is done the easy way (and in the hope that it will be more portable in the long run)
+	by using libhyb's plugin loading infrastructure, as follows.
+Note that there is also material setup (\lstinline|gpu_materials|) mixed in, which is (at the moment) implemented in the globillum program itself.
+
+\begin{lstlisting}
+static rta::cgls::connection *rta_connection = 0;
+rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
+rta::cgls::connection::cuda_triangle_data *ctd = 0;
+rta::cuda::material_t *gpu_materials = 0;
+
+void setup_rta(std::string plugin) {
+	vector<string> args;
+	plugin = "bbvh-cuda";
+	typedef rta::cuda::simple_aabb box_t;
+	typedef rta::cuda::simple_triangle tri_t;
+
+	if (plugin == "bbvh-cuda") {	// just in case
+		args.push_back("-A");
+		args.push_back("-b"); args.push_back("bsah");
+		args.push_back("-t"); args.push_back("cis");
+		args.push_back("-l"); args.push_back("2f4");
+	}
+
+	rta_connection = new rta::cgls::connection(plugin, args);
+	ctd = rta::cgls::connection
+	         ::convert_scene_to_cuda_triangle_data(the_scene);
+	static rta::basic_flat_triangle_list<tri_t> the_ftl = ctd->cpu_ftl();
+	ftl = &the_ftl;
+	rta::rt_set *set = 
+		 new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
+	gpu_materials = rta::cuda::convert_and_upload_materials();
+
+	if (!set->basic_ctor<box_t, tri_t>()->expects_host_triangles()) {
+		// the c'tor expects the triangle data on the gpu.
+		set->as = set->basic_ctor<box_t,tri_t>()
+		             ->build((tri_t::input_flat_triangle_list_t*)&ctd->ftl);
+		set->basic_rt<box_t,tri_t>()
+		    ->acceleration_structure(
+				dynamic_cast<rta::basic_acceleration_structure<box_t,tri_t>*>
+				(set->as));
+	}
+}
+\end{lstlisting}
+
+\end{document}
+
+% vim: set foldmethod=marker foldmarker=[[[,]]]: 
+
+
