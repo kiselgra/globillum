@@ -151,6 +151,8 @@
 			input_flat_triangle_list,expects_host_triangles,cuda_triangle_data,
 			declare_traits_types,cam_ray_generator_shirley,gpu_ray_bouncer,tri_ptr,trace_further-bounces,bounce,identification,
 			trace_further_bounces,gpu_last_intersection,gpu_origin,gpu_direction,new_pass,valid,
+			matching_any_hit_tracer,matching_closest_hit_tracer,trace_rays,trace,trace_progressively,progressive_trace_running,
+			closest_hit_tracer,any_hit_tracer,
 			raytracer,basic_raytracer,bouncer},
 		keywordstyle=\color{Maroon},
 		classoffset=0
@@ -432,11 +434,94 @@ Upon a completed light sample we integrate the lighting using a moving average t
 Whether the light source is visible can be read from the intersection data: if the intersection \lstinline|is| is empty (\lstinline|!is.valid()|)
 	the light is unoccluded.
 
-\subsection{Adding a Shadow Tracer for Light Sampling}
-bla.
+\subsection{Progressive Update}
+RTA's ray tracer interface provides functions for progressive tracing, where the ray tracer does not loop until the current pass is over,
+	but maintains information about the current pass's state.
+This can be used by calling \lstinline|trace_progressively(true)| to start a new pass.
+Note that this directly computes the first bounce, too.
+Further bounces can be computed by calling the function with \lstinline|false|.
 
-Note that switching the ray tracer from inside a bouncer requires using the progressive-framework 
-	as the controlflow has to actually return from the first ray tracer.
+We use this to compute a single bounce in each frame (after the tracer has been activated), as in the following code.
+\begin{lstlisting}
+rt_set set;
+
+void start_new_pass() {
+	set.rt->trace_progressively(true);
+}
+	
+void update() {
+	if (set.rt->progressive_trace_running()) {
+		set.rt->trace_progressively(false);
+		gpu_cgls_arealight_evaluator<B,T> *bouncer 
+			= dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>
+			  (set.bouncer);
+		float3 *colors = bouncer->output_color;
+		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+	}
+}
+\end{lstlisting}
+The copying of color values is implemented in the globillum program, as it is not general.
+
+\subsection{Adding a Shadow Tracer for Light Sampling}
+As is, the implementation of the area light sampler finds the closest intersection between the sample point and the light sample.
+But since we only need to find out whether there is any intersection casting shadow rays should be more efficient.
+In RTA pairs of ray tracers which compute the \emph{closest hit} or \emph{any hit} at all, but are equivalent in any other way, are said to be siblings.
+Each ray tracer provides a function \lstinline|matching_any_hit_tracer| or \lstinline|matching_closest_hit_tracer| 
+	(for closest-hit and any-hit tracers, respectively) to obtain its sibling.
+With this the ease of constructing a ray tracer by creating it from its plugin is transferred to generating its silbing tracer, too.
+
+Adding a shadow tracer to the area light sampler could now be done by two ray bouncers, 
+	where the first one is essentially the material evaluator presented above (using a closet-hit tracer).
+The second one would then just trace multiple samples on the light source for each primary intersection computed before.
+
+However, we chose a different implementation to be able to keep the existing code.
+The complication in this process is that the whole tracing algorithm is driven by the ray tracer itself.
+The \lstinline|basic_raytracer|, for example, works as follows:
+\begin{alg}
+\State initialize a new `pass'.
+\State generate initial rays via ray generator.
+\Repeat
+	\State trace current set of rays via \lstinline|this->trace_rays()|.
+	\State invoke ray bouncer.
+\Until{bouncer's \lstinline|trace_further_bounces| returns false.}
+\end{alg}
+As can be seen, the code of the initial ray tracer is only left after the whole pass is completed.
+Therefore, it is not easily possible to change the tracer mid-stream
+	(actually, it is, by deriving from your target tracer).
+
+Using the progressive-tracing interface, i.e. calling \lstinline|trace_progressively()| instead of \lstinline|trace()|
+	this becomes quite straightforward, as illustrated in the following piece of code.
+\begin{lstlisting}
+rt_set set;
+raytracer *shadow_tracer;
+
+void start_new_pass() {
+	set.rt->trace_progressively(true);@\label{prog:sr:firstcall}@
+	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)
+	                ->matching_any_hit_tracer();@\label{prog:sr:genm}@
+}
+\end{lstlisting}
+The initialization of the progressive trace (line~\ref{prog:sr:firstcall}) stays as it was before,
+	we only add the new ray tracer after the setup.
+This is done deliberately after the first bounce (line~\ref{prog:sr:genm}), as the silbing tracer is generated via copy c'tors, 
+	yielding a tracer exactly in the correct state, i.e. after the first bounce.
+Note that generating a sibling tracer is a rather light-weight operation as the copy c'tor implements a shallow copy.
+
+The update code then just uses the shadow tracer instead of the original set's tracer:
+\begin{lstlisting}
+void update() {
+	if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
+		shadow_tracer->trace_progressively(false);
+		gpu_cgls_arealight_evaluator<B,T> *bouncer 
+			= dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>
+			  (set.bouncer);
+		float3 *colors = bouncer->output_color;
+		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+	}
+}
+\end{lstlisting}
+
+
 
 \end{document}
 
