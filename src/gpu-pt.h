@@ -3,6 +3,10 @@
 
 #include "gi_algorithm.h"
 #include "gpu_cgls_lights.h"	// contains gpu_material_evaluator.
+#include "arealight-sampler.h"
+#include "gpu-pt-kernels.h"
+
+#include <iostream>
 
 template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local::gpu_material_evaluator<forward_traits> {
 	declare_traits_types;
@@ -15,7 +19,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	int max_path_len;
 	rta::triangle_intersection<rta::cuda::simple_triangle> *path_intersections,
 	                                                       *shadow_intersections;
-	float3 *output_color;
+	float3 *output_color, *throughput, *potential_sample_contribution;
 
 	gpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles,
 				   rta::cuda::cam_ray_generator_shirley *crgs, rta::cuda::cgls::rect_light *lights, int nr_of_lights,
@@ -24,6 +28,8 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), w(w), h(h),
 	  curr_bounce(0), path_len(0), max_path_len(max_path_len), output_color(0) {
 		checked_cuda(cudaMalloc(&output_color, sizeof(float3)*w*h));
+		checked_cuda(cudaMalloc(&throughput, sizeof(float3)*w*h));
+		checked_cuda(cudaMalloc(&potential_sample_contribution, sizeof(float3)*w*h));
 		checked_cuda(cudaMalloc(&shadow_intersections, sizeof(rta::triangle_intersection<rta::cuda::simple_triangle>)*w*h));
 		path_intersections = this->gpu_last_intersection;
 	}
@@ -34,12 +40,39 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	virtual void new_pass() {
 		curr_bounce = path_len = 0;
 		this->gpu_last_intersection = path_intersections;
+		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
+	}
+	virtual void setup_new_arealight_sample() {
+		rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
+												   this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
+												   path_intersections, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
+												   curr_bounce);	// curr_bounce is random-offset
+	}
+	virtual void integrate_light_sample() {
+		rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
+												this->material_colors, throughput, output_color, curr_bounce-1);
 	}
 	virtual void bounce() {
-		this->evaluate_material();
+		bool compute_light_sample = false;
+		bool compute_path_segment = false;
+
+		if (curr_bounce == 0) {
+			this->evaluate_material();
+			compute_light_sample = true;
+		}
+		else {
+			integrate_light_sample();
+		}
+
+		if (compute_light_sample) {
+			setup_new_arealight_sample();
+			this->gpu_last_intersection = shadow_intersections;
+		}
+		++curr_bounce;
 	}
 	virtual bool trace_further_bounces() {
-		return false;
+		std::cout<<"cb: " << curr_bounce << std::endl;
+		return curr_bounce < 2;
 	}
 	virtual std::string identification() {
 		return "gpu path tracer";

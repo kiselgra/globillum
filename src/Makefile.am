@@ -9,7 +9,7 @@ gi_SOURCES = 	main.cpp \
 				material.cu material-conversion.cpp material.h \
 				gi_algorithm.cpp gi_algorithm.h \
 				gpu_cgls_lights.cpp gpu_cgls_lights.h \
-				gpu-pt.cpp gpu-pt.h \
+				gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
 				util.cpp util.h \
 				cmdline.cpp cmdline.h
 

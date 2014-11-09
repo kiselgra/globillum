@@ -135,10 +135,44 @@ namespace rta {
 					out = (sample * out + weight * material) / (sample+1.0f);
 					col_accum[id] = out;
 				}
+				__global__ void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
+													   float3 *potential_sample_contribution, float3 *material_col, float3 *throughput,
+													   float3 *col_accum, float sample) {
+					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+										 blockIdx.y * blockDim.y + threadIdx.y);
+					if (gid.x >= w || gid.y >= h) return;
+					int id = gid.y*w+gid.x;
+					float3 weight = potential_sample_contribution[id];
+					triangle_intersection<cuda::simple_triangle> is = ti[id];
+					float3 tp = throughput[id];
+					// use material color if no intersection is found (ie the path to the light is clear).
+					float3 material = make_float3(0,0,0);
+					if (!is.valid())
+						material = material_col[id];
+					// use accum color if we should not clear
+					float3 out = make_float3(0,0,0);
+					if (sample > 0)
+						out = col_accum[id];
+					// out we go.
+					out = (sample * out + weight * tp * material) / (sample+1.0f);
+					col_accum[id] = out;
+				}
 			}
 
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
 										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, int sample) {
+				checked_cuda(cudaPeekAtLastError());
+				dim3 threads(16, 16);
+				dim3 blocks = block_configuration_2d(w, h, threads);
+				cout << "integrate " << sample << endl;
+				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, col_accum, float(sample));
+				checked_cuda(cudaPeekAtLastError());
+				checked_cuda(cudaDeviceSynchronize());
+			}
+			
+
+			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
+										float3 *potential_sample_contribution, float3 *material_col, float3 *throughput, float3 *col_accum, int sample) {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);

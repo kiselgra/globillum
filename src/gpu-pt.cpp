@@ -14,8 +14,6 @@ void gpu_pt::activate(rt_set *orig_set) {
 	cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 	set.rgen = crgs = new cuda::cam_ray_generator_shirley(w, h);
 	gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-// 	set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 32);
-// 	set.bouncer = new local::gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 	set.bouncer = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 1);
 	set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 	set.basic_rt<B, T>()->ray_generator(set.rgen);
@@ -25,11 +23,10 @@ void gpu_pt::activate(rt_set *orig_set) {
 
 void gpu_pt::update() {
 	if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
+		cout << "t" << endl;
 		shadow_tracer->trace_progressively(false);
-// 		gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
-// 		float3 *colors = bouncer->output_color;
-		local::gpu_material_evaluator<B,T> *bouncer = dynamic_cast<local::gpu_material_evaluator<B, T>*>(set.bouncer);
-		float3 *colors = bouncer->material_colors;
+		gpu_pt_bouncer<B,T> *bouncer = dynamic_cast<gpu_pt_bouncer<B, T>*>(set.bouncer);
+		float3 *colors = bouncer->output_color;
 		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 	}
 }
@@ -45,9 +42,6 @@ void gpu_pt::compute() {
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 		set.rt->trace_progressively(true);
-		local::gpu_material_evaluator<B,T> *bouncer = dynamic_cast<local::gpu_material_evaluator<B, T>*>(set.bouncer);
-		float3 *colors = bouncer->material_colors;
-		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 }
 	
