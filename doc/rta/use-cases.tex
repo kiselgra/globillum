@@ -150,7 +150,7 @@
 			basic_ctor,basic_rt,basic_as,build,basic_acceleration_structure,as,rt,
 			input_flat_triangle_list,expects_host_triangles,cuda_triangle_data,
 			declare_traits_types,cam_ray_generator_shirley,gpu_ray_bouncer,tri_ptr,trace_further-bounces,bounce,identification,
-			trace_further_bounces,gpu_last_intersection,gpu_origin,gpu_direction,
+			trace_further_bounces,gpu_last_intersection,gpu_origin,gpu_direction,new_pass,valid,
 			raytracer,basic_raytracer,bouncer},
 		keywordstyle=\color{Maroon},
 		classoffset=0
@@ -331,6 +331,106 @@ Note how \lstinline|bounce| triggers an externally defined cuda kernel stub and 
 
 
 \subsection{Using a Ray Bouncer to Implement the Sampling}
+Our implementation of the area light sampler is an extension of the material evaluator presented above.
+This is not required, but as we want to combine \emph{direct} illumation with already computed \emph{per-pixel} materials this plays out well.
+
+Therefore, our sampling bouncer derives from the material evaluator and thus takes many of the same c'tor arguments.
+Additionally we require a number of (rectangular) lights, a pool of uniform random data (to select light samples) and 
+	the number of light samples to be computed.
+Note that when a new position is chosen and rendering starts afresh the method \lstinline|new_pass| is called to reset the bouncer's data, 
+	i.e. to enable it to later recognize that a call to \lstinline|bounce| is not a continuation of the previous computation.
+\begin{lstlisting}
+template<typename _box_t, typename _tri_t> 
+		struct gpu_cgls_arealight_evaluator 
+		: public gpu_material_evaluator<forward_traits> {
+	declare_traits_types;
+	cuda::cgls::rect_light *lights;
+	int nr_of_lights;
+	gi::cuda::halton_pool2f uniform_random_numbers;
+	float3 *potential_sample_contribution,
+	       *output_color; 
+	int curr_bounce, samples;
+	triangle_intersection<cuda::simple_triangle> *primary_intersection;
+
+	gpu_cgls_arealight_evaluator(uint w, uint h,
+	                             cuda::material_t *mtls, 
+	                             cuda::simple_triangle *triangles, 
+								 cuda::cam_ray_generator_shirley *crgs, 
+								 cuda::cgls::rect_light *lights, 
+								 int nr_of_lights,
+								 gi::cuda::halton_pool2f rnd, 
+								 int samples)
+	: gpu_material_evaluator<forward_traits>(w, h, mtls, triangles, crgs), 
+	  lights(lights), nr_of_lights(nr_of_lights), 
+	  uniform_random_numbers(rnd), samples(samples) {
+	    // allocate potential_sample_contribution
+	    // allocate output_color
+	    // allocate primary_intersection
+		curr_bounce = 0;
+	}
+	~gpu_cgls_arealight_evaluator() {
+		// free allocated stuff
+	}
+	virtual void new_pass() {
+		curr_bounce = 0;
+	}
+	virtual bool trace_further_bounces() {
+		return (curr_bounce < samples+1);
+	}
+	virtual void setup_new_arealight_sample() {
+		rta::cuda::cgls
+		   ::generate_rectlight_sample(
+		   		this->w, this->h, lights, nr_of_lights, 
+				this->crgs->gpu_origin, this->crgs->gpu_direction, 
+				this->crgs->gpu_maxt,
+				primary_intersection, this->tri_ptr, 
+				uniform_random_numbers, 
+				potential_sample_contribution, 
+				curr_bounce);
+	}
+	virtual void integrate_light_sample() {
+		rta::cuda::cgls
+		   ::integrate_light_sample(
+		   		this->w, this->h, this->gpu_last_intersection, 
+				potential_sample_contribution,
+				this->material_colors, output_color, curr_bounce-1);
+	}
+	virtual void bounce() {
+		if (curr_bounce == 0) {
+			// this has to be done before switching the intersection data.
+			this->evaluate_material();
+			triangle_intersection<cuda::simple_triangle> 
+				*tmp = primary_intersection;
+			primary_intersection = this->gpu_last_intersection;
+			this->gpu_last_intersection = tmp;
+			setup_new_arealight_sample();
+		}
+		else if (curr_bounce > 0) {
+			integrate_light_sample();
+			if (curr_bounce < samples)
+				setup_new_arealight_sample();
+		}
+		++curr_bounce;
+	}
+};
+\end{lstlisting}
+When computing a bounce we have to take care to handle the first bounce differently from the others.
+This is because the first bounce is after the computation of the primary intersections, and not part of the actual light sampling.
+For this bounce we evaluate materials per pixel as described above and save the primary intersection data.
+This is required as further bounces will overwrite the intersection data of the bouncer
+	(upon which it is determined if the light sample is visible from the shading point).
+We implement this efficiently by simply switching pointers.
+
+As long there are samples left to compute we compute a new sample on the area light and store its contribution in 
+	\lstinline|potential_sample_contribution|.
+This is convenient as at the time we compute the sample all data required to determine its contribution (if the light is visible, hence `potential')
+	is already available.
+Sampling the light includes generating a new ray, 
+	where the ray's \lstinline|max_t| parameter is used to only intersect geometry between the sample and the light.
+
+Upon a completed light sample we integrate the lighting using a moving average to always have displayable data.
+Whether the light source is visible can be read from the intersection data: if the intersection \lstinline|is| is empty (\lstinline|!is.valid()|)
+	the light is unoccluded.
 
 \subsection{Adding a Shadow Tracer for Light Sampling}
 bla.
