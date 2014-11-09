@@ -40,36 +40,6 @@
 \usepackage[margin=10pt,font=small,labelfont=bf]{caption}		
 	% \caption zb. in \figure wird \small
 
-% settings for listing environment
-\lstset{language=C++,
-		basicstyle=\ttfamily\footnotesize,
-		frame=lines,
-        breaklines=true,
-        breakatwhitespace=true,
-		keywordstyle=\color{OliveGreen},
-		%numbers=left,
-		%numberstyle=\tiny,
-		framexleftmargin=5mm,
-		xleftmargin=5mm,
-		tabsize=4,
-		commentstyle=\color{CadetBlue},
-		stringstyle=\color{Bittersweet},
-		showstringspaces=false,
-		% C++ KEYWORDS
-		morekeywords={
-			std,string,vector},
-		classoffset=1,
-		% RTA KEYWORDS
-		morekeywords={
-			rta,cgls,cuda,simple_triangle,simple_aabb,convert_scene_to_cuda_triangle_data,basic_flat_triangle_list,cpu_ftl,
-			connection,rt_set,plugin_create_rt_set,box_t,tri_t,acceleration_structure,
-			basic_ctor,basic_rt,basic_as,build,basic_acceleration_structure,as,rt,
-			input_flat_triangle_list,expects_host_triangles,
-			raytracer,basic_raytracer,bouncer},
-		keywordstyle=\color{Maroon},
-		classoffset=0
-}
-
 % nicer comment formatting in algorithmic env.
 % \renewcommand{\algorithmiccomment}[1]{\hspace{\stretch{1}}// #1$\quad$}
 % \floatname{algorithm}{Algorithmus}
@@ -148,6 +118,45 @@
 
 % ]]]
 
+\usepackage{comment}
+
+\definecolor{numbergray}{gray}{0.5}
+
+% settings for listing environment
+\lstset{language=C++,
+		basicstyle=\ttfamily\footnotesize,
+		frame=lines,
+        breaklines=true,
+        breakatwhitespace=true,
+		keywordstyle=\color{OliveGreen},
+		numbers=left,
+		numberstyle=\color{numbergray}\scriptsize,
+		framexleftmargin=5mm,
+		xleftmargin=5mm,
+		tabsize=4,
+		commentstyle=\color{CadetBlue},
+		stringstyle=\color{Bittersweet},
+		showstringspaces=false,
+		escapechar=@,
+		% C++ KEYWORDS
+		morekeywords={
+			float3,float2,vec3f,vec2f,
+			std,string,vector},
+		classoffset=1,
+		% RTA KEYWORDS
+		morekeywords={
+			rta,cgls,cuda,simple_triangle,simple_aabb,convert_scene_to_cuda_triangle_data,basic_flat_triangle_list,cpu_ftl,
+			connection,rt_set,plugin_create_rt_set,box_t,tri_t,acceleration_structure,
+			basic_ctor,basic_rt,basic_as,build,basic_acceleration_structure,as,rt,
+			input_flat_triangle_list,expects_host_triangles,cuda_triangle_data,
+			declare_traits_types,cam_ray_generator_shirley,gpu_ray_bouncer,tri_ptr,trace_further-bounces,bounce,identification,
+			trace_further_bounces,gpu_last_intersection,gpu_origin,gpu_direction,
+			raytracer,basic_raytracer,bouncer},
+		keywordstyle=\color{Maroon},
+		classoffset=0
+}
+
+
 \title{RTA Use Cases}
 \subtitle{Examples of how we put RTA to use \\to implement certain rendering techniques}
 \author{Kai}
@@ -199,47 +208,135 @@ This is a design decision to facilitate loose coupling of the different steps,
 \subsection{Obtaining a set of RTA Objects}
 Getting the initial set of objects is done the easy way (and in the hope that it will be more portable in the long run)
 	by using libhyb's plugin loading infrastructure, as follows.
-Note that there is also material setup (\lstinline|gpu_materials|) mixed in, which is (at the moment) implemented in the globillum program itself.
+Note that there is also material setup (\lstinline|gpu_materials|, lines~\ref{setup:gpumat1} and~\ref{setup:gpumat2}) mixed in, 
+	which is (at the moment) implemented in the globillum program itself.
 
 \begin{lstlisting}
 static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
-rta::cuda::material_t *gpu_materials = 0;
+rta::cuda::material_t *gpu_materials = 0;@\label{setup:gpumat1}@
 
 void setup_rta(std::string plugin) {
-	vector<string> args;
+	vector<string> args;@\label{setup:plugin1}@
 	plugin = "bbvh-cuda";
-	typedef rta::cuda::simple_aabb box_t;
-	typedef rta::cuda::simple_triangle tri_t;
 
 	if (plugin == "bbvh-cuda") {	// just in case
 		args.push_back("-A");
-		args.push_back("-b"); args.push_back("bsah");
+		args.push_back("-b"); args.push_back("bsah");@\label{setup:bsah}@
 		args.push_back("-t"); args.push_back("cis");
 		args.push_back("-l"); args.push_back("2f4");
-	}
+	}@\label{setup:plugin2}@
 
-	rta_connection = new rta::cgls::connection(plugin, args);
-	ctd = rta::cgls::connection
+	typedef rta::cuda::simple_aabb box_t;
+	typedef rta::cuda::simple_triangle tri_t;
+
+	rta_connection = new rta::cgls::connection(plugin, args);@\label{setup:conn1}@
+	ctd = rta::cgls::connection@\label{setup:conv1}@
 	         ::convert_scene_to_cuda_triangle_data(the_scene);
-	static rta::basic_flat_triangle_list<tri_t> the_ftl = ctd->cpu_ftl();
+	static rta::basic_flat_triangle_list<tri_t> the_ftl = ctd->cpu_ftl();@\label{setup:cpuftl1}@
 	ftl = &the_ftl;
 	rta::rt_set *set = 
-		 new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials();
+		 new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));@\label{setup:cpuftl2}@
+	gpu_materials = rta::cuda::convert_and_upload_materials();@\label{setup:gpumat2}@
 
-	if (!set->basic_ctor<box_t, tri_t>()->expects_host_triangles()) {
+	if (!set->basic_ctor<box_t, tri_t>()->expects_host_triangles()) {@\label{setup:buildgpu1}@
 		// the c'tor expects the triangle data on the gpu.
 		set->as = set->basic_ctor<box_t,tri_t>()
-		             ->build((tri_t::input_flat_triangle_list_t*)&ctd->ftl);
+		             ->build((tri_t::input_flat_triangle_list_t*)&ctd->ftl);@\label{setup:ctor}@
 		set->basic_rt<box_t,tri_t>()
 		    ->acceleration_structure(
 				dynamic_cast<rta::basic_acceleration_structure<box_t,tri_t>*>
 				(set->as));
-	}
+	}@\label{setup:buildgpu2}@
 }
 \end{lstlisting}
+
+Lines~\ref{setup:plugin1} to~\ref{setup:plugin2} specify the plugin to load and some parameters to it.
+These can be found by calling RTA with the plugin you want to find information about:
+\begin{lstlisting}[language=bash]
+$ rta bbvh-cuda -- --help
+\end{lstlisting}
+The conversion of a \lstinline|cgls| scene to \lstinline|rta| triangle data is executed in line~\ref{setup:conv1}.
+Following this conversion a host-side version of the triangle data is generated (line~\ref{setup:cpuftl1}) 
+	and fed to the plugin (line~\ref{setup:cpuftl2}).
+For cuda-only code this could have been done more economically by simply handing a single-element fake triangle list to the plugin.
+The GPU BVH construction branch (lines~\ref{setup:buildgpu1} to~\ref{setup:buildgpu2}) will then build a proper BVH anyway.
+In our use case, however, we want to be able to use BVHs other than LBVH, 
+	i.e. a BVH build taking surface area heuristic into consideration (see line~\ref{setup:bsah}), 
+	therefore we need to have host-side triangle data, too.
+
+The \lstinline|rt_set| computed in line~\ref{setup:cpuftl2} contains the following items, managed by the called plugin to be compatible:
+\begin{itemize}
+\item the actual ray tracer (usually closest-hit),
+\item the requested and build bvh (see comment on fake \lstinline|ftl| above),
+\item a bvh contructor (used in line~\ref{setup:ctor} to trigger a gpu build), and
+\item a default generator for primary rays.
+\end{itemize}
+Note that not ray bouncer is set, yet.
+
+\subsection{Evaluate Material at Primary Intersection}
+Material evaluation is implemented by a bouncer which does not generate further rays.
+This is how a final computation after tracing can be integrated into RTA.
+In the following code we derive from \lstinline|gpu_ray_bouncer| (line~\ref{matev:derv}) to get a \lstinline|bouncer| 
+	that is properly integrated and supplied with GPU intersection data (see line~\ref{matev:gpudata}).
+\begin{lstlisting}
+template<typename _box_t, typename _tri_t>
+		struct gpu_material_evaluator 
+		: public cuda::gpu_ray_bouncer<forward_traits> {@\label{matev:derv}@
+	declare_traits_types;
+	cuda::material_t *materials;
+	cuda::simple_triangle *tri_ptr;
+	float3 *material_colors;
+	cuda::cam_ray_generator_shirley *crgs;
+	gpu_material_evaluator(uint w, uint h, cuda::material_t *materials, 
+	                       cuda::simple_triangle *triangles, 
+						   cuda::cam_ray_generator_shirley *crgs)
+		: cuda::gpu_ray_bouncer<forward_traits>(w, h), 
+		  materials(materials), material_colors(0), tri_ptr(triangles),
+		  crgs(crgs) {
+		checked_cuda(cudaMalloc(&material_colors, sizeof(float3)*w*h));
+	}
+	~gpu_material_evaluator() {
+		checked_cuda(cudaFree(material_colors));
+	}
+	virtual bool trace_further_bounces() {
+		return false;
+	}
+	virtual void evaluate_material() {
+		rta::cuda
+		   ::evaluate_material(this->w, this->h, 
+						       this->gpu_last_intersection, @\label{matev:gpudata}@
+						       tri_ptr, materials, material_colors, 
+						       crgs->gpu_origin, crgs->gpu_direction);
+	}
+	virtual void bounce() {
+		evaluate_material();
+	}
+	virtual std::string identification() {
+		return "evaluate first-hit material on gpu.";
+	}
+};
+\end{lstlisting}
+The constructor takes the data dimensions which is required to allocate the intersection data and result colors.
+Furthermore we have keep references to the materials, triangles and original rays to implement proper material lookup by
+\begin{enumerate}
+\item loading the triangle referenced by the intersection data,
+\item looking up material (color and texture) information from the referenced triangles,
+\item interpolating the triangle data to find texture coordinates and using ray differentials (using neighboring rays).
+\end{enumerate}
+
+Note how \lstinline|bounce| triggers an externally defined cuda kernel stub and \lstinline|trace_further_bounces| returns false to stop traversal.
+
+
+
+\subsection{Using a Ray Bouncer to Implement the Sampling}
+
+\subsection{Adding a Shadow Tracer for Light Sampling}
+bla.
+
+Note that switching the ray tracer from inside a bouncer requires using the progressive-framework 
+	as the controlflow has to actually return from the first ray tracer.
 
 \end{document}
 
