@@ -1,6 +1,5 @@
 #include "gpu_cgls_lights.h"
 
-#include "material.h"
 #include "cgls-lights.h"
 #include "arealight-sampler.h"
 #include "util.h"
@@ -16,35 +15,6 @@ extern cuda::material_t *gpu_materials;
 namespace local {
 
 // 	vec3f *material;
-
-	template<typename _box_t, typename _tri_t> struct gpu_material_evaluator : public cuda::gpu_ray_bouncer<forward_traits> {
-		declare_traits_types;
-		cuda::material_t *materials;
-		cuda::simple_triangle *tri_ptr;
-		float3 *material_colors;
-		cuda::cam_ray_generator_shirley *crgs;
-		gpu_material_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, cuda::cam_ray_generator_shirley *crgs)
-			: cuda::gpu_ray_bouncer<forward_traits>(w, h), materials(materials), material_colors(0), tri_ptr(triangles),
-			  crgs(crgs) {
-			checked_cuda(cudaMalloc(&material_colors, sizeof(float3)*w*h));
-		}
-		~gpu_material_evaluator() {
-			checked_cuda(cudaFree(material_colors));
-		}
-		virtual bool trace_further_bounces() {
-			return false;
-		}
-		virtual void evaluate_material() {
-			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors, 
-										 crgs->gpu_origin, crgs->gpu_direction);
-		}
-		virtual void bounce() {
-			evaluate_material();
-		}
-		virtual std::string identification() {
-			return "evaluate first-hit material on gpu.";
-		}
-	};
 
 	template<typename _box_t, typename _tri_t> struct gpu_cgls_light_evaluator : public gpu_material_evaluator<forward_traits> {
 		declare_traits_types;

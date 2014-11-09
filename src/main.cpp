@@ -12,6 +12,7 @@
 
 #include "gi_algorithm.h"
 #include "gpu_cgls_lights.h"
+#include "gpu-pt.h"
 
 #include "material.h"
 #include "vars.h"
@@ -416,8 +417,10 @@ void actual_main()
 	activate_automatic_shader_reload();
 
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
+	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
-	gi_algorithm::select("gpu_cgls_lights");
+// 	gi_algorithm::select("gpu_cgls_lights");
+	gi_algorithm::select("gpu_pt");
 
 	enter_glut_main_loop();
 }
