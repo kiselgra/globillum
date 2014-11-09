@@ -48,6 +48,10 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 												   path_intersections, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
 												   curr_bounce);	// curr_bounce is random-offset
 	}
+	virtual void setup_new_path_sample() {
+		generate_random_path_sample(this->w, this->h, this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
+									path_intersections/* last intersection*/, this->tri_ptr, uniform_random_numbers, curr_bounce, throughput);
+	}
 	virtual void integrate_light_sample() {
 		rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
 												this->material_colors, throughput, output_color, curr_bounce-1);
@@ -61,12 +65,22 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			compute_light_sample = true;
 		}
 		else {
-			integrate_light_sample();
+			if (this->gpu_last_intersection == shadow_intersections) {
+				integrate_light_sample();
+				compute_path_segment = true;
+			}
+			else {
+				compute_light_sample = true;
+			}
 		}
 
 		if (compute_light_sample) {
 			setup_new_arealight_sample();
 			this->gpu_last_intersection = shadow_intersections;
+		}
+		if (compute_path_segment) {
+			setup_new_path_sample();
+			this->gpu_last_intersection = path_intersections;
 		}
 		++curr_bounce;
 	}
