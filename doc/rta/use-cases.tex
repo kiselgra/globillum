@@ -4,7 +4,7 @@
 
 % input	[[[
 \usepackage[utf8]{inputenc}
-\usepackage{ngerman}
+% \usepackage{ngerman}
 % ]]]
 % math/symbols [[[
 
@@ -180,6 +180,20 @@
 \maketitle\thispagestyle{empty}
 % \tableofcontents
 
+In this document we demonstrate working configurations of algorithms implemented using RTA 
+	(together with the real-time framework CGLS which will appear along the way).
+There will be many code examples with identifiers originating from RTA highlighted 
+	to make explicit whether an identifier is by the current algorithm implemented or by RTA support code.
+
+The example, though working, will only cover the framework aspect of using RTA to implement the desired algorithm.
+Complete code can be found in the source of the globillum program.
+
+Note that the first example shows setup code and a few conceptual aspects, too.
+
+\setcounter{tocdepth}{2}
+\tableofcontents
+
+\clearpage
 \section{Area Light Sampling}
 The basic algorithm is as follows:
 
