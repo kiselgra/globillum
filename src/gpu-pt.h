@@ -6,6 +6,8 @@
 #include "arealight-sampler.h"
 #include "gpu-pt-kernels.h"
 
+#include "rayvis.h"
+
 #include <iostream>
 
 template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local::gpu_material_evaluator<forward_traits> {
@@ -41,6 +43,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		curr_bounce = path_len = 0;
 		this->gpu_last_intersection = path_intersections;
 		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
+		restart_rayvis();
 	}
 	virtual void setup_new_arealight_sample() {
 		rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
@@ -59,33 +62,49 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	virtual void bounce() {
 		bool compute_light_sample = false;
 		bool compute_path_segment = false;
+			
+		std::cout << "bounce " << curr_bounce << std::endl;
 
 		if (curr_bounce == 0) {
+			std::cout << " - eval mat" << std::endl;
 			this->evaluate_material();
-			compute_light_sample = true;
+// 			compute_light_sample = true;
+
+			vec3f campos = this->crgs->position;
+			std::cout << " - adding camera position as vertex" << std::endl;
+			add_vertex_to_all_rays(make_float3(campos.x, campos.y, campos.z));
+			std::cout << " - adding primary hit as vertex" << std::endl;
+			add_intersections_to_rays(this->w, this->h, this->gpu_last_intersection, this->tri_ptr);
+// 			compute_light_sample = true;
+			compute_path_segment = true;
 		}
 		else {
 			if (this->gpu_last_intersection == shadow_intersections) {
+				std::cout << " - integrating light sample" << std::endl;
 				integrate_light_sample();
 				compute_path_segment = true;
 			}
 			else {
+				std::cout << " - add path intersection as vertex" << std::endl;
+				add_intersections_to_rays(this->w, this->h, path_intersections, this->tri_ptr);
 				compute_light_sample = true;
 			}
 		}
 
 		if (compute_light_sample) {
+			std::cout << " - computing area light sample" << std::endl;
 			setup_new_arealight_sample();
 			this->gpu_last_intersection = shadow_intersections;
 		}
 		if (compute_path_segment) {
+			std::cout << " - computing new path sample" << std::endl;
 			setup_new_path_sample();
 			this->gpu_last_intersection = path_intersections;
 		}
 		++curr_bounce;
 	}
 	virtual bool trace_further_bounces() {
-		std::cout<<"cb: " << curr_bounce << std::endl;
+// 		std::cout<<"cb: " << curr_bounce << std::endl;
 		return curr_bounce < 2;
 	}
 	virtual std::string identification() {

@@ -23,7 +23,6 @@ void gpu_pt::activate(rt_set *orig_set) {
 
 void gpu_pt::update() {
 	if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
-		cout << "t" << endl;
 		shadow_tracer->trace_progressively(false);
 		gpu_pt_bouncer<B,T> *bouncer = dynamic_cast<gpu_pt_bouncer<B, T>*>(set.bouncer);
 		float3 *colors = bouncer->output_color;

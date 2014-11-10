@@ -164,7 +164,6 @@ namespace rta {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
-				cout << "integrate " << sample << endl;
 				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, col_accum, float(sample));
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
@@ -176,7 +175,6 @@ namespace rta {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
-				cout << "integrate " << sample << endl;
 				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, col_accum, float(sample));
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
@@ -212,7 +210,6 @@ namespace rta {
 				checked_cuda(cudaDeviceSynchronize());
 				checked_cuda(cudaBindSurfaceToArray(image_surf, cu_array));
 
-				cout << "copy!" << endl;
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
 				k::copy_image_to_texture<<<blocks, threads>>>(w, h, col, scale);

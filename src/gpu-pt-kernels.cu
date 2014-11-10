@@ -32,13 +32,44 @@ void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val) {
 
 
 namespace k {
-	__global__ void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
+	__global__ void generate_random_path_sample(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t,
 												triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
 												halton_pool2f uniform_random, int sample, float3 *throughput) {
 		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 							 blockIdx.y * blockDim.y + threadIdx.y);
 		if (gid.x >= w || gid.y >= h) return;
 		int id = gid.y*w+gid.x;
+		triangle_intersection<rta::cuda::simple_triangle> is = ti[id];
+		if (is.valid()) {
+			float3 bc; 
+			float3 P, N;
+			rta::cuda::simple_triangle tri = triangles[is.ref];
+			is.barycentric_coord(&bc);
+			barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
+			barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
+			
+			float3 org_dir = ray_dir[id];
+			float3 dir = reflect(org_dir, N);
+// 			dir = N;
+			float len = length_of_vector(dir);
+			dir /= len;
+			if (gid.x > 500 && gid.x < 510 && gid.y > 400 && gid.y < 410)
+			printf("- org: %6.6f %6.6f %6.6f\n  nor: %6.6f %6.6f %6.6f\n  ref: %6.6f %6.6f %6.6f\n",
+				   org_dir.x, org_dir.y, org_dir.z,
+				   N.x, N.y, N.z,
+				   dir.x, dir.y, dir.z);
+			P += 0.01*dir;
+			ray_orig[id] = P;
+			ray_dir[id]  = dir;
+			max_t[id]    = FLT_MAX;
+		}
+		else {
+			ray_dir[id]  = make_float3(0,0,0);
+			ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+			max_t[id] = -1;
+			throughput[id] = make_float3(0,0,0);
+		}
+
 	}
 }
 
@@ -48,7 +79,8 @@ void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, 
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
-	k::generate_random_path_sample<<<blocks, threads>>>(w, h, ray_orig, ray_dir, max_t, ti, triangles, uniform_random, sample, throughput);
+	k::generate_random_path_sample<<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+														ti, triangles, uniform_random, sample, throughput);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
