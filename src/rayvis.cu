@@ -1,7 +1,7 @@
+#include "rayvis.h"
+
 #include <libcgls/cgls.h>
 
-#include <librta/cuda-kernels.h>
-#include <librta/cuda-vec.h>
 #include <libhyb/trav-util.h>
 
 #include <cuda_gl_interop.h>
@@ -75,6 +75,40 @@ namespace k {
 			++i;
 		}
 	}
+
+	// assumes w << src_w
+	__global__ void add_intersections_to_rays(int w, int h, float3 *data, int curr_v, int N, int src_w, int src_h, 
+											  triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles) {
+		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+							 blockIdx.y * blockDim.y + threadIdx.y);
+		if (gid.x >= w || gid.y >= h) return;
+
+		int stride_x = int(ceil(float(src_w)/float(w)));
+		int stride_y = int(ceil(float(src_h)/float(h)));
+
+		int src_x = gid.x * stride_x;
+		int src_y = gid.y * stride_y;
+
+		int src_id = src_y * src_w + src_x;
+		triangle_intersection<cuda::simple_triangle> is = ti[src_id];
+		if (!is.valid())
+			return;
+		float3 bc; 
+		float3 P;
+		cuda::simple_triangle tri = triangles[is.ref];
+		is.barycentric_coord(&bc);
+		barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
+
+		int offset = 2*N*(gid.y*w+gid.x);
+		int i = 0;
+		if (curr_v > 0) {
+			i = 2*(curr_v-1)+1;
+		}
+		while (i < 2*N) {
+			data[offset+i] = P;
+			++i;
+		}
+	}
 }
 
 void add_vertex_to_all_rays(float3 v) {
@@ -84,7 +118,6 @@ void add_vertex_to_all_rays(float3 v) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(rayvis_w, rayvis_h, threads);
-	cout << blocks.x << " " << blocks.y << endl;
 	k::add_vertex_to_all_rays<<<blocks, threads>>>(rayvis_w, rayvis_h, vertices, v, curr_length, max_raylength);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
@@ -93,6 +126,24 @@ void add_vertex_to_all_rays(float3 v) {
 
 	checked_cuda(cudaGLUnmapBufferObject(mesh_vertex_buffer(ray_mesh, 0)));
 }
+
+void add_intersections_to_rays(int src_w, int src_h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles) {
+
+	float3 *vertices;
+	checked_cuda(cudaGLMapBufferObject((void**)&vertices, mesh_vertex_buffer(ray_mesh, 0)));
+	
+	checked_cuda(cudaPeekAtLastError());
+	dim3 threads(16, 16);
+	dim3 blocks = block_configuration_2d(rayvis_w, rayvis_h, threads);
+	k::add_intersections_to_rays<<<blocks, threads>>>(rayvis_w, rayvis_h, vertices, curr_length, max_raylength, src_w, src_h, ti, triangles);
+	checked_cuda(cudaPeekAtLastError());
+	checked_cuda(cudaDeviceSynchronize());
+
+	++curr_length;
+
+	checked_cuda(cudaGLUnmapBufferObject(mesh_vertex_buffer(ray_mesh, 0)));
+}
+
 
 void render_rayvis() {
 	render_drawelement(ray);

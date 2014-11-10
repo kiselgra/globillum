@@ -60,11 +60,11 @@ void display() {
 	glDisable(GL_DEBUG_OUTPUT);
 	glEnable(GL_DEPTH_TEST);
 
-	restart_rayvis();
-	add_vertex_to_all_rays(make_float3(0,0,0));
-	add_vertex_to_all_rays(make_float3(0,100,0));
-	add_vertex_to_all_rays(make_float3(1000,100,0));
-	add_vertex_to_all_rays(make_float3(1000,400,0));
+// 	restart_rayvis();
+// 	add_vertex_to_all_rays(make_float3(0,0,0));
+// 	add_vertex_to_all_rays(make_float3(0,100,0));
+// 	add_vertex_to_all_rays(make_float3(1000,100,0));
+// 	add_vertex_to_all_rays(make_float3(1000,400,0));
 	
     glFinish();
 	wall_time_t start = wall_time_in_ms();

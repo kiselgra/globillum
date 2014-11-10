@@ -2,6 +2,7 @@
 
 #include "cgls-lights.h"
 #include "arealight-sampler.h"
+#include "rayvis.h"
 #include "util.h"
 #include "vars.h"
 
@@ -63,6 +64,7 @@ namespace local {
 		}
 		virtual void new_pass() {
 			curr_bounce = 0;
+			restart_rayvis();
 		}
 		virtual bool trace_further_bounces() {
 			return (curr_bounce < samples+1);
@@ -82,12 +84,17 @@ namespace local {
 			if (curr_bounce == 0) {
 				// this has to be done before switching the intersection data.
 				this->evaluate_material();
+				vec3f campos = this->crgs->position;
+				add_vertex_to_all_rays(make_float3(campos.x, campos.y, campos.z));
+				add_intersections_to_rays(this->w, this->h, this->gpu_last_intersection, this->tri_ptr);
 				triangle_intersection<cuda::simple_triangle> *tmp = primary_intersection;
 				primary_intersection = this->gpu_last_intersection;
 				this->gpu_last_intersection = tmp;
 				setup_new_arealight_sample();
 			}
 			else if (curr_bounce > 0) {
+				if (curr_bounce < 3)
+					add_intersections_to_rays(this->w, this->h, this->gpu_last_intersection, this->tri_ptr);
 				integrate_light_sample();
 				if (curr_bounce < samples)
 					setup_new_arealight_sample();
