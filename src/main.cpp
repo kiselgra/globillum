@@ -16,6 +16,7 @@
 
 #include "material.h"
 #include "vars.h"
+#include "rayvis.h"
 
 #include <GL/freeglut.h>
 #include <string.h>
@@ -58,6 +59,12 @@ void display() {
 		
 	glDisable(GL_DEBUG_OUTPUT);
 	glEnable(GL_DEPTH_TEST);
+
+	restart_rayvis();
+	add_vertex_to_all_rays(make_float3(0,0,0));
+	add_vertex_to_all_rays(make_float3(0,100,0));
+	add_vertex_to_all_rays(make_float3(1000,100,0));
+	add_vertex_to_all_rays(make_float3(1000,400,0));
 	
     glFinish();
 	wall_time_t start = wall_time_in_ms();
@@ -96,6 +103,9 @@ void display() {
 			render_scene_from_gbuffer(the_scene, gbuffer);
 		else
 			render_gbuffer_visualization(the_scene, gbuffer);
+
+// 		glClear(GL_DEPTH_BUFFER_BIT);
+		render_rayvis();
 	}
 
 	glFinish();
@@ -421,6 +431,8 @@ void actual_main()
 
 // 	gi_algorithm::select("gpu_cgls_lights");
 	gi_algorithm::select("gpu_pt");
+
+	init_rayvis(4, cmdline.res.x/16, cmdline.res.y/16);
 
 	enter_glut_main_loop();
 }

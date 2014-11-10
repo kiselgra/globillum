@@ -20,4 +20,24 @@
 #:inputs (list "in_pos")
 #:uniforms (list )>
 
+#<make-shader "rayvis"
+#:vertex-shader #{
+    #version 430 core
+    in vec3 in_pos;
+	uniform mat4 model, view, proj;
+    void main() {
+        gl_Position = proj * view * model * vec4(in_pos.xyz,1.0);
+    }
+}
+#:fragment-shader #{
+    #version 430 core
+	uniform vec4 diffuse_color;
+    out vec4 out_col;
+    void main() {
+        out_col = diffuse_color;
+    }
+}
+#:inputs (list "in_pos")
+#:uniforms (list "model" "view" "proj" "diffuse_color")>
+
 
