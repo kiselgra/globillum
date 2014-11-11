@@ -42,15 +42,18 @@ namespace k {
 		triangle_intersection<rta::cuda::simple_triangle> is = ti[id];
 		if (is.valid()) {
 			float3 bc; 
-			float3 P, N;
+			float3 P, N, T, B;
 			rta::cuda::simple_triangle tri = triangles[is.ref];
 			is.barycentric_coord(&bc);
 			barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 			barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
+
+			make_tangent_frame(N, T, B);
 			
 			float3 org_dir = ray_dir[id];
-			float3 dir = reflect(org_dir, N);
-// 			dir = N;
+			org_dir = transform_to_tangent_frame(org_dir, T, B, N);
+			float3 dir = reflect(org_dir, make_float3(0,0,1));
+			dir = transform_from_tangent_frame(dir, T, B, N);
 			float len = length_of_vector(dir);
 			dir /= len;
 			if (gid.x > 500 && gid.x < 510 && gid.y > 400 && gid.y < 410)
