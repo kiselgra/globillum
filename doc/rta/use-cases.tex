@@ -536,6 +536,14 @@ void update() {
 \end{lstlisting}
 
 
+\section{Path Tracing}
+Notes
+\begin{itemize}
+\item tandem tracer to properly alternate shadow/closest-hit rays.
+\item 2nd raygen is required because path sampling needs the old ray for brdf evaluation
+	(otherwise it is overwritten by light samples)
+\end{itemize}
+
 
 \end{document}
 
