@@ -52,7 +52,9 @@ namespace k {
 			
 			float3 org_dir = ray_dir[id];
 			org_dir = transform_to_tangent_frame(org_dir, T, B, N);
-			float3 dir = reflect(org_dir, make_float3(0,0,1));
+// 			float3 dir = reflect(org_dir, make_float3(0,0,1));
+			float3 dir = org_dir;
+			dir.z = -dir.z;
 			dir = transform_from_tangent_frame(dir, T, B, N);
 			float len = length_of_vector(dir);
 			dir /= len;

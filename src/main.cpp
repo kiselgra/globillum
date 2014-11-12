@@ -432,7 +432,7 @@ void actual_main()
 // 	gi_algorithm::select("gpu_cgls_lights");
 	gi_algorithm::select("gpu_pt");
 
-	init_rayvis(4, cmdline.res.x/300, cmdline.res.y/200);
+	init_rayvis(4, cmdline.res.x/100, cmdline.res.y/100);
 
 	enter_glut_main_loop();
 }

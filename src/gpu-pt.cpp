@@ -14,16 +14,21 @@ void gpu_pt::activate(rt_set *orig_set) {
 	cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 	set.rgen = crgs = new cuda::cam_ray_generator_shirley(w, h);
 	gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-	set.bouncer = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 1);
+	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 1);
 	set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 	set.basic_rt<B, T>()->ray_generator(set.rgen);
+	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
+	tracer = new tandem_tracer<B, T>(dynamic_cast<basic_raytracer<B,T>*>(set.rt), 
+									 dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer));
+	tracer->select_closest_hit_tracer();
+	pt->register_tracers(tracer);
 
 	cuda::cgls::init_cuda_image_transfer(result);
 }
 
 void gpu_pt::update() {
-	if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
-		shadow_tracer->trace_progressively(false);
+	if (tracer->progressive_trace_running()) {
+		tracer->trace_progressively(false);
 		gpu_pt_bouncer<B,T> *bouncer = dynamic_cast<gpu_pt_bouncer<B, T>*>(set.bouncer);
 		float3 *colors = bouncer->output_color;
 		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
@@ -40,8 +45,7 @@ void gpu_pt::compute() {
 		update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
-		set.rt->trace_progressively(true);
-		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
+		tracer->trace_progressively(true);
 }
 	
 /* vim: set foldmethod=marker: */

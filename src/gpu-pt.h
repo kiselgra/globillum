@@ -10,6 +10,52 @@
 
 #include <iostream>
 
+template<typename _box_t, typename _tri_t> struct tandem_tracer : public rta::raytracer {
+	declare_traits_types;
+	
+	typedef rta::basic_raytracer<box_t, tri_t> tracer_t;
+	tracer_t *closest_hit_tracer;
+	tracer_t *any_hit_tracer;
+	tracer_t *use_tracer, *other, *last;
+
+	tandem_tracer(tracer_t *ch, tracer_t *ah) : closest_hit_tracer(ch), any_hit_tracer(ah), use_tracer(0), other(0), last(0) {
+	}
+	void select_closest_hit_tracer() {
+		use_tracer = closest_hit_tracer;
+		other = any_hit_tracer;
+	}
+	void select_any_hit_tracer() {
+		use_tracer = any_hit_tracer;
+		other = closest_hit_tracer;
+	}
+	virtual void trace() {
+		throw std::logic_error("a tandem tracer is for progressive tracing, only.");
+	}
+	// bounce() might change the tracer, or might keep it
+	// therefore, after bounce() and tracer_furhter_boucnes() was called with the `last'
+	// tracer, we copy its information over to both versions.
+	virtual void trace_progressively(bool first) {
+		last = use_tracer;
+		use_tracer->trace_progressively(first);
+		use_tracer->copy_progressive_state(last);
+		other->copy_progressive_state(last);
+	}
+	virtual std::string identification() {
+		return std::string("wrapper to trace using two basic_raytracers in tandem, in this case: (")
+			   + closest_hit_tracer->identification() + ", and " + any_hit_tracer->identification() + ")";
+	}
+	virtual bool progressive_trace_running() {
+		return use_tracer->progressive_trace_running();
+	}
+	virtual rta::raytracer* copy() {
+		return new tandem_tracer(*this);
+	}
+	virtual bool supports_max_t() {
+		return closest_hit_tracer->supports_max_t() && any_hit_tracer->supports_max_t();
+	}
+};
+
+
 template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local::gpu_material_evaluator<forward_traits> {
 	declare_traits_types;
 	rta::cuda::cgls::rect_light *lights;
@@ -22,13 +68,20 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	rta::triangle_intersection<rta::cuda::simple_triangle> *path_intersections,
 	                                                       *shadow_intersections;
 	float3 *output_color, *throughput, *potential_sample_contribution;
+	
+	// maintain which tracer to use for the next bounce
+	tandem_tracer<box_t, tri_t> *tracers;
+	void register_tracers(tandem_tracer<box_t, tri_t> *tt) {
+		tracers = tt;
+	}
 
 	gpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles,
 				   rta::cuda::cam_ray_generator_shirley *crgs, rta::cuda::cgls::rect_light *lights, int nr_of_lights,
 				   gi::cuda::halton_pool2f rnd, int max_path_len)
 	: local::gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs),
 	  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), w(w), h(h),
-	  curr_bounce(0), path_len(0), max_path_len(max_path_len), output_color(0) {
+	  curr_bounce(0), path_len(0), max_path_len(max_path_len), output_color(0),
+	  tracers(0) {
 		checked_cuda(cudaMalloc(&output_color, sizeof(float3)*w*h));
 		checked_cuda(cudaMalloc(&throughput, sizeof(float3)*w*h));
 		checked_cuda(cudaMalloc(&potential_sample_contribution, sizeof(float3)*w*h));
@@ -95,12 +148,15 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			std::cout << " - computing area light sample" << std::endl;
 			setup_new_arealight_sample();
 			this->gpu_last_intersection = shadow_intersections;
+			tracers->select_any_hit_tracer();
 		}
 		if (compute_path_segment) {
 			std::cout << " - computing new path sample" << std::endl;
 			setup_new_path_sample();
 			this->gpu_last_intersection = path_intersections;
+			tracers->select_closest_hit_tracer();
 		}
+
 		++curr_bounce;
 	}
 	virtual bool trace_further_bounces() {
@@ -122,6 +178,8 @@ protected:
 	scene_ref scene;
 	rta::cuda::cgls::rect_light *gpu_rect_lights;
 	int nr_of_gpu_rect_lights;
+	gpu_pt_bouncer<B, T> *pt;
+	tandem_tracer<B, T> *tracer;
 	rta::raytracer *shadow_tracer;
 public:
 	gpu_pt(int w, int h, scene_ref scene, const std::string &name = "gpu_pt")
