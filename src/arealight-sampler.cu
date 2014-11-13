@@ -175,7 +175,7 @@ namespace rta {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
-				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, col_accum, float(sample));
+				k::integrate_light_sample<<<blocks, threads>>>(w, h, ti, potential_sample_contribution, material_col, throughput, col_accum, float(sample));
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
 			}
