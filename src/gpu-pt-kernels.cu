@@ -61,57 +61,13 @@ namespace k {
 			normalize_vec3f(&B);
 		
 			float3 org_dir = ray_dir[id];
-// 			float3 org_dir_2 = transform_to_tangent_frame(org_dir, T, B, N);
-// 			float3 org_dir_3 = transform_from_tangent_frame(org_dir_2, T, B, N);
-
-// 			if (org_dir != org_dir_3 ){//&& gid.x > 500 && gid.x < 510) {
-// 				printf("(%d %d) --------------------\n"
-// 					   "T    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-// 					   "B    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-// 					   "N    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-// 					   "d    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-// 					   "d_t  = [ %6.6f ; %6.6f ; %6.6f ]\n"
-// 					   "d_T  = [ %6.6f ; %6.6f ; %6.6f ]\n",
-// 					   gid.x, gid.y, T.x, T.y, T.z, B.x, B.y, B.z, N.x, N.y, N.z,
-// 					   org_dir.x, org_dir.y, org_dir.z,
-// 					   org_dir_2.x, org_dir_2.y, org_dir_2.z,
-// 					   org_dir_3.x, org_dir_3.y, org_dir_3.z);
-// 			}
-
-			float3 org_dir_ts = transform_to_tangent_frame(org_dir, T, B, N);
-			float3 refl_ts = reflect(org_dir_ts, make_float3(0,0,1));
-			float3 refl1 = transform_from_tangent_frame(refl_ts, T, B, N);
-			
-			float3 refl2 = reflect(org_dir, N);
-			if (refl1 != refl2&& gid.x > 500 && gid.x < 510) {
-				printf("(%d %d) --------------------\n"
-					   "T    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "B    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "N    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "d    = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "d_t  = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "r_t  = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "r_1  = [ %6.6f ; %6.6f ; %6.6f ]\n"
-					   "r_2  = [ %6.6f ; %6.6f ; %6.6f ]\n",
-					   gid.x, gid.y, T.x, T.y, T.z, B.x, B.y, B.z, N.x, N.y, N.z,
-					   org_dir.x, org_dir.y, org_dir.z,
-					   org_dir_ts.x, org_dir_ts.y, org_dir_ts.z,
-					   refl_ts.x, refl_ts.y, refl_ts.z,
-					   refl1.x, refl1.y, refl1.z,
-					   refl2.x, refl2.y, refl2.z);
-			}
-			float3 dir = refl2;
-// 			float3 dir = reflect(org_dir, make_float3(0,0,1));
-// 			float3 dir = org_dir;
-// 			dir.z = -dir.z;
-// 			dir = transform_from_tangent_frame(dir, T, B, N);
+			org_dir = transform_to_tangent_frame(org_dir, T, B, N);
+			float3 dir = org_dir;
+			dir.z = -dir.z;
+			dir = transform_from_tangent_frame(dir, T, B, N);
 			float len = length_of_vector(dir);
 			dir /= len;
-// 			if (gid.x > 500 && gid.x < 510 && gid.y > 400 && gid.y < 410)
-// 			printf("- org: %6.6f %6.6f %6.6f\n  nor: %6.6f %6.6f %6.6f\n  ref: %6.6f %6.6f %6.6f\n",
-// 				   org_dir.x, org_dir.y, org_dir.z,
-// 				   N.x, N.y, N.z,
-// 				   dir.x, dir.y, dir.z);
+			
 			P += 0.01*dir;
 			ray_orig[id] = P;
 			ray_dir[id]  = dir;
