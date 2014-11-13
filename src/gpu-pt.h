@@ -123,6 +123,9 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
 		restart_rayvis();
 	}
+	virtual void evaluate_material_with_point_sampling() {
+		rta::cuda::evaluate_material_bilin(this->w, this->h, path_intersections, this->tri_ptr, this->materials, this->material_colors);
+	}
 	virtual void setup_new_arealight_sample() {
 		rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 												   light_sample_origins, light_sample_directions, light_sample_maxt,
@@ -165,6 +168,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			else {
 				std::cout << " - add path intersection as vertex" << std::endl;
 				add_intersections_to_rays(this->w, this->h, path_intersections, this->tri_ptr);
+				evaluate_material_with_point_sampling();
 				compute_light_sample = true;
 			}
 		}
@@ -186,7 +190,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	}
 	virtual bool trace_further_bounces() {
 // 		std::cout<<"cb: " << curr_bounce << std::endl;
-		return curr_bounce < 3;
+		return curr_bounce < 4;
 	}
 	virtual std::string identification() {
 		return "gpu path tracer";

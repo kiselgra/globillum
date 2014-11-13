@@ -133,8 +133,15 @@ namespace rta {
 		material_t* convert_and_upload_materials();
 		
 		
-		//! 
-		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dirs);
+		//! evaluate material using point sampling with bilinear interpolation.
+		void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+									 cuda::material_t *mats, float3 *dst);
+
+		/*! \brief evaluate material using ray differentials computed via neighboring rays.
+		 *  \attention this only works for camera rays!
+		 */
+		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+							   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dirs);
 	}
 }
 

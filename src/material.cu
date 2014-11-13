@@ -25,7 +25,7 @@ namespace rta {
 // 				return a.x*b.x + a.y*b.y + a.z*b.z;
 // 			}
 
-			__global__ void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float3 *ray_dir) {
+			__global__ void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
@@ -112,6 +112,15 @@ namespace rta {
 				}
 				dst[gid.y*w+gid.x] = out;
 			}
+		}
+
+		void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst) {
+			checked_cuda(cudaPeekAtLastError());
+			dim3 threads(16, 16);
+			dim3 blocks = block_configuration_2d(w, h, threads);
+			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst);
+			checked_cuda(cudaPeekAtLastError());
+			checked_cuda(cudaDeviceSynchronize());
 		}
 
 		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir) {
