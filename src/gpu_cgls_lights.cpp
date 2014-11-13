@@ -16,13 +16,14 @@ extern cuda::material_t *gpu_materials;
 namespace local {
 
 // 	vec3f *material;
+	typedef cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials> crgs_with_diffs;
 
 	template<typename _box_t, typename _tri_t> struct gpu_cgls_light_evaluator : public gpu_material_evaluator<forward_traits> {
 		declare_traits_types;
 		cuda::cgls::light *lights;
 		int nr_of_lights;
 		gpu_cgls_light_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, 
-								 cuda::cam_ray_generator_shirley *crgs, cuda::cgls::light *lights, int nr_of_lights)
+								 crgs_with_diffs *crgs, cuda::cgls::light *lights, int nr_of_lights)
 		: gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs), lights(lights), nr_of_lights(nr_of_lights) {
 		}
 		virtual void shade_locally() {
@@ -48,7 +49,7 @@ namespace local {
 		float3 *output_color;
 		triangle_intersection<cuda::simple_triangle> *primary_intersection;
 		gpu_cgls_arealight_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, 
-									 cuda::cam_ray_generator_shirley *crgs, cuda::cgls::rect_light *lights, int nr_of_lights,
+									 crgs_with_diffs *crgs, cuda::cgls::rect_light *lights, int nr_of_lights,
 									 gi::cuda::halton_pool2f rnd, int samples)
 		: gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs), 
 		  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), samples(samples) {
@@ -113,7 +114,7 @@ namespace local {
 		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
 		gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
-		set.rgen = crgs = new cuda::cam_ray_generator_shirley(w, h);
+		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 // 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);

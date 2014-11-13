@@ -17,8 +17,9 @@ namespace local {
 		rta::cuda::material_t *materials;
 		rta::cuda::simple_triangle *tri_ptr;
 		float3 *material_colors;
-		rta::cuda::cam_ray_generator_shirley *crgs;
-		gpu_material_evaluator(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles, rta::cuda::cam_ray_generator_shirley *crgs)
+		rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
+		gpu_material_evaluator(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles, 
+							   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs)
 			: rta::cuda::gpu_ray_bouncer<forward_traits>(w, h), materials(materials), material_colors(0), tri_ptr(triangles),
 			  crgs(crgs) {
 			checked_cuda(cudaMalloc(&material_colors, sizeof(float3)*w*h));
@@ -48,7 +49,7 @@ namespace local {
 	protected:
 		int w, h;
 		rta::cuda::primary_intersection_collector<B, T> *collector;
-		rta::cuda::cam_ray_generator_shirley *crgs;
+		rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
 		rta::rt_set set;
 		rta::image<vec3f, 1> hitpoints, normals;
 		scene_ref scene;

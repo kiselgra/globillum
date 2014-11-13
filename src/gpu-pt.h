@@ -95,7 +95,8 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	}
 
 	gpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles,
-				   rta::cuda::cam_ray_generator_shirley *crgs, rta::cuda::cgls::rect_light *lights, int nr_of_lights,
+				   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs, 
+				   rta::cuda::cgls::rect_light *lights, int nr_of_lights,
 				   gi::cuda::halton_pool2f rnd, int max_path_len)
 	: local::gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs),
 	  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), w(w), h(h),
@@ -202,7 +203,7 @@ class gpu_pt : public gi_algorithm {
 	typedef rta::cuda::simple_triangle T;
 protected:
 	int w, h;
-	rta::cuda::cam_ray_generator_shirley *crgs;
+	rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
 	rta::rt_set set;
 	scene_ref scene;
 	rta::cuda::cgls::rect_light *gpu_rect_lights;
