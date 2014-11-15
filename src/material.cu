@@ -114,6 +114,66 @@ namespace rta {
 			}
 		}
 
+		__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, 
+													float3 *dst, float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir) {
+			int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+								 blockIdx.y * blockDim.y + threadIdx.y);
+			if (gid.x >= w || gid.y >= h) return;
+			triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
+			float3 out = make_float3(0,0,0);
+			if (is.valid()) {
+				cuda::simple_triangle tri = triangles[is.ref];
+				material_t mat = mats[tri.material_index];
+				out = mat.diffuse_color;
+				if (mat.diffuse_texture) {
+					float3 bc; 
+					is.barycentric_coord(&bc);
+					// tex coord
+					const float2 &ta = tri.ta;
+					const float2 &tb = tri.tb;
+					const float2 &tc = tri.tc;
+					float2 T;
+					barycentric_interpolation(&T, &bc, &ta, &tb, &tc);
+					// normal
+					const float3 &na = tri.na;
+					const float3 &nb = tri.nb;
+					const float3 &nc = tri.nc;
+					float3 N;
+					barycentric_interpolation(&N, &bc, &na, &nb, &nc);
+					// eval other rays
+					int ox = 1, oy = 1;
+					if (gid.x == w-1) ox = -1;
+					if (gid.y == h-1) oy = -1;
+					// upper ray
+					float3 other_org = ray_org[(gid.y+oy)*w+gid.x];
+					float3 other_dir = ray_dir[(gid.y+oy)*w+gid.x];
+					triangle_intersection<cuda::simple_triangle> other_is;
+					intersect_tri_opt_nocheck(tri, (vec3f*)&other_org, (vec3f*)&other_dir, other_is);
+					float2 other_T;
+					float3 other_bc;
+					other_is.barycentric_coord(&other_bc);
+					barycentric_interpolation(&other_T, &other_bc, &ta, &tb, &tc);
+					float diff_x = fabsf(T.x - other_T.x);
+					float diff_y = fabsf(T.y - other_T.y);
+					// right ray
+					other_org = ray_org[(gid.y)*w+gid.x+ox];
+					other_dir = ray_dir[(gid.y)*w+gid.x+ox];
+					intersect_tri_opt_nocheck(tri, (vec3f*)&other_org, (vec3f*)&other_dir, other_is);
+					other_is.barycentric_coord(&other_bc);
+					barycentric_interpolation(&other_T, &other_bc, &ta, &tb, &tc);
+					diff_x = fmaxf(fabsf(T.x - other_T.x), diff_x);
+					diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
+					float diff = fmaxf(diff_x, diff_y);
+					// access texture
+					float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
+					out.x *= tex.x;
+					out.y *= tex.y;
+					out.z *= tex.z;
+				}
+			}
+			dst[gid.y*w+gid.x] = out;
+		}
+
 		void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst) {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
