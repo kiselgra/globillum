@@ -142,6 +142,10 @@ namespace rta {
 		 */
 		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
 							   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dirs);
+		/*! \brief evaluate material using ray differentials stored in rta container (ray_diff_org,_dir are expected to be of size w * (2h).
+		 */
+		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+							   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float *ray_diff_org, float *ray_diff_dir);
 	}
 }
 

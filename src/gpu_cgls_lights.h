@@ -32,7 +32,7 @@ namespace local {
 		}
 		virtual void evaluate_material() {
 			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors, 
-										 crgs->gpu_origin, crgs->gpu_direction);
+										 crgs->gpu_origin, crgs->gpu_direction, crgs->differentials_origin, crgs->differentials_direction);
 		}
 		virtual void bounce() {
 			evaluate_material();
