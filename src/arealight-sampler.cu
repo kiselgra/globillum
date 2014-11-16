@@ -155,7 +155,7 @@ namespace rta {
 					if (sample > 0)
 						out = col_accum[id];
 					// out we go.
-					out = (sample * out + tp) / (sample+1.0f);
+					out = out + tp;
 					col_accum[id] = out;
 					throughput[id] = tp;
 				}

@@ -193,7 +193,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	}
 	virtual bool trace_further_bounces() {
 // 		std::cout<<"cb: " << curr_bounce << std::endl;
-		return curr_bounce < 4;
+		return curr_bounce < 6;
 	}
 	virtual std::string identification() {
 		return "gpu path tracer";
