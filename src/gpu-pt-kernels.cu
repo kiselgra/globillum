@@ -20,6 +20,15 @@ namespace k {
 		int id = gid.y*w+gid.x;
 		data[id] = val;
 	}
+	
+	__global__ void combine_color_samples(float3 *data, uint w, uint h, float3 *sample, int samples_already_accumulated) {
+		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+							 blockIdx.y * blockDim.y + threadIdx.y);
+		if (gid.x >= w || gid.y >= h) return;
+		int id = gid.y*w+gid.x;
+		float3 sofar = data[id];
+		data[id] = (samples_already_accumulated * sofar + sample[id]) / (samples_already_accumulated + 1);
+	}
 }
 
 void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val) {
@@ -30,6 +39,16 @@ void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val) {
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
+
+void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int samples_already_accumulated) {
+	checked_cuda(cudaPeekAtLastError());
+	dim3 threads(16, 16);
+	dim3 blocks = block_configuration_2d(w, h, threads);
+	k::combine_color_samples<<<blocks, threads>>>(accum, w, h, sample, samples_already_accumulated);
+	checked_cuda(cudaPeekAtLastError());
+	checked_cuda(cudaDeviceSynchronize());
+}
+
 
 
 namespace k {
@@ -62,10 +81,32 @@ namespace k {
 			normalize_vec3f(&B);
 		
 			float3 org_dir = ray_dir[id];
-			org_dir = transform_to_tangent_frame(org_dir, T, B, N);
-			float3 dir = org_dir;
-			dir.z = -dir.z;
-			dir = transform_from_tangent_frame(dir, T, B, N);
+			float3 dir;
+			bool reflection = false;
+			if (reflection == true) {
+				org_dir = transform_to_tangent_frame(org_dir, T, B, N);
+				dir = org_dir;
+				dir.z = -dir.z;
+				dir = transform_from_tangent_frame(dir, T, B, N);
+			}
+			else {
+				float3 refl = reflect(org_dir, N);
+				make_tangent_frame(refl, T, B);
+				float2 rnd = uniform_random.data[(7*id + sample) % uniform_random.N];
+				float n = 4;
+				dir.z = 1.0f-powf(rnd.x, n+1.0f);
+				dir.x = sqrtf(1.0f-dir.z*dir.z) * cosf(2.0f*float(M_PI)*rnd.y);
+				dir.y = sqrtf(1.0f-dir.z*dir.z) * sinf(2.0f*float(M_PI)*rnd.y);
+				dir = transform_from_tangent_frame(dir, T, B, refl);
+// 				if (gid.x > 600 && gid.x < 610 && gid.y > 350 && gid.y < 360)
+// 					printf("(%04d %04d) %6.6f %6.6f\n"
+// 					       "            %6.6f %6.6f %6.6f\n"
+// 					       "            %6.6f %6.6f %6.6f\n",
+// 						   gid.x, gid.y,
+// 						   rnd.x, rnd.y,
+// 						   N.x, N.y, N.z,
+// 						   dir.x, dir.y, dir.z);
+			}
 			float len = length_of_vector(dir);
 			dir /= len;
 			

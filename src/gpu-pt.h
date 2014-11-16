@@ -73,12 +73,13 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	int nr_of_lights;
 	gi::cuda::halton_pool2f uniform_random_numbers;
 	uint w, h;
+	int curr_path;
 	int curr_bounce;
 	int path_len;
 	int max_path_len;
 	rta::triangle_intersection<rta::cuda::simple_triangle> *path_intersections,
 	                                                       *shadow_intersections;
-	float3 *output_color, *throughput, *potential_sample_contribution;
+	float3 *output_color, *path_accum_color, *throughput, *potential_sample_contribution;
 	float *light_sample_directions, *path_sample_directions;
 	float *light_sample_origins, *path_sample_origins;
 	float *light_sample_maxt, *path_sample_maxt;
@@ -100,11 +101,12 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 				   gi::cuda::halton_pool2f rnd, int max_path_len)
 	: local::gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs),
 	  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), w(w), h(h),
-	  curr_bounce(0), path_len(0), max_path_len(max_path_len), output_color(0), tracers(0),
+	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), output_color(0), tracers(0),
 	  light_sample_origins(0), light_sample_directions(0), light_sample_maxt(0),
 	  path_sample_origins(0), path_sample_directions(0), path_sample_maxt(0)
 	{
 		checked_cuda(cudaMalloc(&output_color, sizeof(float3)*w*h));
+		checked_cuda(cudaMalloc(&path_accum_color, sizeof(float3)*w*h));
 		checked_cuda(cudaMalloc(&throughput, sizeof(float3)*w*h));
 		checked_cuda(cudaMalloc(&potential_sample_contribution, sizeof(float3)*w*h));
 		checked_cuda(cudaMalloc(&shadow_intersections, sizeof(rta::triangle_intersection<rta::cuda::simple_triangle>)*w*h));
@@ -116,13 +118,24 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	}
 	~gpu_pt_bouncer() {
 		checked_cuda(cudaFree(output_color));
+		checked_cuda(cudaFree(path_accum_color));
 		checked_cuda(cudaFree(shadow_intersections));
 	}
 	virtual void new_pass() {
-		curr_bounce = path_len = 0;
-		this->gpu_last_intersection = path_intersections;
+		curr_bounce = curr_path = 0;
+		path_len = 0;
 		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
+		reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
 		restart_rayvis();
+	}
+	virtual void new_path() {
+		path_len = 0;
+		this->gpu_last_intersection = path_intersections;
+		combine_color_samples(output_color, w, h, path_accum_color, curr_path);
+		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
+		reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
+		this->crgs->generate_rays();
+		curr_path++;
 	}
 	virtual void evaluate_material_with_point_sampling() {
 		rta::cuda::evaluate_material_bilin(this->w, this->h, path_intersections, this->tri_ptr, this->materials, this->material_colors);
@@ -131,24 +144,25 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 												   light_sample_origins, light_sample_directions, light_sample_maxt,
 												   path_intersections, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
-												   curr_bounce);	// curr_bounce is random-offset
+												   (max_path_len*curr_path)+path_len);	// last param is random-offset
 	}
 	virtual void setup_new_path_sample() {
 		generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-									path_intersections/* last intersection*/, this->tri_ptr, uniform_random_numbers, curr_bounce, throughput,
+									path_intersections/* last intersection*/, this->tri_ptr, uniform_random_numbers, (max_path_len*curr_path)+path_len, throughput,
 									this->crgs->differentials_origin, this->crgs->differentials_direction);
 	}
 	virtual void integrate_light_sample() {
 		rta::cuda::cgls::integrate_light_sample(this->w, this->h, shadow_intersections, potential_sample_contribution,
-												this->material_colors, throughput, output_color, curr_bounce-1);
+												this->material_colors, throughput, path_accum_color, (max_path_len*curr_path)+path_len);
 	}
 	virtual void bounce() {
 		bool compute_light_sample = false;
 		bool compute_path_segment = false;
 			
-		std::cout << "bounce " << curr_bounce << std::endl;
+		std::cout << "bounce " << curr_bounce << " (path " << curr_path << ")" << std::endl;
 
-		if (curr_bounce == 0) {
+		// path_len is 0 for the computation of the first path vertex, and during the corresponding light sampling.
+		if (path_len == 0 && this->gpu_last_intersection == path_intersections) {
 			std::cout << " - eval mat" << std::endl;
 			this->evaluate_material();
 // 			compute_light_sample = true;
@@ -187,13 +201,23 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			setup_new_path_sample();
 			this->gpu_last_intersection = path_intersections;
 			tracers->select_closest_hit_tracer();
+			// a light has been sampled, so the current path is finished.
+			++path_len;
 		}
 
 		++curr_bounce;
 	}
 	virtual bool trace_further_bounces() {
 // 		std::cout<<"cb: " << curr_bounce << std::endl;
-		return curr_bounce < 6;
+		if (path_len < max_path_len)
+			return true;
+		else
+			new_path();
+		if (curr_path <= 8) {
+			return true;
+		}
+		return false;
+// 		return curr_bounce < 4;
 	}
 	virtual std::string identification() {
 		return "gpu path tracer";
