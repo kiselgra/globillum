@@ -146,18 +146,18 @@ namespace rta {
 					triangle_intersection<cuda::simple_triangle> is = ti[id];
 					float3 tp = throughput[id];
 					// use material color if no intersection is found (ie the path to the light is clear).
-					float3 material = make_float3(0,0,0);
-					if (!is.valid())
-						material = material_col[id];
-					tp *= material * weight;
+					float3 material = material_col[id];
+					float3 use_material = material;
+					if (is.valid())
+						use_material = make_float3(0,0,0);
 					// use accum color if we should not clear
 					float3 out = make_float3(0,0,0);
 					if (sample > 0)
 						out = col_accum[id];
 					// out we go.
-					out = out + tp;
+					out = out + tp * use_material * weight;
 					col_accum[id] = out;
-					throughput[id] = tp;
+					throughput[id] = tp * material * weight;
 				}
 			}
 
