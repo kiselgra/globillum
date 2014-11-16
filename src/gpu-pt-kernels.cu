@@ -93,7 +93,7 @@ namespace k {
 				float3 refl = reflect(org_dir, N);
 				make_tangent_frame(refl, T, B);
 				float2 rnd = uniform_random.data[(7*id + sample) % uniform_random.N];
-				float n = 16;
+				float n = 2;
 				dir.z = 1.0f-powf(rnd.x, n+1.0f);
 				dir.x = sqrtf(1.0f-dir.z*dir.z) * cosf(2.0f*float(M_PI)*rnd.y);
 				dir.y = sqrtf(1.0f-dir.z*dir.z) * sinf(2.0f*float(M_PI)*rnd.y);

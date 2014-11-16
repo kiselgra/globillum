@@ -44,6 +44,7 @@ std::map<std::string, var> vars;
 mesh_ref quad;
 shader_ref quad_shader;
 bool show_results = false;
+float exposure = 10;
 
 void display() {
 	
@@ -87,6 +88,7 @@ void display() {
 		texture_ref tex = gi_algorithm::result;
 // 		tex = find_texture("gbuffer/diffuse");
 		bind_texture(tex, 0);
+		glUniform1f(0, pow(2.0, (exposure-10.0)));
 		draw_mesh(quad);
 		unbind_texture(tex);
 		unbind_mesh_from_gl(quad);
@@ -330,6 +332,18 @@ static char* console_show(console_ref ref, int argc, char **argv) {
 	return strdup(oss.str().c_str());
 }
 
+static char* console_exposure(console_ref ref, int argc, char **argv) {
+	if (argc > 2)
+		return strdup("can be called with up to one argument, sets exposure for hdr display.");
+	if (argc > 1) {
+		exposure = atof(argv[1]);
+		return 0;
+	}
+	ostringstream oss;
+	oss << "exposure = " << exposure;
+	return strdup(oss.str().c_str());
+}
+
 
 
 void actual_main() 
@@ -411,6 +425,8 @@ void actual_main()
 	add_vi_console_command(viconsole, "decl", console_decl);
 	add_vi_console_command(viconsole, "set", console_set);
 	add_vi_console_command(viconsole, "show", console_show);
+	add_vi_console_command(viconsole, "exp", console_exposure);
+	add_vi_console_command(viconsole, "exposure", console_exposure);
 	push_interaction_mode(console_interaction_mode(viconsole));
 
 	char *base = basename((char*)cmdline.filename);

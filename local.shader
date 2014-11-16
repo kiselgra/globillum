@@ -11,10 +11,11 @@
 #:fragment-shader #{
     #version 430 core
     uniform layout(binding=0) sampler2D tex;
+	uniform layout(location=0) float factor;
 	in vec2 tc;
     out vec4 out_col;
     void main() {
-        out_col = vec4(texture(tex, vec2(1.0-tc.x,tc.y)).rgb,1);
+        out_col = vec4(texture(tex, vec2(1.0-tc.x,tc.y)).rgb*factor,1);
     }
 }
 #:inputs (list "in_pos")
