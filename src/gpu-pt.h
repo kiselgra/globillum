@@ -135,7 +135,8 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	}
 	virtual void setup_new_path_sample() {
 		generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-									path_intersections/* last intersection*/, this->tri_ptr, uniform_random_numbers, curr_bounce, throughput);
+									path_intersections/* last intersection*/, this->tri_ptr, uniform_random_numbers, curr_bounce, throughput,
+									this->crgs->differentials_origin, this->crgs->differentials_direction);
 	}
 	virtual void integrate_light_sample() {
 		rta::cuda::cgls::integrate_light_sample(this->w, this->h, shadow_intersections, potential_sample_contribution,
@@ -169,7 +170,8 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			else {
 				std::cout << " - add path intersection as vertex" << std::endl;
 				add_intersections_to_rays(this->w, this->h, path_intersections, this->tri_ptr);
-				evaluate_material_with_point_sampling();
+// 				evaluate_material_with_point_sampling();
+				this->evaluate_material();
 				compute_light_sample = true;
 			}
 		}

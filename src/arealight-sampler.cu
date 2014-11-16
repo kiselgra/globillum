@@ -149,13 +149,15 @@ namespace rta {
 					float3 material = make_float3(0,0,0);
 					if (!is.valid())
 						material = material_col[id];
+					tp *= material * weight;
 					// use accum color if we should not clear
 					float3 out = make_float3(0,0,0);
 					if (sample > 0)
 						out = col_accum[id];
 					// out we go.
-					out = (sample * out + weight * tp * material) / (sample+1.0f);
+					out = (sample * out + tp) / (sample+1.0f);
 					col_accum[id] = out;
+					throughput[id] = tp;
 				}
 			}
 

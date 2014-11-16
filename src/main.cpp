@@ -429,8 +429,8 @@ void actual_main()
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
-	gi_algorithm::select("gpu_cgls_lights");
-// 	gi_algorithm::select("gpu_pt");
+// 	gi_algorithm::select("gpu_cgls_lights");
+	gi_algorithm::select("gpu_pt");
 
 	init_rayvis(4, cmdline.res.x/200, cmdline.res.y/200);
 

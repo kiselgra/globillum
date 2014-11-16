@@ -4,6 +4,7 @@
 
 #include <librta/cuda-kernels.h>
 #include <librta/cuda-vec.h>
+#include <librta/intersect.h>
 #include <libhyb/trav-util.h>
 
 using namespace rta;
@@ -41,7 +42,7 @@ namespace k {
 
 	__global__ void generate_random_path_sample(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t,
 												triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-												halton_pool2f uniform_random, int sample, float3 *throughput) {
+												halton_pool2f uniform_random, int sample, float3 *throughput, float3 *ray_diff_org, float3 *ray_diff_dir) {
 		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 							 blockIdx.y * blockDim.y + threadIdx.y);
 		if (gid.x >= w || gid.y >= h) return;
@@ -72,6 +73,28 @@ namespace k {
 			ray_orig[id] = P;
 			ray_dir[id]  = dir;
 			max_t[id]    = FLT_MAX;
+
+			// upper ray
+			float3 other_org = ray_diff_org[id];
+			float3 other_dir = ray_diff_dir[id];
+			triangle_intersection<rta::cuda::simple_triangle> other_is;
+			intersect_tri_opt_nocheck(tri, (vec3f*)&other_org, (vec3f*)&other_dir, other_is);
+			float3 other_P, other_bc;
+			other_is.barycentric_coord(&other_bc);
+			barycentric_interpolation(&other_P, &other_bc, &tri.a, &tri.b, &tri.c);
+			ray_diff_org[id] = other_org;
+			other_dir = reflect(other_dir, N);
+			ray_diff_dir[id] = other_dir;
+			
+			// right ray
+			other_org = ray_diff_org[w*h+id];
+			other_dir = ray_diff_dir[w*h+id];
+			intersect_tri_opt_nocheck(tri, (vec3f*)&other_org, (vec3f*)&other_dir, other_is);
+			other_is.barycentric_coord(&other_bc);
+			barycentric_interpolation(&other_P, &other_bc, &tri.a, &tri.b, &tri.c);
+			ray_diff_org[w*h+id] = other_org;
+			other_dir = reflect(other_dir, N);
+			ray_diff_dir[w*h+id] = other_dir;
 		}
 		else {
 			ray_dir[id]  = make_float3(0,0,0);
@@ -85,12 +108,13 @@ namespace k {
 
 void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
 								 triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 halton_pool2f uniform_random, int sample, float3 *throughput) {
+								 halton_pool2f uniform_random, int sample, float3 *throughput, float *ray_diff_orig, float *ray_diff_dir) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
 	k::generate_random_path_sample<<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-														ti, triangles, uniform_random, sample, throughput);
+														ti, triangles, uniform_random, sample, throughput,
+														(float3*)ray_diff_orig, (float3*)ray_diff_dir);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
