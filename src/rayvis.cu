@@ -112,6 +112,7 @@ namespace k {
 }
 
 void add_vertex_to_all_rays(float3 v) {
+	if (curr_length >= max_raylength) return;
 	float3 *vertices;
 	checked_cuda(cudaGLMapBufferObject((void**)&vertices, mesh_vertex_buffer(ray_mesh, 0)));
 	
@@ -128,7 +129,7 @@ void add_vertex_to_all_rays(float3 v) {
 }
 
 void add_intersections_to_rays(int src_w, int src_h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles) {
-
+	if (curr_length >= max_raylength) return;
 	float3 *vertices;
 	checked_cuda(cudaGLMapBufferObject((void**)&vertices, mesh_vertex_buffer(ray_mesh, 0)));
 	

@@ -77,6 +77,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	int curr_bounce;
 	int path_len;
 	int max_path_len;
+	int path_samples;
 	rta::triangle_intersection<rta::cuda::simple_triangle> *path_intersections,
 	                                                       *shadow_intersections;
 	float3 *output_color, *path_accum_color, *throughput, *potential_sample_contribution;
@@ -98,10 +99,10 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	gpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles,
 				   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs, 
 				   rta::cuda::cgls::rect_light *lights, int nr_of_lights,
-				   gi::cuda::halton_pool2f rnd, int max_path_len)
+				   gi::cuda::halton_pool2f rnd, int max_path_len, int path_samples)
 	: local::gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs),
 	  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), w(w), h(h),
-	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), output_color(0), tracers(0),
+	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), path_samples(path_samples), output_color(0), tracers(0),
 	  light_sample_origins(0), light_sample_directions(0), light_sample_maxt(0),
 	  path_sample_origins(0), path_sample_directions(0), path_sample_maxt(0)
 	{
@@ -213,7 +214,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			return true;
 		else
 			new_path();
-		if (curr_path <= 8) {
+		if (curr_path < path_samples) {
 			return true;
 		}
 		return false;
