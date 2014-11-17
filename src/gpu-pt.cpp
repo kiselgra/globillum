@@ -14,7 +14,7 @@ void gpu_pt::activate(rt_set *orig_set) {
 	cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 	set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 	gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 4, 48);
+	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 4, 16);
 	set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 	set.basic_rt<B, T>()->ray_generator(set.rgen);
 	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
@@ -31,6 +31,7 @@ void gpu_pt::update() {
 		tracer->trace_progressively(false);
 		gpu_pt_bouncer<B,T> *bouncer = dynamic_cast<gpu_pt_bouncer<B, T>*>(set.bouncer);
 		float3 *colors = bouncer->output_color;
+// 		float3 *colors = bouncer->material_colors;
 		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 	}
 }

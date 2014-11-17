@@ -122,10 +122,11 @@ namespace rta {
 		void compute_mipmaps(texture_data *tex);
 
 		struct material_t {
-			float3 diffuse_color;
+			float3 diffuse_color, specular_color;
 			texture_data *diffuse_texture;
+			texture_data *specular_texture;
 
-			material_t() : diffuse_color(make_float3(0,0,0)), diffuse_texture(0) {
+			material_t() : diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), diffuse_texture(0), specular_texture(0) {
 			}
 		};
 

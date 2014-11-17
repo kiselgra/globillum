@@ -124,7 +124,9 @@ namespace rta {
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
 					out = mat.diffuse_color;
+// 					out = mat.specular_color;
 					if (mat.diffuse_texture) {
+// 					if (mat.specular_texture) {
 						float3 bc; 
 						is.barycentric_coord(&bc);
 						// tex coord
@@ -161,6 +163,7 @@ namespace rta {
 						diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
 						float diff = fmaxf(diff_x, diff_y);
 						// access texture
+// 						float3 tex = mat.specular_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
 						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
 						out.x *= tex.x;
 						out.y *= tex.y;
