@@ -62,8 +62,8 @@ namespace k {
 
 	__global__ void generate_random_path_sample(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t,
 												triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-												rta::cuda::material_t *mats,
-												halton_pool2f uniform_random, int sample, float3 *throughput, float3 *ray_diff_org, float3 *ray_diff_dir) {
+												rta::cuda::material_t *mats, halton_pool2f uniform_random, int curr_sample, int max_samples, 
+												float3 *throughput, float3 *ray_diff_org, float3 *ray_diff_dir) {
 		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 							 blockIdx.y * blockDim.y + threadIdx.y);
 		if (gid.x >= w || gid.y >= h) return;
@@ -128,7 +128,7 @@ namespace k {
 				ps /= pd+ps;
 			}
 			// normalized to 1 (inkl absorption)
-			float2 rnd = uniform_random.data[(3*id + sample) % uniform_random.N];
+			float2 rnd = uniform_random.data[(max_samples*2*id + curr_sample) % uniform_random.N];
 			bool diffuse_bounce = false,
 				 specular_bounce = false;
 			float P_component;
@@ -146,9 +146,10 @@ namespace k {
 		
 			float3 org_dir = ray_dir[id];
 			float3 dir;
+			float3 use_color = make_float3(1,1,1);
 			float n;
 			float omega_z;
-			rnd = uniform_random.data[(7*id + sample) % uniform_random.N];
+			rnd = uniform_random.data[(max_samples*id + curr_sample) % uniform_random.N];
 
 			bool reflection = false;
 			if (reflection) {
@@ -170,6 +171,7 @@ namespace k {
 				// store reflection ray differentials. (todo: change to broadened cone)
 				ray_diff_dir[id] = reflect(upper_dir, N);
 				ray_diff_dir[w*h+id] = reflect(right_dir, N);
+				use_color = diffuse;
 			}
 			else if (specular_bounce) {
 				float3 refl = reflect(org_dir, N);
@@ -184,6 +186,7 @@ namespace k {
 				ray_diff_dir[id] = reflect(upper_dir, N);
 				ray_diff_dir[w*h+id] = reflect(right_dir, N);
 				if ((dir|N)<0) specular_bounce = false;
+				use_color = specular;
 			}
 			if (diffuse_bounce||specular_bounce) {
 				float len = length_of_vector(dir);
@@ -193,7 +196,7 @@ namespace k {
 				ray_orig[id] = P;
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
-				throughput[id] *= (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+				throughput[id] *= use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
 
 				return;
 			}
@@ -215,14 +218,14 @@ namespace k {
 
 void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
 								 triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 rta::cuda::material_t *mats,
-								 halton_pool2f uniform_random, int sample, float3 *throughput, float *ray_diff_orig, float *ray_diff_dir) {
+								 rta::cuda::material_t *mats, halton_pool2f uniform_random, int curr_sample, int max_samples,
+								 float3 *throughput, float *ray_diff_orig, float *ray_diff_dir) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
 	k::generate_random_path_sample<<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-														ti, triangles, mats, uniform_random, sample, throughput,
-														(float3*)ray_diff_orig, (float3*)ray_diff_dir);
+														ti, triangles, mats, uniform_random, curr_sample, max_samples, 
+														throughput, (float3*)ray_diff_orig, (float3*)ray_diff_dir);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }

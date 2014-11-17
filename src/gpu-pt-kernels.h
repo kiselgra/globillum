@@ -12,8 +12,8 @@ void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int sa
 
 void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
 								 rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 rta::cuda::material_t *mats, gi::cuda::halton_pool2f uniform_random, int sample, float3 *throughput, 
-								 float *ray_diff_orig, float *ray_diff_dir);
+								 rta::cuda::material_t *mats, gi::cuda::halton_pool2f uniform_random, int curr_sample, int max_samples, 
+								 float3 *throughput, float *ray_diff_orig, float *ray_diff_dir);
 
 #endif
 

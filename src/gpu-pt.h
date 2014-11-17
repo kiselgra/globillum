@@ -150,7 +150,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	virtual void setup_new_path_sample() {
 		generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
 									path_intersections/* last intersection*/, this->tri_ptr, this->materials, uniform_random_numbers, 
-									(max_path_len*curr_path)+path_len, throughput,
+									(max_path_len*curr_path)+path_len, max_path_len*path_samples, throughput,
 									this->crgs->differentials_origin, this->crgs->differentials_direction);
 	}
 	virtual void integrate_light_sample() {
