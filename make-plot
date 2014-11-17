@@ -1,0 +1,31 @@
+#!/bin/bash
+	git log | grep '^Date:' | sed -e 's/Date:\s\+... \(...\) \(\S\+\) \(\S\+\) \(....\).*/\1\/\2\/\4#\3/' > /tmp/githack
+	( 	for entry in $(cat /tmp/githack) ; do
+			date=$(echo $entry | sed -e 's/#.*//')
+			time=$(echo $entry | sed -e 's/.*#//')
+			scaled=$(echo $time \
+						| cut -f 1,2 -d ':' \
+						| sed -e 's/:/+(1\/60)\*/' \
+						| sed -e 's/0\([123456789]\)/\1/' \
+						| sed -e 's/.*/f(&)/' \
+						| calc -p 'define f(x) { if (x < 8) return x+24; return x}'\
+						| tail -n1 \
+						| sed -e 's/~//')
+			echo "$date $scaled"
+		done 
+	) > /tmp/githack-b
+
+						#| calc -p 'define f(x) { if (x < 8) return x+24; return x}'\
+	min=$(tail -n1 /tmp/githack-b | sed -e 's/#.*//')
+	max=$(head -n1 /tmp/githack-b | sed -e 's/#.*//')
+	gnuplot -e 'set terminal png' \
+			-e 'set xdata time' \
+			-e 'set grid' \
+			-e 'set timefmt "%b/%d/%Y"' \
+			-e "set xrange [ '$min' : '$max' ]" \
+			-e "set yrange [ 0 : 32 ]" \
+			-e "set output 'git.png'" \
+			-e "set ytics 4" \
+			-e 'plot "/tmp/githack-b" using 1:2 pt 7 ps 2' \
+			-p
+
