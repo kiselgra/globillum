@@ -127,6 +127,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		path_len = 0;
 		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
 		reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
+		reset_gpu_buffer(output_color, w, h, make_float3(0,0,0));
 		restart_rayvis();
 	}
 	virtual void new_path() {

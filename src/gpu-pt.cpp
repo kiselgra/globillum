@@ -8,13 +8,15 @@ using namespace rta;
 extern cuda::material_t *gpu_materials;
 
 void gpu_pt::activate(rt_set *orig_set) {
+	if (activated) return;
+	gi_algorithm::activate(orig_set);
 	set = *orig_set;
 	set.rt = set.rt->copy();
 	gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
 	cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 	set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 	gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 4, 64);
+	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 1, 16);
 	set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 	set.basic_rt<B, T>()->ray_generator(set.rgen);
 	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();

@@ -109,6 +109,8 @@ namespace local {
 
 
 	void gpu_cgls_lights::activate(rt_set *orig_set) {
+		if (activated) return;
+		gi_algorithm::activate(orig_set);
 		set = *orig_set;
 		set.rt = set.rt->copy();
 		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
