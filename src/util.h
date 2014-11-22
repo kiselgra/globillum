@@ -24,6 +24,22 @@ namespace gi {
 		 *  \note The pointer in the returned structure points to gpu memory.
 		 */
 		halton_pool2f generate_halton_pool_on_gpu(int N);
+	
+
+		heterogenous inline unsigned int lcg_step(unsigned int *z, const unsigned int A, const unsigned int C)  {  
+			return *z=(A**z+C);  
+		}
+		heterogenous inline float uniform_random_lcg(float *f) {
+			unsigned int r = lcg_step((unsigned int*)f, 1664525, 1013904223U);
+			return 2.3283064365387e-10 * r;
+		}
+		heterogenous inline float2 uniform_random_lcg(float2 *f) {
+			unsigned int x = lcg_step((unsigned int*)&f->x, 1664525, 1013904223U);
+			unsigned int y = lcg_step((unsigned int*)&f->y, 1664525, 1013904223U);
+			return make_float2(2.3283064365387e-10 * x,
+							   2.3283064365387e-10 * y);
+		}
+
 
 	}
 }

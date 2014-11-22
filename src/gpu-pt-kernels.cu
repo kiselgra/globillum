@@ -60,6 +60,7 @@ namespace k {
 		return false;
 	}
 
+
 	__global__ void generate_random_path_sample(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t,
 												triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
 												rta::cuda::material_t *mats, halton_pool2f uniform_random, int curr_sample, int max_samples, 
@@ -127,16 +128,27 @@ namespace k {
 				pd /= pd+ps;
 				ps /= pd+ps;
 			}
+			float2 rnd;
+// 			if (curr_sample == 0) {
+// 				rnd = uniform_random.data[id+curr_sample];
+// 				uniform_random.data[id].x = (float)(*((unsigned int*)&uniform_random.data[id].x)+id);
+// 				uniform_random.data[id].y = (float)(*((unsigned int*)&uniform_random.data[id].y)+id);
+// 			}
+// 			else {
+				rnd = uniform_random_lcg(&uniform_random.data[id]);
+// 			}
+
 			// normalized to 1 (inkl absorption)
-			float2 rnd = uniform_random.data[(max_samples*2*id + curr_sample) % uniform_random.N];
+			float sel = uniform_random_lcg(&uniform_random.data[id].x);
+// 			float sel = uniform_random.data[id+curr_sample].y;
 			bool diffuse_bounce = false,
 				 specular_bounce = false;
 			float P_component;
-			if (rnd.y <= pd) {
+			if (sel <= pd) {
 				diffuse_bounce = true;
 				P_component = pd;
 			}
-			else if (rnd.y <= pd+ps) {
+			else if (sel <= pd+ps) {
 				specular_bounce = true;
 				P_component = ps;
 			}
@@ -149,8 +161,6 @@ namespace k {
 			float3 use_color = make_float3(1,1,1);
 			float n;
 			float omega_z;
-			rnd = uniform_random.data[(max_samples*id + curr_sample) % uniform_random.N];
-
 			bool reflection = false;
 			if (reflection) {
 				org_dir = transform_to_tangent_frame(org_dir, T, B, N);
@@ -196,7 +206,8 @@ namespace k {
 				ray_orig[id] = P;
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
-				throughput[id] *= use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+// 				throughput[id] *= use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+				throughput[id] = make_float3(0,0,0);
 
 				return;
 			}
