@@ -79,17 +79,6 @@ namespace rta {
 						float3 right = make_tangential(make_float3(1,0,0), light_dir);
 						float3 up = make_tangential(make_float3(0,1,0), light_dir);
 						float3 rnd = next_random3f(uniform01, id, sample, max_samples);
-// 						float2 rnd;
-// 						if (sample == 0) {
-// 							rnd = uniform01.data[id+sample];
-// 							uniform01.data[id].x = (float)(*((unsigned int*)&uniform01.data[id].x)+id);
-// 							uniform01.data[id].y = (float)(*((unsigned int*)&uniform01.data[id].y)+id);
-// 						}
-// 						else {
-// 							// the conversion to lcg was done be the path sampler, already. 
-// 							// this is really messed up...
-// 							rnd = gi::cuda::uniform_random_lcg(&uniform01.data[id]);
-// 						}
 						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].wh.x,
 													(rnd.y - 0.5f) * lights[0].wh.y);
 						float3 light_sample = light_pos + offset.x * right + offset.y * up;

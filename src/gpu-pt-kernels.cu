@@ -130,19 +130,6 @@ namespace k {
 				pd /= pd+ps;
 				ps /= pd+ps;
 			}
-// 			float2 rnd;
-// 			if (curr_sample == 0) {
-// 				rnd = uniform_random.data[id+curr_sample];
-// 				uniform_random.data[id].x = (float)(*((unsigned int*)&uniform_random.data[id].x)+id);
-// 				uniform_random.data[id].y = (float)(*((unsigned int*)&uniform_random.data[id].y)+id);
-// 			}
-// 			else {
-// 				rnd = uniform_random_lcg(&uniform_random.data[id]);
-// 			}
-
-			// normalized to 1 (inkl absorption)
-// 			float sel = uniform_random_lcg(&uniform_random.data[id].x);
-// 			float sel = uniform_random.data[id+curr_sample].y;
 			bool diffuse_bounce = false,
 				 specular_bounce = false;
 			float P_component;
@@ -154,9 +141,6 @@ namespace k {
 				specular_bounce = true;
 				P_component = ps;
 			}
-// 			diffuse_bounce = false;
-// 			specular_bounce = true;
-// 			P_component = 1;
 		
 			float3 org_dir = ray_dir[id];
 			float3 dir;
@@ -210,7 +194,6 @@ namespace k {
 				max_t[id]    = FLT_MAX;
 				throughput[id] *= use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
 // 				throughput[id] = make_float3(0,0,0);
-
 				return;
 			}
 
@@ -218,13 +201,13 @@ namespace k {
 // 			ray_diff_dir[id] = other_dir;
 // 			other_dir = reflect(other_dir, N);
 		}
-		else {
+// 		else {
 		// fall through
 		ray_dir[id]  = make_float3(0,0,0);
 		ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 		max_t[id] = -1;
 		throughput[id] = make_float3(0,0,0);
-		}
+// 		}
 
 	}
 }
