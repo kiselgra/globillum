@@ -57,9 +57,10 @@ namespace rta {
 			}
 				
 			namespace k {
+				template<typename rng_t>
 				__global__ void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float3 *ray_orig, float3 *ray_dir, float *max_t,
 														  triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-														  gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample) {
+														  rng_t uniform01, float3 *potential_sample_contribution, int sample, int max_samples) {
 					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 										 blockIdx.y * blockDim.y + threadIdx.y);
 					if (gid.x >= w || gid.y >= h) return;
@@ -77,17 +78,18 @@ namespace rta {
 						float3 light_dir = lights[0].dir;
 						float3 right = make_tangential(make_float3(1,0,0), light_dir);
 						float3 up = make_tangential(make_float3(0,1,0), light_dir);
-						float2 rnd;
-						if (sample == 0) {
-							rnd = uniform01.data[id+sample];
-							uniform01.data[id].x = (float)(*((unsigned int*)&uniform01.data[id].x)+id);
-							uniform01.data[id].y = (float)(*((unsigned int*)&uniform01.data[id].y)+id);
-						}
-						else {
-							// the conversion to lcg was done be the path sampler, already. 
-							// this is really messed up...
-							rnd = gi::cuda::uniform_random_lcg(&uniform01.data[id]);
-						}
+						float3 rnd = next_random3f(uniform01, id, sample, max_samples);
+// 						float2 rnd;
+// 						if (sample == 0) {
+// 							rnd = uniform01.data[id+sample];
+// 							uniform01.data[id].x = (float)(*((unsigned int*)&uniform01.data[id].x)+id);
+// 							uniform01.data[id].y = (float)(*((unsigned int*)&uniform01.data[id].y)+id);
+// 						}
+// 						else {
+// 							// the conversion to lcg was done be the path sampler, already. 
+// 							// this is really messed up...
+// 							rnd = gi::cuda::uniform_random_lcg(&uniform01.data[id]);
+// 						}
 						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].wh.x,
 													(rnd.y - 0.5f) * lights[0].wh.y);
 						float3 light_sample = light_pos + offset.x * right + offset.y * up;
@@ -114,12 +116,24 @@ namespace rta {
 
 			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample) {
+										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample, int max_samples) {
 				checked_cuda(cudaPeekAtLastError());
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
 				k::generate_rectlight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-																  ti, triangles, uniform01, potential_sample_contribution, sample);
+																  ti, triangles, uniform01, potential_sample_contribution, sample, max_samples);
+				checked_cuda(cudaPeekAtLastError());
+				checked_cuda(cudaDeviceSynchronize());
+			}
+			
+			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+										   gi::cuda::lcg_random_state uniform01, float3 *potential_sample_contribution, int sample, int max_samples) {
+				checked_cuda(cudaPeekAtLastError());
+				dim3 threads(16, 16);
+				dim3 blocks = block_configuration_2d(w, h, threads);
+				k::generate_rectlight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  ti, triangles, uniform01, potential_sample_contribution, sample, max_samples);
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());
 			}

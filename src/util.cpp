@@ -1,5 +1,7 @@
 #include "util.h"
 
+#include <omp.h>
+
 using namespace std;
 
 namespace gi {
@@ -29,6 +31,25 @@ namespace gi {
 			}
 			checked_cuda(cudaMalloc(&pool.data, sizeof(float2)*N));
 			checked_cuda(cudaMemcpy(pool.data, host, sizeof(float2)*N, cudaMemcpyHostToDevice));
+			delete [] host;
+			return pool;
+		}
+		
+		lcg_random_state generate_lcg_pool_on_gpu(int N) {
+			lcg_random_state pool;
+			pool.N = N;
+			unsigned int *host = new unsigned int[N];
+			#pragma omp parallel private(seed)
+			{
+				unsigned int seed = omp_get_thread_num();
+				//#pragma omp for schedule(dynamic, 32) private(seed)
+				#pragma omp for
+				for (int i = 0; i < N; ++i) {
+					host[i] = rand_r(&seed);
+				}
+			}
+			checked_cuda(cudaMalloc(&pool.data, sizeof(unsigned int)*N));
+			checked_cuda(cudaMemcpy(pool.data, host, sizeof(unsigned int)*N, cudaMemcpyHostToDevice));
 			delete [] host;
 			return pool;
 		}

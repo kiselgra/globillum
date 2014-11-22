@@ -74,7 +74,7 @@ namespace local {
 			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 													   this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
 													   primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
-													   curr_bounce);
+													   curr_bounce, samples);
 		}
 		virtual void integrate_light_sample() {
 			rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,

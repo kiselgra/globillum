@@ -71,7 +71,10 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 	declare_traits_types;
 	rta::cuda::cgls::rect_light *lights;
 	int nr_of_lights;
-	gi::cuda::halton_pool2f uniform_random_numbers;
+	enum random_number_generator_t { none, simple_halton, lcg };
+	random_number_generator_t rnd_type;
+	gi::cuda::halton_pool2f rnd_halton;
+	gi::cuda::lcg_random_state rnd_lcg;
 	uint w, h;
 	int curr_path;
 	int curr_bounce;
@@ -98,10 +101,9 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 
 	gpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles,
 				   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs, 
-				   rta::cuda::cgls::rect_light *lights, int nr_of_lights,
-				   gi::cuda::halton_pool2f rnd, int max_path_len, int path_samples)
+				   rta::cuda::cgls::rect_light *lights, int nr_of_lights, int max_path_len, int path_samples)
 	: local::gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs),
-	  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), w(w), h(h),
+	  lights(lights), nr_of_lights(nr_of_lights), rnd_type(none), w(w), h(h),
 	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), path_samples(path_samples), output_color(0), tracers(0),
 	  light_sample_origins(0), light_sample_directions(0), light_sample_maxt(0),
 	  path_sample_origins(0), path_sample_directions(0), path_sample_maxt(0)
@@ -121,6 +123,14 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		checked_cuda(cudaFree(output_color));
 		checked_cuda(cudaFree(path_accum_color));
 		checked_cuda(cudaFree(shadow_intersections));
+	}
+	virtual void random_number_generator(gi::cuda::halton_pool2f rng) {
+		rnd_halton = rng;
+		rnd_type = simple_halton;
+	}
+	virtual void random_number_generator(gi::cuda::lcg_random_state rng) {
+		rnd_lcg = rng;
+		rnd_type = lcg;
 	}
 	virtual void new_pass() {
 		curr_bounce = curr_path = 0;
@@ -143,16 +153,30 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		rta::cuda::evaluate_material_bilin(this->w, this->h, path_intersections, this->tri_ptr, this->materials, this->material_colors);
 	}
 	virtual void setup_new_arealight_sample() {
-		rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
-												   light_sample_origins, light_sample_directions, light_sample_maxt,
-												   path_intersections, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
-												   (max_path_len*curr_path)+path_len);	// last param is random-offset
+		if (rnd_type == simple_halton)
+			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
+													   light_sample_origins, light_sample_directions, light_sample_maxt,
+													   path_intersections, this->tri_ptr, rnd_halton, potential_sample_contribution, 
+													   (max_path_len*curr_path)+path_len, max_path_len*path_samples);
+		else if (rnd_type == lcg)
+			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
+													   light_sample_origins, light_sample_directions, light_sample_maxt,
+													   path_intersections, this->tri_ptr, rnd_lcg, potential_sample_contribution, 
+													   (max_path_len*curr_path)+path_len, max_path_len*path_samples);
+		else throw std::logic_error("unsupported random number generator in setup_new_arealight_sample!");
 	}
 	virtual void setup_new_path_sample() {
-		generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-									path_intersections/* last intersection*/, this->tri_ptr, this->materials, uniform_random_numbers, 
-									(max_path_len*curr_path)+path_len, max_path_len*path_samples, throughput,
-									this->crgs->differentials_origin, this->crgs->differentials_direction);
+		if (rnd_type == simple_halton)
+			generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
+										path_intersections/* last intersection*/, this->tri_ptr, this->materials, rnd_halton, 
+										(max_path_len*curr_path)+path_len, max_path_len*path_samples, throughput,
+										this->crgs->differentials_origin, this->crgs->differentials_direction);
+		else if (rnd_type == lcg)
+			generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
+										path_intersections/* last intersection*/, this->tri_ptr, this->materials, rnd_lcg, 
+										(max_path_len*curr_path)+path_len, max_path_len*path_samples, throughput,
+										this->crgs->differentials_origin, this->crgs->differentials_direction);
+		else throw std::logic_error("unsupported random number generator in setup_new_arealight_sample!");
 	}
 	virtual void integrate_light_sample() {
 		rta::cuda::cgls::integrate_light_sample(this->w, this->h, shadow_intersections, potential_sample_contribution,
