@@ -71,10 +71,15 @@ namespace local {
 			return (curr_bounce < samples+1);
 		}
 		virtual void setup_new_arealight_sample() {
+			gi::cuda::random_sampler_path_info pi;
+			pi.curr_path = 0;
+			pi.curr_bounce = curr_bounce;
+			pi.max_paths = 1;
+			pi.max_bounces = samples;
 			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 													   this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
 													   primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
-													   curr_bounce, samples);
+													   pi);
 		}
 		virtual void integrate_light_sample() {
 			rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,

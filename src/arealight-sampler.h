@@ -23,10 +23,22 @@ namespace rta {
 
 			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, int sample, int max_samples);
+										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution,
+										   gi::cuda::random_sampler_path_info pi);
 			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-										   gi::cuda::lcg_random_state uniform01, float3 *potential_sample_contribution, int sample, int max_samples);
+										   gi::cuda::lcg_random_state uniform01, float3 *potential_sample_contribution,
+										   gi::cuda::random_sampler_path_info pi);
+			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+										   gi::cuda::multi_bounce_halton_pool3f uniform01, float3 *potential_sample_contribution,
+										   gi::cuda::random_sampler_path_info pi);
+			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+										   gi::cuda::halton_pool3f uniform01, float3 *potential_sample_contribution,
+										   gi::cuda::random_sampler_path_info pi);
+			
+			
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
 										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, int sample);
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 

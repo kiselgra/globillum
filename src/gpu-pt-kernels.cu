@@ -83,7 +83,7 @@ namespace k {
 										 triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										 rta::cuda::material_t *mats, rng_t uniform_random, float3 *throughput, float3 *col_accum,
 										 float3 *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
-										 float3 *potential_sample_contribution, int curr_sample, int max_samples) {
+										 float3 *potential_sample_contribution, random_sampler_path_info pi) {
 		// general setup, early out if the path intersection is invalid.
 		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 							 blockIdx.y * blockDim.y + threadIdx.y);
@@ -166,7 +166,7 @@ namespace k {
 			}
 
 			// compute next path segment by sampling the brdf
-			float3 random = next_random3f(uniform_random, id, curr_sample, max_samples);
+			float3 random = next_random3f(uniform_random, id, pi);
 			float pd = diffuse.x+diffuse.y+diffuse.z;
 			float ps = specular.x+specular.y+specular.z;
 			if (pd + ps > 1) {
@@ -260,7 +260,7 @@ void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *
 										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, halton_pool2f uniform_random, float3 *throughput, float3 *col_accum,
 										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
-										  float3 *potential_sample_contribution, int curr_sample, int max_samples) {
+										  float3 *potential_sample_contribution, random_sampler_path_info pi) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
@@ -268,7 +268,7 @@ void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *
 																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
 																  ti, triangles, mats, uniform_random, throughput, 
 																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution,
-																  curr_sample, max_samples);
+																  pi);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
@@ -277,7 +277,7 @@ void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *
 										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, lcg_random_state uniform_random, float3 *throughput, float3 *col_accum,
 										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
-										  float3 *potential_sample_contribution, int curr_sample, int max_samples) {
+										  float3 *potential_sample_contribution, random_sampler_path_info pi) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
@@ -285,7 +285,41 @@ void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *
 																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
 																  ti, triangles, mats, uniform_random, throughput, 
 																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution, 
-																  curr_sample, max_samples);
+																  pi);
+	checked_cuda(cudaPeekAtLastError());
+	checked_cuda(cudaDeviceSynchronize());
+}
+
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, multi_bounce_halton_pool3f uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, random_sampler_path_info pi) {
+	checked_cuda(cudaPeekAtLastError());
+	dim3 threads(16, 16);
+	dim3 blocks = block_configuration_2d(w, h, threads);
+	k::compute_path_contribution_and_bounce <<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
+																  ti, triangles, mats, uniform_random, throughput, 
+																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution, 
+																  pi);
+	checked_cuda(cudaPeekAtLastError());
+	checked_cuda(cudaDeviceSynchronize());
+}
+
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, halton_pool3f uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, random_sampler_path_info pi) {
+	checked_cuda(cudaPeekAtLastError());
+	dim3 threads(16, 16);
+	dim3 blocks = block_configuration_2d(w, h, threads);
+	k::compute_path_contribution_and_bounce <<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
+																  ti, triangles, mats, uniform_random, throughput, 
+																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution, 
+																  pi);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }

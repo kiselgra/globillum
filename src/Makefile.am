@@ -11,7 +11,7 @@ gi_SOURCES = 	main.cpp \
 				gpu_cgls_lights.cpp gpu_cgls_lights.h \
 				gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
 				rayvis.cu rayvis.h \
-				util.cpp util.h \
+				util.cpp util-kernels.cu util.h \
 				cmdline.cpp cmdline.h
 
 # for bison/flex

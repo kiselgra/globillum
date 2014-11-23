@@ -18,6 +18,21 @@ namespace gi {
 		return result;
 	}
 
+	float chalton(int index, int base) {
+		int c = 0;
+		float result = 0.0f;
+		float f = 1.0f / float(base);
+		int i = index;
+		while (i > 0) {
+			result += f * (i%base);
+			i = i / base;
+			f = f / float(base);
+			c++;
+		}
+		cout << index << " " << c << endl;
+		return result;
+	}
+
 	namespace cuda {
 
 		halton_pool2f generate_halton_pool_on_gpu(int N) {
@@ -34,7 +49,17 @@ namespace gi {
 			delete [] host;
 			return pool;
 		}
-		
+
+		halton_pool3f generate_halton_pool_on_gpu(int w, int h, int offset) {
+			halton_pool3f pool;
+			pool.N = w*h;
+			checked_cuda(cudaMalloc(&pool.data, sizeof(float3)*pool.N));
+			pool.w = w;
+			pool.h = h;
+			pool.prime_offset = offset;
+			return pool;
+		}
+
 		lcg_random_state generate_lcg_pool_on_gpu(int N) {
 			lcg_random_state pool;
 			pool.N = N;
@@ -51,6 +76,35 @@ namespace gi {
 			checked_cuda(cudaMalloc(&pool.data, sizeof(unsigned int)*N));
 			checked_cuda(cudaMemcpy(pool.data, host, sizeof(unsigned int)*N, cudaMemcpyHostToDevice));
 			delete [] host;
+			return pool;
+		}
+		
+		multi_bounce_halton_pool3f generate_multi_bounce_halton_pool_on_gpu(int N, int bounces, int b0, int b1, int b2) {
+			multi_bounce_halton_pool3f pool;
+			pool.bounces = bounces;
+			pool.chunksize = N;
+			int elements  = bounces*N;
+			float3 *host = new float3[elements];
+			#pragma omp parallel for schedule(dynamic, 32)
+			for (int i = 0; i < elements; ++i) {
+				host[i].x = halton(i+1, b0);
+				host[i].y = halton(i+1, b1);
+				host[i].z = halton(i+1, b2);
+			}
+			checked_cuda(cudaMalloc(&pool.data, sizeof(float3)*elements));
+			checked_cuda(cudaMemcpy(pool.data, host, sizeof(float3)*elements, cudaMemcpyHostToDevice));
+			cout << "Multi-bounce halton data: " << elements*sizeof(float3)/(1024*1024) << " MiB." << endl;
+			delete [] host;
+
+// 			cout << "2" << endl;
+// 			for (int i = 0; i < 20; ++i) {
+// 				chalton(N*i, 2);
+// 			}
+// 
+// 			cout << "5" << endl;
+// 			for (int i = 0; i < 20; ++i) {
+// 				chalton(N*i, 5);
+// 			}
 			return pool;
 		}
 
