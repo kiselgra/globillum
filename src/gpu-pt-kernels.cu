@@ -238,7 +238,11 @@ namespace k {
 				ray_orig[id] = P;
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
-				throughput[id] = TP * use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+				TP *= (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+				TP *= fabsf(-org_dir|N);
+				float3 brdf = diffuse * float(M_1_PI);// * fmaxf((N|-org_dir), 0.0f);
+				brdf += (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|dir), 0.0f), shininess);
+				throughput[id] = TP * brdf;
 // 				throughput[id] = make_float3(0,0,0);
 				return;
 			}
