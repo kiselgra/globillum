@@ -165,17 +165,19 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 													   (max_path_len*curr_path)+path_len, max_path_len*path_samples);
 		else throw std::logic_error("unsupported random number generator in setup_new_arealight_sample!");
 	}
-	virtual void setup_new_path_sample() {
+	virtual void compute_path_contrib_and_bounce() {
 		if (rnd_type == simple_halton)
-			generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-										path_intersections/* last intersection*/, this->tri_ptr, this->materials, rnd_halton, 
-										(max_path_len*curr_path)+path_len, max_path_len*path_samples, throughput,
-										this->crgs->differentials_origin, this->crgs->differentials_direction);
+			compute_path_contribution_and_bounce(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
+												 this->crgs->differentials_origin, this->crgs->differentials_direction,
+												 path_intersections, this->tri_ptr, this->materials, rnd_halton, throughput, path_accum_color,
+												 light_sample_directions, shadow_intersections, potential_sample_contribution,
+												 (max_path_len*curr_path)+path_len, max_path_len*path_samples);
 		else if (rnd_type == lcg)
-			generate_random_path_sample(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-										path_intersections/* last intersection*/, this->tri_ptr, this->materials, rnd_lcg, 
-										(max_path_len*curr_path)+path_len, max_path_len*path_samples, throughput,
-										this->crgs->differentials_origin, this->crgs->differentials_direction);
+			compute_path_contribution_and_bounce(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
+												 this->crgs->differentials_origin, this->crgs->differentials_direction,
+												 path_intersections, this->tri_ptr, this->materials, rnd_lcg, throughput, path_accum_color,
+												 light_sample_directions, shadow_intersections, potential_sample_contribution,
+												 (max_path_len*curr_path)+path_len, max_path_len*path_samples);
 		else throw std::logic_error("unsupported random number generator in setup_new_arealight_sample!");
 	}
 	virtual void integrate_light_sample() {
@@ -188,31 +190,21 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 			
 		std::cout << "bounce " << curr_bounce << " (path " << curr_path << ")" << std::endl;
 
-		// path_len is 0 for the computation of the first path vertex, and during the corresponding light sampling.
 		if (path_len == 0 && this->gpu_last_intersection == path_intersections) {
-			std::cout << " - eval mat" << std::endl;
-			this->evaluate_material();
-// 			compute_light_sample = true;
-
 			vec3f campos = this->crgs->position;
 			std::cout << " - adding camera position as vertex" << std::endl;
 			add_vertex_to_all_rays(make_float3(campos.x, campos.y, campos.z));
 			std::cout << " - adding primary hit as vertex" << std::endl;
 			add_intersections_to_rays(this->w, this->h, this->gpu_last_intersection, this->tri_ptr);
 			compute_light_sample = true;
-// 			compute_path_segment = true;
 		}
 		else {
 			if (this->gpu_last_intersection == shadow_intersections) {
-				std::cout << " - integrating light sample" << std::endl;
-				integrate_light_sample();
 				compute_path_segment = true;
 			}
 			else {
 				std::cout << " - add path intersection as vertex" << std::endl;
 				add_intersections_to_rays(this->w, this->h, path_intersections, this->tri_ptr);
-// 				evaluate_material_with_point_sampling();
-				this->evaluate_material();
 				compute_light_sample = true;
 			}
 		}
@@ -225,7 +217,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public local:
 		}
 		if (compute_path_segment) {
 			std::cout << " - computing new path sample" << std::endl;
-			setup_new_path_sample();
+			compute_path_contrib_and_bounce();
 			this->gpu_last_intersection = path_intersections;
 			tracers->select_closest_hit_tracer();
 			// a light has been sampled, so the current path is finished.

@@ -61,58 +61,73 @@ namespace k {
 	}
 
 
-	template<typename rng_t>
-	__global__ void generate_random_path_sample(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t,
-												triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-												rta::cuda::material_t *mats, rng_t uniform_random, int curr_sample, int max_samples, 
-												float3 *throughput, float3 *ray_diff_org, float3 *ray_diff_dir) {
+	/*! \brief This kernel computes the current path's contribution (after the
+	 *  shadowray has been cast) and sets up the next ray to create a longer
+	 *  path.
+	 *
+	 *  The outline is as follows:
+	 *  - As the surface color has to be computed for path-throughput as well
+	 *    as for illumination we compute it first.
+	 *  - Then we check if the light is visible from the original intersection
+	 *    point.
+	 *    - If it is, we compute the illumination and evaluate the complete brdf
+	 *      (which is the phong brdf in our case).
+	 *    - Furthermore, the light's contribution has to be weighted by the
+	 *      path throughput and added to the current path's accumulation buffer.
+	 *    - (MIS could be integrated here if we cast two shadow rays (including
+	 *      further ray and intersection buffers).
+	 *  - Next we compute the new bounce direction by sampling the phong brdf.
+	 */
+	template<typename rng_t> __global__ void 
+	compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t, float3 *ray_diff_org, float3 *ray_diff_dir,
+										 triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										 rta::cuda::material_t *mats, rng_t uniform_random, float3 *throughput, float3 *col_accum,
+										 float3 *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										 float3 *potential_sample_contribution, int curr_sample, int max_samples) {
+		// general setup, early out if the path intersection is invalid.
 		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 							 blockIdx.y * blockDim.y + threadIdx.y);
 		if (gid.x >= w || gid.y >= h) return;
 		int id = gid.y*w+gid.x;
 		triangle_intersection<rta::cuda::simple_triangle> is = ti[id];
 		if (is.valid()) {
-			float3 bc; 
-			float3 P, N, T, B;
-			float2 TC;
+
+			// load hit triangle and compute hitpoint geometry
 			rta::cuda::simple_triangle tri = triangles[is.ref];
+			float2 TC;
+			float3 bc, P, N;
 			is.barycentric_coord(&bc);
 			barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 			barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
 			barycentric_interpolation(&TC, &bc, &tri.ta, &tri.tb, &tri.tc);
 			normalize_vec3f(&N);
-
-			make_tangent_frame(N, T, B);
-			normalize_vec3f(&T);
-			normalize_vec3f(&B);
-			
+				
 			// eval ray differentials (stored below)
 			float3 upper_org = ray_diff_org[id],
 				   upper_dir = ray_diff_dir[id],
 				   right_org = ray_diff_org[w*h+id],
 				   right_dir = ray_diff_dir[w*h+id];
 			triangle_intersection<rta::cuda::simple_triangle> other_is;
-			float3 upper_P, right_P, other_bc;
+			float3 upper_P, right_P;
 			float2 upper_T, right_T;
 			// - upper ray
 			intersect_tri_opt_nocheck(tri, (vec3f*)&upper_org, (vec3f*)&upper_dir, other_is);
-			other_is.barycentric_coord(&other_bc);
-			barycentric_interpolation(&upper_T, &other_bc, &tri.ta, &tri.tb, &tri.tc);
-			barycentric_interpolation(&upper_P, &other_bc, &tri.a, &tri.b, &tri.c);
+			other_is.barycentric_coord(&bc);
+			barycentric_interpolation(&upper_T, &bc, &tri.ta, &tri.tb, &tri.tc);
+			barycentric_interpolation(&upper_P, &bc, &tri.a, &tri.b, &tri.c);
 			// - right ray
 			intersect_tri_opt_nocheck(tri, (vec3f*)&right_org, (vec3f*)&right_dir, other_is);
-			other_is.barycentric_coord(&other_bc);
-			barycentric_interpolation(&right_T, &other_bc, &tri.ta, &tri.tb, &tri.tc);
-			barycentric_interpolation(&right_P, &other_bc, &tri.a, &tri.b, &tri.c);
+			other_is.barycentric_coord(&bc);
+			barycentric_interpolation(&right_T, &bc, &tri.ta, &tri.tb, &tri.tc);
+			barycentric_interpolation(&right_P, &bc, &tri.a, &tri.b, &tri.c);
 			// - store origins
 			ray_diff_org[id] = upper_P;
 			ray_diff_org[w*h+id] = right_P;
-			
-			// material components
+		
+			// load and evaluate material
 			material_t mat = mats[tri.material_index];
 			float3 diffuse = mat.diffuse_color,
 				   specular = mat.specular_color;
-			float3 random = next_random3f(uniform_random, id, curr_sample, max_samples);
 			if (mat.diffuse_texture || mat.specular_texture) {
 				float diff_x = fabsf(TC.x - upper_T.x);
 				float diff_y = fabsf(TC.y - upper_T.y);
@@ -124,6 +139,34 @@ namespace k {
 				if (mat.specular_texture)
 					specular *= mat.specular_texture->sample_bilin_lod(TC.x, TC.y, diff, gid, blockIdx, threadIdx);
 			}
+			float sum = diffuse.x+diffuse.y+diffuse.z+specular.x+specular.y+specular.z;;
+			if (sum > 1.0f) {
+				diffuse /= sum;
+				specular /= sum;
+			}
+
+			// add lighting to accumulation buffer
+			float3 org_dir = ray_dir[id];
+			normalize_vec3f(&org_dir);
+			float3 R = reflect(org_dir, N);
+			// attention: recycling of 'is'
+			is = shadow_ti[id];
+			float3 TP = throughput[id];
+			const float shininess = 60.0f;
+			if (!is.valid()) {
+				float3 prev = col_accum[id];
+				float3 weight = potential_sample_contribution[id];
+				// attention: we need the throughput *before* the bounce
+				float3 curr = TP * weight;
+				float3 light_dir = to_light[id];
+				normalize_vec3f(&light_dir);
+				float3 brdf = diffuse * float(M_1_PI) * fmaxf((N|-org_dir), 0.0f);
+				brdf += (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|light_dir), 0.0f), shininess);
+				col_accum[id] = prev + brdf * curr;
+			}
+
+			// compute next path segment by sampling the brdf
+			float3 random = next_random3f(uniform_random, id, curr_sample, max_samples);
 			float pd = diffuse.x+diffuse.y+diffuse.z;
 			float ps = specular.x+specular.y+specular.z;
 			if (pd + ps > 1) {
@@ -141,8 +184,12 @@ namespace k {
 				specular_bounce = true;
 				P_component = ps;
 			}
-		
-			float3 org_dir = ray_dir[id];
+
+			float3 T, B;
+			make_tangent_frame(N, T, B);
+			normalize_vec3f(&T);
+			normalize_vec3f(&B);
+			
 			float3 dir;
 			float3 use_color = make_float3(1,1,1);
 			float n;
@@ -170,14 +217,13 @@ namespace k {
 				use_color = diffuse;
 			}
 			else if (specular_bounce) {
-				float3 refl = reflect(org_dir, N);
-				make_tangent_frame(refl, T, B);
-				n = 140.0f;
+				make_tangent_frame(R, T, B);
+				n = shininess;
 				dir.z = powf(random.x, 1.0f/(n+1.0f));
 				dir.x = sqrtf(1.0f-dir.z*dir.z) * cosf(2.0f*float(M_PI)*random.y);
 				dir.y = sqrtf(1.0f-dir.z*dir.z) * sinf(2.0f*float(M_PI)*random.y);
 				omega_z = dir.z;
-				dir = transform_from_tangent_frame(dir, T, B, refl);
+				dir = transform_from_tangent_frame(dir, T, B, R);
 				// store reflection ray differentials.
 				ray_diff_dir[id] = reflect(upper_dir, N);
 				ray_diff_dir[w*h+id] = reflect(right_dir, N);
@@ -192,50 +238,51 @@ namespace k {
 				ray_orig[id] = P;
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
-				throughput[id] *= use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+				throughput[id] = TP * use_color * (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
 // 				throughput[id] = make_float3(0,0,0);
 				return;
 			}
-
-// 			other_dir = 
-// 			ray_diff_dir[id] = other_dir;
-// 			other_dir = reflect(other_dir, N);
 		}
-// 		else {
-		// fall through
+		// fall through for absorption and invalid intersection
 		ray_dir[id]  = make_float3(0,0,0);
 		ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 		max_t[id] = -1;
 		throughput[id] = make_float3(0,0,0);
-// 		}
-
 	}
+
 }
 
-void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
-								 triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 rta::cuda::material_t *mats, halton_pool2f uniform_random, int curr_sample, int max_samples,
-								 float3 *throughput, float *ray_diff_orig, float *ray_diff_dir) {
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, halton_pool2f uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, int curr_sample, int max_samples) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
-	k::generate_random_path_sample<<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-														ti, triangles, mats, uniform_random, curr_sample, max_samples, 
-														throughput, (float3*)ray_diff_orig, (float3*)ray_diff_dir);
+	k::compute_path_contribution_and_bounce <<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
+																  ti, triangles, mats, uniform_random, throughput, 
+																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution,
+																  curr_sample, max_samples);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
 
-void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
-								 triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 rta::cuda::material_t *mats, lcg_random_state uniform_random, int curr_sample, int max_samples,
-								 float3 *throughput, float *ray_diff_orig, float *ray_diff_dir) {
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, lcg_random_state uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, int curr_sample, int max_samples) {
 	checked_cuda(cudaPeekAtLastError());
 	dim3 threads(16, 16);
 	dim3 blocks = block_configuration_2d(w, h, threads);
-	k::generate_random_path_sample<<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-														ti, triangles, mats, uniform_random, curr_sample, max_samples, 
-														throughput, (float3*)ray_diff_orig, (float3*)ray_diff_dir);
+	k::compute_path_contribution_and_bounce <<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
+																  ti, triangles, mats, uniform_random, throughput, 
+																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution, 
+																  curr_sample, max_samples);
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
+

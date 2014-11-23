@@ -10,14 +10,17 @@
 void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val);
 void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int samples_already_accumulated);
 
-void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
-								 rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 rta::cuda::material_t *mats, gi::cuda::halton_pool2f uniform_random, int curr_sample, int max_samples, 
-								 float3 *throughput, float *ray_diff_orig, float *ray_diff_dir);
-void generate_random_path_sample(int w, int h, float *ray_orig, float *ray_dir, float *max_t,
-								 rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles,
-								 rta::cuda::material_t *mats, gi::cuda::lcg_random_state uniform_random, int curr_sample, int max_samples, 
-								 float3 *throughput, float *ray_diff_orig, float *ray_diff_dir);
+
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, gi::cuda::halton_pool2f uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, rta::triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, int curr_sample, int max_samples);
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, gi::cuda::lcg_random_state uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, rta::triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, int curr_sample, int max_samples);
 
 #endif
 
