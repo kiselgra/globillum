@@ -7,12 +7,16 @@
 
 using namespace std;
 
+			
+static size_t data_size = 0;
+
 namespace rta {
 	namespace cuda {
 		texture_data* convert_texture(rta::texture *t) {
 			texture_data *new_tex = new cuda::texture_data(t->w, t->h);
 			// cpu rta uses float textures, this is to expensive on the gpu.
 			unsigned char *data = new unsigned char[t->w*t->h*4];
+			data_size += t->w*t->h*6;
 			for (int y = 0; y < t->h; ++y)
 				for (int x = 0; x < t->w; ++x) {
 					vec3f c = t->sample(x/float(t->w),1.0f-y/float(t->h));
@@ -44,6 +48,7 @@ namespace rta {
 				}
 			}
 			cuda::material_t *materials = new cuda::material_t[coll.size()];
+			data_size = 0;
 			for (int i = 0; i < coll.size(); ++i) {
 				rta::material_t *src = coll[i];
 				cuda::material_t *m = &materials[i];
@@ -63,7 +68,7 @@ namespace rta {
 			checked_cuda(cudaMalloc(&gpu_mats, coll.size()*sizeof(cuda::material_t)));
 			checked_cuda(cudaMemcpy(gpu_mats, materials, sizeof(cuda::material_t)*coll.size(), cudaMemcpyHostToDevice));
 			delete [] materials;
-			cout << coll.size() << " materials." << endl;
+			cout << coll.size() << " materials (" << data_size/(1024*1024) << "MiB)." << endl;
 			return gpu_mats;
 		}
 
