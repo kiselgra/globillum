@@ -18,6 +18,17 @@ AX_ENABLE_GDB_OPTION
 AX_STDCXX11_FLAG
 CXXFLAGS="$CXXFLAGS $ac_cv_cxx_cxx11_spec"
 
+AX_WITH_CUDA
+AM_CONDITIONAL([cuda], [test "x$ac_cv_lib_cudart_main" == "xyes"])
+
+AC_ARG_WITH(compute-capability,
+			[AS_HELP_STRING([--with-compute-capability], 
+				[What compute capability sould be used to compile the cuda files. We require at least 20, which is the default.])],
+			compute_cap="$withval", compute_cap="20")
+AC_SUBST([compute_cap])
+
+
+
 # when using flex/bison:
 # AC_PROG_LEX
 # AC_PROG_YACC
@@ -74,16 +85,6 @@ AC_SUBST(RTA_LIBS)
 
 RTA_PLUGIN_DIR="$(pkg-config rta --variable=plugindir)"
 AC_SUBST([RTA_PLUGIN_DIR])
-
-AX_WITH_CUDA
-AM_CONDITIONAL([cuda], [test "x$ac_cv_lib_cudart_main" == "xyes"])
-
-AC_ARG_WITH(compute-capability,
-			[AS_HELP_STRING([--with-compute-capability], 
-				[What compute capability sould be used to compile the cuda files. We require at least 20, which is the default.])],
-			compute_cap="$withval", compute_cap="20")
-AC_SUBST([compute_cap])
-
 
 # Checks for header files.
 AC_HEADER_STDC
