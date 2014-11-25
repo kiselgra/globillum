@@ -1,6 +1,7 @@
 #include "util.h"
 
 #include <libcgl/wall-time.h>
+#include <curand_kernel.h>
 
 #include <iostream>
 
@@ -255,6 +256,68 @@ namespace gi {
 			compute_next_halton_batch(hp.w, hp.h, b0, b1, b2, hp.data);
 		}
 
+		// 
+		// MT
+		//
+
+		namespace k {
+			__global__ void initialize_mt(int w, int h, curandStateMRG32k3a *state) {
+				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+									 blockIdx.y * blockDim.y + threadIdx.y);
+				if (gid.x >= w || gid.y >= h) return;
+				int id = gid.y*w+gid.x;
+				/* Each thread gets same seed, a different sequence 
+				   number, no offset */
+				curand_init(0, id, 0, &state[id]);
+			}
+
+			__global__ void update_mt_uniform(int w, int h, curandStateMRG32k3a *state, float3 *result) {
+				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+									 blockIdx.y * blockDim.y + threadIdx.y);
+				if (gid.x >= w || gid.y >= h) return;
+				int id = gid.y*w+gid.x;
+				/* Copy state to local memory for efficiency */
+				curandStateMRG32k3a localState = state[id];
+				/* Generate pseudo-random uniforms */
+				float3 f = make_float3(curand_uniform(&localState),
+									   curand_uniform(&localState),
+									   curand_uniform(&localState));
+				/* Copy state back to global memory */
+				state[id] = localState;
+				/* Store results */
+				result[id] = f;
+			}
+		}
+
+		mt_pool3f generate_mt_pool_on_gpu(int w, int h) {
+			mt_pool3f pool;
+			checked_cuda(cudaMalloc(&pool.data, sizeof(float3)*w*h));
+			checked_cuda(cudaMalloc(&pool.mt_states, w * h * sizeof(curandStateMRG32k3a)));
+			pool.w = w;
+			pool.h = h;
+
+			checked_cuda(cudaPeekAtLastError());
+			dim3 threads(16, 16);
+			dim3 blocks = rta::cuda::block_configuration_2d(w, h, threads);
+			k::initialize_mt<<<blocks, threads>>>(w, h, (curandStateMRG32k3a*)pool.mt_states);
+			checked_cuda(cudaPeekAtLastError());
+			checked_cuda(cudaDeviceSynchronize());
+			return pool;
+		}
+
+		void update_mt_pool(mt_pool3f mp) {
+			checked_cuda(cudaPeekAtLastError());
+			dim3 threads(16, 16);
+			dim3 blocks = rta::cuda::block_configuration_2d(mp.w, mp.h, threads);
+			checked_cuda(cudaDeviceSynchronize());
+			wall_time_t t0 = wall_time_in_ms();
+			k::update_mt_uniform<<<blocks, threads>>>(mp.w, mp.h, (curandStateMRG32k3a*)mp.mt_states, mp.data);
+			// 	checked_cuda(cudaPeekAtLastError());
+			checked_cuda(cudaDeviceSynchronize());
+			wall_time_t t1 = wall_time_in_ms();
+			printf("computing a batch of mt numbers took %6.6f ms\n", t1-t0);
+
+		}
 
 	}
 }

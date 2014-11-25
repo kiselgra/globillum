@@ -323,4 +323,20 @@ void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *
 	checked_cuda(cudaPeekAtLastError());
 	checked_cuda(cudaDeviceSynchronize());
 }
+void compute_path_contribution_and_bounce(int w, int h, float *ray_orig, float *ray_dir, float *max_t, float *ray_diff_org, float *ray_diff_dir,
+										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
+										  rta::cuda::material_t *mats, mt_pool3f uniform_random, float3 *throughput, float3 *col_accum,
+										  float *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, random_sampler_path_info pi) {
+	checked_cuda(cudaPeekAtLastError());
+	dim3 threads(16, 16);
+	dim3 blocks = block_configuration_2d(w, h, threads);
+	k::compute_path_contribution_and_bounce <<<blocks, threads>>>(w, h, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  (float3*)ray_diff_org, (float3*)ray_diff_dir,
+																  ti, triangles, mats, uniform_random, throughput, 
+																  col_accum, (float3*)to_light, shadow_ti, potential_sample_contribution, 
+																  pi);
+	checked_cuda(cudaPeekAtLastError());
+	checked_cuda(cudaDeviceSynchronize());
+}
 

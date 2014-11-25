@@ -37,6 +37,10 @@ namespace rta {
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::halton_pool3f uniform01, float3 *potential_sample_contribution,
 										   gi::cuda::random_sampler_path_info pi);
+			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution,
+										   gi::cuda::random_sampler_path_info pi);
 			
 			
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
