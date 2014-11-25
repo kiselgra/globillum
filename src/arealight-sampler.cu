@@ -131,32 +131,6 @@ namespace rta {
 
 			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-										   gi::cuda::multi_bounce_halton_pool3f uniform01, float3 *potential_sample_contribution, 
-										   gi::cuda::random_sampler_path_info pi) {
-				checked_cuda(cudaPeekAtLastError());
-				dim3 threads(16, 16);
-				dim3 blocks = block_configuration_2d(w, h, threads);
-				k::generate_rectlight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-																  ti, triangles, uniform01, potential_sample_contribution, pi);
-				checked_cuda(cudaPeekAtLastError());
-				checked_cuda(cudaDeviceSynchronize());
-			}
-
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
-										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-										   gi::cuda::halton_pool3f uniform01, float3 *potential_sample_contribution, 
-										   gi::cuda::random_sampler_path_info pi) {
-				checked_cuda(cudaPeekAtLastError());
-				dim3 threads(16, 16);
-				dim3 blocks = block_configuration_2d(w, h, threads);
-				k::generate_rectlight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, (float3*)ray_orig, (float3*)ray_dir, max_t, 
-																  ti, triangles, uniform01, potential_sample_contribution, pi);
-				checked_cuda(cudaPeekAtLastError());
-				checked_cuda(cudaDeviceSynchronize());
-			}
-
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
-										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {
 				checked_cuda(cudaPeekAtLastError());

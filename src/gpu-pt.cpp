@@ -11,8 +11,6 @@ extern cuda::material_t *gpu_materials;
 void gpu_pt::activate(rt_set *orig_set) {
 // 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::simple_halton;
 // 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::lcg;
-// 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::multi_halton;
-// 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::progressive_halton;
 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::per_frame_mt;
 	if (activated) return;
 	gi_algorithm::activate(orig_set);
@@ -29,17 +27,6 @@ void gpu_pt::activate(rt_set *orig_set) {
 		pt->random_number_generator(gi::cuda::generate_halton_pool_on_gpu(w*h));
 	else if (rng_t == gpu_pt_bouncer<B, T>::lcg)
 		pt->random_number_generator(gi::cuda::generate_lcg_pool_on_gpu(w*h));
-	else if (rng_t == gpu_pt_bouncer<B, T>::multi_halton)
-		pt->random_number_generator(gi::cuda::generate_multi_bounce_halton_pool_on_gpu(w*h,bounces,2,3,5),
-									gi::cuda::generate_multi_bounce_halton_pool_on_gpu(w*h,bounces,2,3,5));
-// 									gi::cuda::generate_multi_bounce_halton_pool_on_gpu(w*h,bounces,7,11,13));
-	else if (rng_t == gpu_pt_bouncer<B, T>::progressive_halton) {
-		gi::cuda::halton_pool3f pl = gi::cuda::generate_halton_pool_on_gpu(w,h,0); 
-		gi::cuda::halton_pool3f pp = gi::cuda::generate_halton_pool_on_gpu(w,h,3); 
-		update_halton_pool(pl, 0);
-		update_halton_pool(pp, 0);
-		pt->random_number_generator(pl, pp);
-	}
 	else if (rng_t == gpu_pt_bouncer<B, T>::per_frame_mt) {
 		gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 		gi::cuda::mt_pool3f pp = gi::cuda::generate_mt_pool_on_gpu(w,h); 

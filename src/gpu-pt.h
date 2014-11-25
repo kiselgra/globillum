@@ -74,12 +74,10 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 	rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
 	rta::cuda::cgls::rect_light *lights;
 	int nr_of_lights;
-	enum random_number_generator_t { none, simple_halton, lcg, multi_halton, progressive_halton, per_frame_mt };
+	enum random_number_generator_t { none, simple_halton, lcg, per_frame_mt };
 	random_number_generator_t rnd_type;
 	gi::cuda::halton_pool2f rnd_halton;
 	gi::cuda::lcg_random_state rnd_lcg;
-	gi::cuda::multi_bounce_halton_pool3f rnd_multi_halton_light, rnd_multi_halton_path;
-	gi::cuda::halton_pool3f rnd_progr_halton_light, rnd_progr_halton_path;
 	gi::cuda::mt_pool3f rnd_mt_light, rnd_mt_path;
 	uint w, h;
 	int curr_path;
@@ -138,16 +136,6 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 		rnd_lcg = rng;
 		rnd_type = lcg;
 	}
-	virtual void random_number_generator(gi::cuda::multi_bounce_halton_pool3f rng_light, gi::cuda::multi_bounce_halton_pool3f rng_path) {
-		rnd_multi_halton_light = rng_light;
-		rnd_multi_halton_path = rng_path;
-		rnd_type = multi_halton;
-	}
-	virtual void random_number_generator(gi::cuda::halton_pool3f rng_light, gi::cuda::halton_pool3f rng_path) {
-		rnd_progr_halton_light = rng_light;
-		rnd_progr_halton_path = rng_path;
-		rnd_type = progressive_halton;
-	}
 	virtual void random_number_generator(gi::cuda::mt_pool3f rng_light, gi::cuda::mt_pool3f rng_path) {
 		rnd_mt_light = rng_light;
 		rnd_mt_path = rng_path;
@@ -186,16 +174,6 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 													   light_sample_origins, light_sample_directions, light_sample_maxt,
 													   path_intersections, this->tri_ptr, rnd_lcg, potential_sample_contribution, 
 													   pi);
-		else if (rnd_type == multi_halton)
-			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
-													   light_sample_origins, light_sample_directions, light_sample_maxt,
-													   path_intersections, this->tri_ptr, rnd_multi_halton_light, potential_sample_contribution, 
-													   pi);
-		else if (rnd_type == progressive_halton)
-			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
-													   light_sample_origins, light_sample_directions, light_sample_maxt,
-													   path_intersections, this->tri_ptr, rnd_progr_halton_light, potential_sample_contribution, 
-													   pi);
 		else if (rnd_type == per_frame_mt)
 			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
 													   light_sample_origins, light_sample_directions, light_sample_maxt,
@@ -219,18 +197,6 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 			compute_path_contribution_and_bounce(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
 												 this->crgs->differentials_origin, this->crgs->differentials_direction,
 												 path_intersections, this->tri_ptr, this->materials, rnd_lcg, throughput, path_accum_color,
-												 light_sample_directions, shadow_intersections, potential_sample_contribution,
-												 pi);
-		else if (rnd_type == multi_halton)
-			compute_path_contribution_and_bounce(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-												 this->crgs->differentials_origin, this->crgs->differentials_direction,
-												 path_intersections, this->tri_ptr, this->materials, rnd_multi_halton_path, throughput, path_accum_color,
-												 light_sample_directions, shadow_intersections, potential_sample_contribution,
-												 pi);
-		else if (rnd_type == progressive_halton)
-			compute_path_contribution_and_bounce(this->w, this->h, path_sample_origins, path_sample_directions, path_sample_maxt,
-												 this->crgs->differentials_origin, this->crgs->differentials_direction,
-												 path_intersections, this->tri_ptr, this->materials, rnd_progr_halton_path, throughput, path_accum_color,
 												 light_sample_directions, shadow_intersections, potential_sample_contribution,
 												 pi);
 		else if (rnd_type == per_frame_mt)
@@ -280,11 +246,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 			tracers->select_closest_hit_tracer();
 			// a light has been sampled, so the current path is finished.
 			++path_len;
-			if (rnd_type == progressive_halton) {
-				update_halton_pool(rnd_progr_halton_light, 2*(curr_path*max_path_len + path_len));
-				update_halton_pool(rnd_progr_halton_path, 2*(curr_path*max_path_len + path_len));
-			}
-			else if (rnd_type == per_frame_mt) {
+			if (rnd_type == per_frame_mt) {
 				update_mt_pool(rnd_mt_light);
 				update_mt_pool(rnd_mt_path);
 			}

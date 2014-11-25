@@ -20,21 +20,6 @@ namespace gi {
 			return *z=(A**z+C);  
 		}
 
-		/*! \brief Random data for path tracing.
-		 *
-		 *  We store 3 floats for light sampling (choose light, choose position
-		 *  on light) or path sampling (choose component, choose direction).
-		 *  N gives the number of explicitely stored path samples.
-		 */
-		struct multi_bounce_halton_pool3f {
-			float3 *data;
-			int bounces;
-			int chunksize;
-			multi_bounce_halton_pool3f() : data(0), bounces(0), chunksize(0) {}
-		};
-
-		multi_bounce_halton_pool3f generate_multi_bounce_halton_pool_on_gpu(int N, int bounces, int b0, int b1, int b2);
-
 		/*! \brief State for linear congruential random number generator.
 		 *  
 		 *  This is the cheapest random number generator, memory-wise.
@@ -70,24 +55,6 @@ namespace gi {
 		halton_pool2f generate_halton_pool_on_gpu(int N);
 		
 		
-		
-		struct halton_pool3f {
-			float3 *data;
-			int N;
-			int w, h, prime_offset;
-			halton_pool3f() : data(0), N(0), w(0), h(0), prime_offset(0) {}
-		};
-		
-		/*! \brief Generates w*h float3 values. 
-		 *  \note The data is *not* initialized.
-		 *  \note The pointer in the returned structure points to gpu memory.
-		 */
-		halton_pool3f generate_halton_pool_on_gpu(int w, int h, int offset);
-		/*! \brief Compute next batch of halton numbers and store them in the halton pool.
-		 */
-		void update_halton_pool(halton_pool3f hp, int batch_nr);
-
-
 
 		struct mt_pool3f {
 			float3 *data;
@@ -126,16 +93,6 @@ namespace gi {
 			return f3;
 		}
 		
-		heterogenous inline float3 next_random3f(multi_bounce_halton_pool3f &pool, int id, const random_sampler_path_info &state) {
-			float3 f3 = pool.data[id];
-			return f3;
-		}
-
-		heterogenous inline float3 next_random3f(halton_pool3f &pool, int id, const random_sampler_path_info &state) {
-			float3 f3 = pool.data[id];
-			return f3;
-		}
-
 		heterogenous inline float3 next_random3f(mt_pool3f &pool, int id, const random_sampler_path_info &state) {
 			float3 f3 = pool.data[id];
 			return f3;
