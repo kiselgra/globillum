@@ -13,6 +13,7 @@ void gpu_pt::activate(rt_set *orig_set) {
 // 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::lcg;
 	gpu_pt_bouncer<B, T>::random_number_generator_t rng_t = gpu_pt_bouncer<B, T>::per_frame_mt;
 	if (activated) return;
+	declare_variable<int>("pt/passes", 32);
 	gi_algorithm::activate(orig_set);
 	set = *orig_set;
 	set.rt = set.rt->copy();
@@ -20,7 +21,7 @@ void gpu_pt::activate(rt_set *orig_set) {
 	cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 	set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 	int bounces = 2;
-	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, bounces, 32);
+	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, bounces, vars["pt/passes"].int_val);
 	gi::cuda::halton_pool2f halton_pool;
 	gi::cuda::lcg_random_state lcg_pool;
 	if (rng_t == gpu_pt_bouncer<B, T>::simple_halton)
@@ -64,6 +65,9 @@ void gpu_pt::compute() {
 		extract_up_vec3f_of_matrix(&up, lookat_matrix);
 		update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
+
+		gpu_pt_bouncer<B,T> *bouncer = dynamic_cast<gpu_pt_bouncer<B, T>*>(set.bouncer);
+		bouncer->path_samples = vars["pt/passes"].int_val;
 
 		tracer->trace_progressively(true);
 }

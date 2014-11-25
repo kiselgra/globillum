@@ -7,6 +7,7 @@
 #include "gpu-pt-kernels.h"
 
 #include "rayvis.h"
+#include "vars.h"
 
 #include <iostream>
 
