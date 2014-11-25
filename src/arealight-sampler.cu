@@ -78,6 +78,8 @@ namespace rta {
 						float3 light_dir = lights[0].dir;
 						float3 right = make_tangential(make_float3(1,0,0), light_dir);
 						float3 up = make_tangential(make_float3(0,1,0), light_dir);
+// 						float3 right = make_float3(1,0,0);
+// 						float3 up = make_float3(0,0,1);
 						float3 rnd = next_random3f(uniform01, id, pi);
 						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].wh.x,
 													(rnd.y - 0.5f) * lights[0].wh.y);

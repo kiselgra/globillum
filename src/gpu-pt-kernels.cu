@@ -152,7 +152,7 @@ namespace k {
 			// attention: recycling of 'is'
 			is = shadow_ti[id];
 			float3 TP = throughput[id];
-			const float shininess = 60.0f;
+			const float shininess = 100.0f;
 			if (!is.valid()) {
 				float3 prev = col_accum[id];
 				float3 weight = potential_sample_contribution[id];
@@ -160,8 +160,9 @@ namespace k {
 				float3 curr = TP * weight;
 				float3 light_dir = to_light[id];
 				normalize_vec3f(&light_dir);
-				float3 brdf = diffuse * float(M_1_PI) * fmaxf((N|-org_dir), 0.0f);
-				brdf += (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|light_dir), 0.0f), shininess);
+				// the whole geometric term is already computed in potential_sample_contribution.
+				float3 brdf = diffuse * float(M_1_PI)
+				            + (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|light_dir), 0.0f), shininess);
 				col_accum[id] = prev + brdf * curr;
 			}
 
@@ -215,6 +216,8 @@ namespace k {
 				ray_diff_dir[id] = reflect(upper_dir, N);
 				ray_diff_dir[w*h+id] = reflect(right_dir, N);
 				use_color = diffuse;
+				float3 brdf = fabsf(dir|N) * diffuse * float(M_1_PI);// * fmaxf((N|-org_dir), 0.0f);
+				TP *= brdf;
 			}
 			else if (specular_bounce) {
 				make_tangent_frame(R, T, B);
@@ -229,6 +232,8 @@ namespace k {
 				ray_diff_dir[w*h+id] = reflect(right_dir, N);
 				if ((dir|N)<0) specular_bounce = false;
 				use_color = specular;
+				float3 brdf = fabsf(dir|N) * (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|dir), 0.0f), shininess);
+				TP *= brdf;
 			}
 			if (diffuse_bounce||specular_bounce) {
 				float len = length_of_vector(dir);
@@ -239,10 +244,7 @@ namespace k {
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
-				TP *= fabsf(-org_dir|N);
-				float3 brdf = diffuse * float(M_1_PI);// * fmaxf((N|-org_dir), 0.0f);
-				brdf += (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|dir), 0.0f), shininess);
-				throughput[id] = TP * brdf;
+				throughput[id] = TP;
 // 				throughput[id] = make_float3(0,0,0);
 				return;
 			}
