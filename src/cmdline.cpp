@@ -110,6 +110,8 @@ int parse_cmdline(int argc, char **argv)
 	int dot = string(cmdline.filename).find_last_of(".");
 	if (string(cmdline.filename).substr(dot) == ".obj")
 		cmdline.objfile = true;
+	else if (string(cmdline.filename).substr(dot) == ".bobj")
+		cmdline.objfile = true;
 	else
 		cmdline.scenefile = true;
 	return ret;
