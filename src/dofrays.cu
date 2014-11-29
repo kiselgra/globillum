@@ -48,15 +48,23 @@ namespace rta {
 					printf("pos %6.6f %6.6f %6.6f\n", pos_on_focal_plane.x, pos_on_focal_plane.y, pos_on_focal_plane.z);
 				}
 				gi::cuda::random_sampler_path_info dummy;
-				float3 random = next_random3f(uniform_random_01, id, dummy);
-				float2 jitter = make_float2(random.x*2.0f-1.0f, random.y*2.0f-1.0f);
+				float2 jitter;
+				int i;
+				do {
+					float3 random = next_random3f(uniform_random_01, id+17*i, dummy);
+					jitter = make_float2(random.x-0.5f, random.y-0.5f);
+				} while (jitter.x*jitter.x + jitter.y*jitter.y > 1.0f);
+
+				float3 jitter_pos = pos + U*jitter.x*aperture + V*jitter.y*aperture;
+				dir = (pos_on_focal_plane - jitter_pos);
+				normalize_vec3f(&dir);
 
 				dirs[3*(gid.y * w + gid.x)+0] = dir.x;
 				dirs[3*(gid.y * w + gid.x)+1] = dir.y;
 				dirs[3*(gid.y * w + gid.x)+2] = dir.z;
-				orgs[3*(gid.y * w + gid.x)+0] = pos.x;
-				orgs[3*(gid.y * w + gid.x)+1] = pos.y;
-				orgs[3*(gid.y * w + gid.x)+2] = pos.z;
+				orgs[3*(gid.y * w + gid.x)+0] = jitter_pos.x;
+				orgs[3*(gid.y * w + gid.x)+1] = jitter_pos.y;
+				orgs[3*(gid.y * w + gid.x)+2] = jitter_pos.z;
 
 			}
 		}

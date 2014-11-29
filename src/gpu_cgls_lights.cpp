@@ -6,6 +6,7 @@
 #include "util.h"
 #include "vars.h"
 #include "dofrays.h"
+#include "gpu-pt-kernels.h"	// reset_gpu_buffer
 
 #include <libhyb/trav-util.h>
 
@@ -13,6 +14,8 @@ using namespace std;
 using namespace rta;
 
 extern cuda::material_t *gpu_materials;
+
+extern float aperture, focus_distance;
 
 namespace local {
 
@@ -287,22 +290,77 @@ namespace local {
 		virtual std::string identification() { return "cuda version of the ray generator according to shirley."; }
 		virtual void dont_forget_to_initialize_max_t() {}
 	};
-
+	
+	template<typename _box_t, typename _tri_t> struct gpu_cgls_light_evaluator_dof : public gpu_cgls_light_evaluator<forward_traits> {
+		declare_traits_types;
+		int w, h;
+		int samples, curr;
+		float3 *output_color;
+		gpu_cgls_light_evaluator_dof(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, 
+									 crgs_with_diffs *crgs, cuda::cgls::light *lights, int nr_of_lights, int samples)
+		: gpu_cgls_light_evaluator<forward_traits>(w, h, materials, triangles, crgs, lights, nr_of_lights), w(w), h(h), samples(samples), curr(0) {
+			checked_cuda(cudaMalloc(&output_color, sizeof(float3)*w*h));
+		}
+		void new_pass() {
+			reset_gpu_buffer(output_color, w, h, make_float3(0,0,0));
+			curr = 0;
+		}
+		virtual void bounce() {
+			cout << "sample " << curr << " taken" << endl;
+			this->evaluate_material();
+			this->shade_locally();
+			combine_color_samples(output_color, w, h, this->material_colors, curr);
+			++curr;
+		}
+		virtual bool trace_further_bounces() {
+			return curr < samples;
+		}
+		virtual std::string identification() {
+			return "repeatedly evaluate first-hit material and shade with cgls lights using the lens_ray_generator.";
+		}
+	};
+	
 
 	void gpu_cgls_lights_dof::activate(rt_set *orig_set) {
+		if (activated) return;
+		gi_algorithm::activate(orig_set);
+
 		jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
-		
-		gpu_cgls_lights::activate(orig_set);
+		scm_c_eval_string("(if (defined? 'setup-lights) (setup-lights))");
+
+		set = *orig_set;
+		set.rt = set.rt->copy();
+		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
+		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
+		set.bouncer = new gpu_cgls_light_evaluator_dof<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights, 32);
+		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
+
+		cuda::cgls::init_cuda_image_transfer(result);
 	}
 	void gpu_cgls_lights_dof::update() {
 		update_mt_pool(jitter);
-		gpu_cgls_lights::update();
+		if (set.rt->progressive_trace_running()) {
+			update_mt_pool(jitter);
+			set.rgen->generate_rays();
+			set.rt->trace_progressively(false);
+			gpu_cgls_light_evaluator_dof<B,T> *bouncer = dynamic_cast<gpu_cgls_light_evaluator_dof<B, T>*>(set.bouncer);
+// 			float3 *shaded = bouncer->material_colors;
+			float3 *accum = bouncer->output_color;
+			cuda::cgls::copy_cuda_image_to_texture(w, h, accum, 1.0f);
+		}
 	}
 	void gpu_cgls_lights_dof::compute() {
 		update_mt_pool(jitter);
 		gpu_cgls_lights::compute();
+		if (aperture != ::aperture || focus_distance != ::focus_distance) {
+			aperture = ::aperture;
+			focus_distance = ::focus_distance;
+			lens_ray_generator *rg = dynamic_cast<lens_ray_generator*>(crgs);
+			rg->aperture = aperture;
+			rg->focus_distance = focus_distance;
+		}
 	}
 
 }

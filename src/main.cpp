@@ -46,6 +46,10 @@ shader_ref quad_shader;
 bool show_results = false;
 float exposure = 10;
 
+// used for dof implementations
+float aperture = .5;
+float focus_distance = 970.0f;
+
 void display() {
 	
 	if (cgl_shader_reload_pending)
@@ -344,6 +348,28 @@ static char* console_exposure(console_ref ref, int argc, char **argv) {
 	return strdup(oss.str().c_str());
 }
 
+static char* console_focus_distance(console_ref ref, int argc, char **argv) {
+	if (argc > 2)
+		return strdup("return focus distance when called without parameter, with one parameter focus distance ist set.");
+	if (argc == 1) {
+		ostringstream oss; oss << "focus distance = " << focus_distance;
+		return strdup(oss.str().c_str());
+	}
+	focus_distance = atof(argv[1]);
+	return 0;
+}
+
+static char* console_aperture(console_ref ref, int argc, char **argv) {
+	if (argc > 2)
+		return strdup("without parameter: return lens aperture size, otherwise set.");
+	if (argc == 1) {
+		ostringstream oss; oss << "aperture = " << aperture;
+		return strdup(oss.str().c_str());
+	}
+	aperture = atof(argv[1]);
+	return 0;
+}
+
 
 
 void actual_main() 
@@ -428,6 +454,10 @@ void actual_main()
 	add_vi_console_command(viconsole, "show", console_show);
 	add_vi_console_command(viconsole, "exp", console_exposure);
 	add_vi_console_command(viconsole, "exposure", console_exposure);
+	add_vi_console_command(viconsole, "aperture", console_aperture);
+	add_vi_console_command(viconsole, "ap", console_aperture);
+	add_vi_console_command(viconsole, "fd", console_focus_distance);
+	add_vi_console_command(viconsole, "fod", console_focus_distance);
 	push_interaction_mode(console_interaction_mode(viconsole));
 
 	char *base = basename((char*)cmdline.filename);
@@ -445,7 +475,8 @@ void actual_main()
 
 	new local::gpu_cgls_lights_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
-	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, 45.f, .5f, 0.f);
+// 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, 45.f, .5f, 5.f);
+	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, focus_distance, aperture, 5.f);
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
