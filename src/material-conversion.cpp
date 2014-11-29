@@ -16,6 +16,7 @@ namespace rta {
 			texture_data *new_tex = new cuda::texture_data(t->w, t->h);
 			// cpu rta uses float textures, this is to expensive on the gpu.
 			unsigned char *data = new unsigned char[t->w*t->h*4];
+			cout << "texture " << t->filename << ": " << (t->w*t->h*6)/(1024*1024) << " MB" << endl;
 			data_size += t->w*t->h*6;
 			for (int y = 0; y < t->h; ++y)
 				for (int x = 0; x < t->w; ++x) {
