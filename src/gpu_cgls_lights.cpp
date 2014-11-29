@@ -194,7 +194,7 @@ namespace local {
 		set = *orig_set;
 		set.rt = set.rt->copy();
 		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
-		gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
+// 		gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
@@ -234,12 +234,16 @@ namespace local {
 			extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 			extract_up_vec3f_of_matrix(&up, lookat_matrix);
 			update_lights(scene, gpu_lights, nr_of_gpu_lights);
-			update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
+// 			update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 			set.rt->trace_progressively(true);
 			shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 	
+			gpu_cgls_light_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_light_evaluator<B, T>*>(set.bouncer);
+			float3 *colors = bouncer->material_colors;
+			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+
 			/*
 			cout << "saving output" << endl;
 			png::image<png::rgb_pixel> image(w, h);
