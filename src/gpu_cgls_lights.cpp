@@ -113,7 +113,7 @@ namespace local {
 	};
 
 
-	void gpu_cgls_lights::activate(rt_set *orig_set) {
+	void gpu_cgls_lights_arealight_sampler::activate(rt_set *orig_set) {
 		if (activated) return;
 		gi_algorithm::activate(orig_set);
 		set = *orig_set;
@@ -140,12 +140,88 @@ namespace local {
 		cout << "T " << make_tangential(tng2, n) << endl;
 	}
 
-	void gpu_cgls_lights::update() {
+	void gpu_cgls_lights_arealight_sampler::update() {
 		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
 			shadow_tracer->trace_progressively(false);
 			gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
 			float3 *colors = bouncer->output_color;
 // 			float3 *colors = bouncer->material_colors;
+			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+		}
+	}
+
+	void gpu_cgls_lights_arealight_sampler::compute() {
+			cout << "restarting progressive display" << endl;
+			vec3f pos, dir, up;
+			matrix4x4f *lookat_matrix = lookat_matrix_of_cam(current_camera());
+			extract_pos_vec3f_of_matrix(&pos, lookat_matrix);
+			extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
+			extract_up_vec3f_of_matrix(&up, lookat_matrix);
+			update_lights(scene, gpu_lights, nr_of_gpu_lights);
+			update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
+			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
+
+			set.rt->trace_progressively(true);
+			shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
+	
+			/*
+			cout << "saving output" << endl;
+			png::image<png::rgb_pixel> image(w, h);
+			vec3f *data = new vec3f[w*h];
+// 			cudaMemcpy(data, (dynamic_cast<gpu_material_evaluator<B, T>*>(set.bouncer))->material_colors, sizeof(float3)*w*h, cudaMemcpyDeviceToHost);
+			cudaMemcpy(data, (dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer))->output_color, sizeof(float3)*w*h, cudaMemcpyDeviceToHost);
+			for (int y = 0; y < h; ++y) {
+				int y_out = h - y - 1;
+				for (int x = 0; x < w; ++x) {
+					vec3f *pixel = data+y*w+x;
+					image.set_pixel(w-x-1, y_out, png::rgb_pixel(clamp(255*pixel->x,0,255), clamp(255*pixel->y,0,255), clamp(255*pixel->z,0,255))); 
+				}
+			}
+			image.write("out.png");
+			*/
+	}
+
+
+	// 
+	// CGLS LIGHTS, FOR REAL
+	//
+	void gpu_cgls_lights::activate(rt_set *orig_set) {
+		if (activated) return;
+		gi_algorithm::activate(orig_set);
+
+		scm_c_eval_string("(if (defined? 'setup-lights) (setup-lights))");
+
+		set = *orig_set;
+		set.rt = set.rt->copy();
+		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
+		gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
+		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
+		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
+// 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
+		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
+		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
+// 		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 32);
+		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
+		set.basic_rt<B, T>()->ray_generator(set.rgen);
+
+		cuda::cgls::init_cuda_image_transfer(result);
+
+		cout << "pool: " << pool.N << endl;
+			
+		vec3f tng1(1,0,0);
+		vec3f tng2(0,1,0);
+		vec3f n(0,-1,0);
+		cout << "T " << make_tangential(tng1, n) << endl;
+		cout << "T " << make_tangential(tng2, n) << endl;
+	}
+
+	void gpu_cgls_lights::update() {
+		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
+			shadow_tracer->trace_progressively(false);
+			gpu_cgls_light_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_light_evaluator<B, T>*>(set.bouncer);
+// 			gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
+// 			float3 *colors = bouncer->output_color;
+			float3 *colors = bouncer->material_colors;
 			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 		}
 	}

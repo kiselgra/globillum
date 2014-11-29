@@ -443,11 +443,12 @@ void actual_main()
 	reload_shaders();
 	activate_automatic_shader_reload();
 
+	new local::gpu_cgls_lights_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
-	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
+// 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
-// 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_pt");
+	gi_algorithm::select("gpu_cgls_lights");
+// 	gi_algorithm::select("gpu_pt");
 
 	init_rayvis(8, cmdline.res.x/200, cmdline.res.y/200);
 
