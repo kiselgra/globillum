@@ -263,7 +263,7 @@ namespace gi {
 			// 	checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 			wall_time_t t1 = wall_time_in_ms();
-			printf("computing a batch of mt numbers took %6.6f ms\n", t1-t0);
+// 			printf("computing a batch of mt numbers took %6.6f ms\n", t1-t0);
 
 		}
 

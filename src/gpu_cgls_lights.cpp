@@ -5,6 +5,7 @@
 #include "rayvis.h"
 #include "util.h"
 #include "vars.h"
+#include "dofrays.h"
 
 #include <libhyb/trav-util.h>
 
@@ -194,13 +195,10 @@ namespace local {
 		set = *orig_set;
 		set.rt = set.rt->copy();
 		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
-// 		gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
-// 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-// 		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 32);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 
@@ -219,7 +217,6 @@ namespace local {
 		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
 			shadow_tracer->trace_progressively(false);
 			gpu_cgls_light_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_light_evaluator<B, T>*>(set.bouncer);
-// 			gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
 // 			float3 *colors = bouncer->output_color;
 			float3 *colors = bouncer->material_colors;
 			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
@@ -234,7 +231,6 @@ namespace local {
 			extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 			extract_up_vec3f_of_matrix(&up, lookat_matrix);
 			update_lights(scene, gpu_lights, nr_of_gpu_lights);
-// 			update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 			set.rt->trace_progressively(true);
@@ -260,7 +256,55 @@ namespace local {
 			image.write("out.png");
 			*/
 	}
+	
+	// 
+	// CGLS LIGHTS, WITH DOF
+	//
+
+
+	/*! \brief An extension of \ref rta::cuda::cam_ray_generator_shirley that
+	 *  computes ray origins on the lens and adapts the directions so that all
+	 *  rays generated for a given pixel will converge on the focal plane.
+	*/
+	class lens_ray_generator : public rta::cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials> {
+	protected:
+		gi::cuda::mt_pool3f jitter;
+	public:
+		float focus_distance, aperture, eye_to_lens;
+		lens_ray_generator(uint res_x, uint res_y, 
+						   float focus_distance, float aperture, float eye_to_lens,
+						   gi::cuda::mt_pool3f jitter) 
+		: rta::cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(res_x, res_y),
+		  focus_distance(focus_distance), aperture(aperture), eye_to_lens(eye_to_lens),
+		  jitter(jitter) {
+		}
+		virtual void generate_rays() {
+			rta::cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>::generate_rays();
+			rta::cuda::setup_shirley_lens_rays(this->gpu_direction, this->gpu_origin, this->gpu_maxt, 
+											   fovy, aspect, this->w, this->h, (float3*)&dir, (float3*)&position, (float3*)&up, FLT_MAX,
+											   focus_distance, aperture, eye_to_lens, jitter);
+		}
+		virtual std::string identification() { return "cuda version of the ray generator according to shirley."; }
+		virtual void dont_forget_to_initialize_max_t() {}
+	};
+
+
+	void gpu_cgls_lights_dof::activate(rt_set *orig_set) {
+		jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 		
+		gpu_cgls_lights::activate(orig_set);
+		set.rgen = crgs = new lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
+		set.basic_rt<B, T>()->ray_generator(set.rgen);
+	}
+	void gpu_cgls_lights_dof::update() {
+		update_mt_pool(jitter);
+		gpu_cgls_lights::update();
+	}
+	void gpu_cgls_lights_dof::compute() {
+		update_mt_pool(jitter);
+		gpu_cgls_lights::compute();
+	}
+
 }
 
 /* vim: set foldmethod=marker: */

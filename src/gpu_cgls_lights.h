@@ -100,6 +100,25 @@ namespace local {
 		virtual bool progressive() { return true; }
 	};
 
+	class gpu_cgls_lights_dof : public gpu_cgls_lights {
+		typedef rta::cuda::simple_aabb B;
+		typedef rta::cuda::simple_triangle T;
+	protected:
+		float focus_distance, aperture, eye_to_lens;
+		gi::cuda::mt_pool3f jitter;
+	public:
+		gpu_cgls_lights_dof(int w, int h, scene_ref scene, 
+							float focus_distance, float aperture, float eye_to_lens, 
+							const std::string &name = "gpu_cgls_lights_dof")
+			: gpu_cgls_lights(w, h, scene, name), focus_distance(focus_distance), aperture(aperture), eye_to_lens(eye_to_lens) {
+		}
+
+		virtual void activate(rta::rt_set *orig_set);
+		virtual void compute();
+		virtual void update();
+		virtual bool progressive() { return true; }
+	};
+
 }
 
 

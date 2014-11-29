@@ -6,6 +6,7 @@ BUILT_SOURCES = cmdline.x
 gi_SOURCES = 	main.cpp \
 				arealight-sampler.cu arealight-sampler.h \
 				cgls-lights.cu cgls-lights.h \
+				dofrays.cu dofrays.h \
 				material.cu material-conversion.cpp material.h \
 				gi_algorithm.cpp gi_algorithm.h \
 				gpu_cgls_lights.cpp gpu_cgls_lights.h \

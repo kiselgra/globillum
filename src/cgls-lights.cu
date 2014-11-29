@@ -98,7 +98,7 @@ namespace rta {
 										float angle = acosf(cos_theta);
 										float cutoff = acosf(lights[i].spot_cos_cutoff);
 										float factor = ndotl * (1.0f - smoothstep(cutoff * .7, cutoff, angle));
-										out += factor * material_color * lights[i].col;
+										out += factor * material_color ;//* lights[i].col;
 									}
 								}
 							}
