@@ -123,10 +123,13 @@ namespace rta {
 
 		struct material_t {
 			float3 diffuse_color, specular_color;
+			float alpha;
 			texture_data *diffuse_texture;
 			texture_data *specular_texture;
+			texture_data *alpha_texture;
 
-			material_t() : diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), diffuse_texture(0), specular_texture(0) {
+			material_t() 
+			: diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), alpha(1), diffuse_texture(0), specular_texture(0), alpha_texture(0) {
 			}
 		};
 

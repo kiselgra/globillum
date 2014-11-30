@@ -59,11 +59,13 @@ namespace rta {
 				m->specular_color.x = src->specular_color.x;
 				m->specular_color.y = src->specular_color.y;
 				m->specular_color.z = src->specular_color.z;
-				cout << "mtl " << src->name << " S: " << src->specular_color.x << " " << src->specular_color.y << " " << src->specular_color.z << endl;
 				if (src->diffuse_texture)
 					m->diffuse_texture = convert_texture(src->diffuse_texture);
 				if (src->specular_texture)
 					m->specular_texture = convert_texture(src->specular_texture);
+				if (src->alpha_texture)
+					m->alpha_texture = convert_texture(src->alpha_texture);
+				m->alpha = src->alpha;
 			}
 			cuda::material_t *gpu_mats;
 			checked_cuda(cudaMalloc(&gpu_mats, coll.size()*sizeof(cuda::material_t)));

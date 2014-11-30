@@ -6,6 +6,7 @@
 #include "util.h"
 #include "vars.h"
 #include "dofrays.h"
+#include "tracers.h"
 #include "gpu-pt-kernels.h"	// reset_gpu_buffer
 
 #include <libhyb/trav-util.h>
@@ -264,6 +265,7 @@ namespace local {
 	// CGLS LIGHTS, WITH DOF
 	//
 
+	static bool alphamaps = true;
 
 	/*! \brief An extension of \ref rta::cuda::cam_ray_generator_shirley that
 	 *  computes ray origins on the lens and adapts the directions so that all
@@ -329,10 +331,19 @@ namespace local {
 		scm_c_eval_string("(if (defined? 'setup-lights) (setup-lights))");
 
 		set = *orig_set;
-		set.rt = set.rt->copy();
+		set.rgen = crgs = new lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
+		if (!alphamaps) {
+			set.rt = set.rt->copy();
+		}
+		else {
+			typedef cuda::indexed_binary_bvh<B, T, rta::indexed_binary_bvh<B, T, cuda::bbvh_node_float4<B>>> ibvh_t;
+			ibvh_t *bvh = dynamic_cast<ibvh_t*>(set.as);
+			if (!bvh)
+				throw std::logic_error("we assume that the plugin is loaded with -l 2f4 -A -b bsah -t cis");
+			set.rt = new rta::cuda::bbvh_gpu_cis_ailabox_indexed_tracer_with_alphapmas<B,T,ibvh_t>(set.rgen, bvh, 0, gpu_materials, jitter);
+		}
 		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
-		set.rgen = crgs = new lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
 		set.bouncer = new gpu_cgls_light_evaluator_dof<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights, 32);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);

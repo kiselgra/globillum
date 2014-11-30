@@ -12,6 +12,7 @@ gi_SOURCES = 	main.cpp \
 				gpu_cgls_lights.cpp gpu_cgls_lights.h \
 				gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
 				rayvis.cu rayvis.h \
+				tracers.cu tracers.h \
 				util.cpp util-kernels.cu util.h \
 				cmdline.cpp cmdline.h
 
@@ -27,7 +28,8 @@ gi_SOURCES = 	main.cpp \
 # AM_CXXFLAGS = -Wall -ansi -pedantic -ggdb -pg
 
 gi_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$(cglsdata)\" @GUILE_DEF@ $(GUILE_CFLAGS) $(CGLS_CFLAGS) $(CGL_CFLAGS) $(RTA_CFLAGS)
-gi_LDFLAGS = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS)
+gi_LDFLAGS = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
+gi_LDADD  = $(RTA_PLUGIN_DIR)/bbvh-cuda.so
 
 SUFFIXES: .x
 cmdline.x: cmdline.cpp
@@ -51,10 +53,10 @@ cuda_CPPFLAGS = $(DEFAULT_INCLUDES) $(gi_CPPFLAGS) $(CPPFLAGS)
 # fuck you cuda.
 
 material.o: material.cu material.h
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math -G
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 	
 
 .cu.o:
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math -G
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 
 
