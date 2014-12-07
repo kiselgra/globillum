@@ -194,7 +194,14 @@ rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_lis
 			mid = rta::material(group.mat->name);
 			if (mid == -1) {
 				vec3f d = { group.mat->dif_r, group.mat->dif_g, group.mat->dif_b };
+				vec3f s = { group.mat->spe_r, group.mat->spe_g, group.mat->spe_b };
 				rta::material_t *mat = new rta::material_t(group.mat->name, d, group.mat->tex_d);
+				mat->specular_color = s;
+				if (group.mat->tex_s != "")
+					mat->add_specular_texture(group.mat->tex_s);
+				mat->alpha = group.mat->alpha;
+				if (group.mat->tex_alpha != "")
+					mat->add_alpha_texture(group.mat->tex_alpha);
 				mid = rta::register_material(mat);
 			}
 		}
