@@ -156,7 +156,7 @@ float exposure = 10;
 float aperture = .5;
 float focus_distance = 970.0f;
 
-scene_ref the_scene;
+scene_ref the_scene = { -1 };
 
 
 //// rta setup

@@ -123,8 +123,10 @@ namespace local {
 		gi_algorithm::activate(orig_set);
 		set = *orig_set;
 		set.rt = set.rt->copy();
-		gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
-		gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
+		if (scene.id >= 0) {
+			gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
+			gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
+		}
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
