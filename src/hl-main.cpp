@@ -31,7 +31,7 @@ struct Cmdline {
 	const char *filename;
 	vec3f hemi_dir;
 	bool hemi;
-    const char *config;
+    string config;
     const char *include_path;
     vec2f res;
 	bool scenefile, objfile;
@@ -95,7 +95,7 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	switch (key)
 	{
 	case 'v':	cmdline.verbose = true; 	break;
-    case 'c':   cmdline.config = strdup(arg); break;
+    case 'c':   cmdline.config = sarg; break;
     case 'I':   cmdline.include_path = strdup(arg); break;
     case 'i':   cmdline.image_paths.push_back(sarg); break;
     case 'r':   cmdline.res = read_vec2f(sarg); break;
@@ -120,8 +120,8 @@ static struct argp parser = { options, parse_options, args_doc, doc };
 int parse_cmdline(int argc, char **argv)
 {
 	cmdline.filename = 0;
-    cmdline.config = strdup("default.c.scm");
-    cmdline.include_path = DATADIR;
+    cmdline.config = "nogui.scm";
+    cmdline.include_path = ".";
     cmdline.res.x = 1366; 
     cmdline.res.y = 768;
 	cmdline.scenefile = cmdline.objfile = false;
@@ -166,6 +166,7 @@ rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
 rta::cuda::material_t *gpu_materials = 0;
 
+//! this is a direct copy of rta code.
 rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_list(const std::string &filename) {
 	obj_default::ObjFileLoader loader(filename, "1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1");
 
@@ -244,8 +245,8 @@ void setup_rta(std::string plugin) {
 		args.push_back("2f4");
 	}
 
-	/*
 	rta_connection = new rta::cgls::connection(plugin, args);
+	/*
 	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
 	*/
@@ -371,10 +372,7 @@ static char* console_exposure(console_ref ref, int argc, char **argv) {
 
 //// 
 
-int main(int argc, char **argv)
-{	
-	parse_cmdline(argc, argv);
-
+void actual_main() {
 #ifdef WITH_GUILE
 	register_cgls_scheme_functions();
 #endif
@@ -384,16 +382,20 @@ int main(int argc, char **argv)
 
 	if (cmdline.config != "") {
 #ifdef WITH_GUILE
+		ostringstream oss; oss << "(define x-res " << cmdline.res.x << ") (define y-res " << cmdline.res.y << ")";
+		scm_c_eval_string(oss.str().c_str());
 		char *config = 0;
-		int n = asprintf(&config, "%s/%s", cmdline.include_path, cmdline.config);
+		int n = asprintf(&config, "%s/%s", cmdline.include_path, cmdline.config.c_str());
 		load_configfile(config);
 		free(config);
-		load_configfile("local.scm");
 #endif
 	}
-	else
-		cerr << "no config file given" << endl;
+// 	else
+// 		cerr << "no config file given" << endl;
 	
+	scm_c_eval_string("(define gui #f)");
+	load_configfile("local.scm");
+
 	char *base = basename((char*)cmdline.filename);
 	string expr = string("(select-bookmark \"") + base + "\" \"start\")";
 	SCM r = scm_c_eval_string(expr.c_str());
@@ -413,7 +415,31 @@ int main(int argc, char **argv)
 
 	// START COMPUTATION
 	
-	return 0;
 }
 
+extern "C" {
+	void load_internal_configfiles(void);
+}
+
+//! this is a direct copy of cgl code.
+static void hop(void *data, int argc, char **argv) {
+#ifdef WITH_GUILE
+	load_snarfed_definitions();
+// 	load_internal_configfiles();
+	if (argv[0]) load_configfile(argv[0]);
+	start_console_thread();
+#endif
+
+	((void(*)())data)();    // run the user supplied 'inner main'
+}
+
+int main(int argc, char **argv)
+{	
+	parse_cmdline(argc, argv);
+
+	char *p[1] = { 0 };
+	scm_boot_guile(0, p, hop, (void*)actual_main);
+
+	return 0;
+}
 

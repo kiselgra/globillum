@@ -1,4 +1,5 @@
-(load-shader-file "local.shader")
+(if gui
+    (load-shader-file "local.shader"))
 
 (use-modules (srfi srfi-1))
 

@@ -403,6 +403,7 @@ void actual_main()
 		free(config);
 		scene_ref scene = { 0 };
 		the_scene = scene;
+		scm_c_eval_string("(define gui #f)");
 		load_configfile("local.scm");
 #else
 		scene::scene::select(cmdline.config);
