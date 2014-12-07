@@ -1,6 +1,6 @@
 noinst_LTLIBRARIES = libgi.la
 
-bin_PROGRAMS = gi-gui
+bin_PROGRAMS = gi-gui gi
 
 BUILT_SOURCES = cmdline.x
 # libconfigfiles_la_SOURCES = grammar.yy  lexer.ll  parser.h  token.h lexer.h config_creator.h configfile.h configfile.cpp
@@ -18,6 +18,8 @@ libgi_la_SOURCES = 	\
 
 gi_gui_SOURCES = 	main.cpp \
 					cmdline.cpp cmdline.h
+
+gi_SOURCES = 	hl-main.cpp
 
 # for bison/flex
 # AM_YFLAGS = -d -p__yacc_prefix__
@@ -40,6 +42,10 @@ libgi_la_LIBADD   = $(RTA_PLUGIN_DIR)/bbvh-cuda.so
 gi_gui_CPPFLAGS = $(AM_CPPFLAGS)
 gi_gui_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
 gi_gui_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.so
+
+gi_CPPFLAGS = $(AM_CPPFLAGS)
+gi_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
+gi_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.so
 
 SUFFIXES: .x
 cmdline.x: cmdline.cpp

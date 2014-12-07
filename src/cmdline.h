@@ -9,7 +9,7 @@
 //! \brief Translated command line options
 typedef struct
 {
-	bool verbose;	//!< wheather or not to be verbose
+	bool verbose;
 	const char *filename;
 	vec3f hemi_dir;
 	bool hemi;
