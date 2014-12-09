@@ -18,26 +18,26 @@ namespace rta {
 			
 			static float3 conv(const vec3f &v) { return make_float3(v.x, v.y, v.z); }
 
-			rect_light* convert_and_upload_rectangular_area_lights(scene_ref scene, int &N) {
+			gi::rect_light* convert_and_upload_rectangular_area_lights(scene_ref scene, int &N) {
 				N = 0;
 				for (light_list *run = scene_lights(scene); run; run = run->next) {
 					int t = light_type(run->ref);
 					if (t == rect_light_t)
 						++N;
 				}
-				rect_light *L;
-				checked_cuda(cudaMalloc(&L, sizeof(rect_light)*N));
+				gi::rect_light *L;
+				checked_cuda(cudaMalloc(&L, sizeof(gi::rect_light)*N));
 				update_rectangular_area_lights(scene, L, N);
 				return L;
 			}
 
-			void update_rectangular_area_lights(scene_ref scene, rect_light *data, int N) {
-				vector<rect_light> lights;
+			void update_rectangular_area_lights(scene_ref scene, gi::rect_light *data, int N) {
+				vector<gi::rect_light> lights;
 				int n = 0;
 				for (light_list *run = scene_lights(scene); run; run = run->next) {
 					int t = light_type(run->ref);
 					if (t == rect_light_t) {
-						rect_light l;
+						gi::rect_light l;
 						vec3f dir, pos, up;
 						extract_pos_vec3f_of_matrix(&pos, light_trafo(run->ref));
 						extract_dir_vec3f_of_matrix(&dir, light_trafo(run->ref));
@@ -53,12 +53,12 @@ namespace rta {
 				}
 				if (n != N)
 					throw std::runtime_error("number of lights changed in " "update_rectangular_area_lights");
-				checked_cuda(cudaMemcpy(data, &lights[0], sizeof(rect_light)*n, cudaMemcpyHostToDevice));
+				checked_cuda(cudaMemcpy(data, &lights[0], sizeof(gi::rect_light)*n, cudaMemcpyHostToDevice));
 			}
 				
 			namespace k {
 				template<typename rng_t> __global__ 
-				void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float3 *ray_orig, float3 *ray_dir, float *max_t,
+				void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float3 *ray_orig, float3 *ray_dir, float *max_t,
 											   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 											   rng_t uniform01, float3 *potential_sample_contribution, gi::cuda::random_sampler_path_info pi) {
 					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
@@ -105,7 +105,7 @@ namespace rta {
 				}
 			}
 
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {
@@ -118,7 +118,7 @@ namespace rta {
 				checked_cuda(cudaDeviceSynchronize());
 			}
 			
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::lcg_random_state uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {
@@ -131,7 +131,7 @@ namespace rta {
 				checked_cuda(cudaDeviceSynchronize());
 			}
 
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {

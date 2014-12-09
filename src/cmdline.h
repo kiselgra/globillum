@@ -5,6 +5,7 @@
 #include <libcgls/cgls.h>
 #include <string>
 #include <list>
+#include <vector>
 
 //! \brief Translated command line options
 typedef struct
@@ -13,8 +14,8 @@ typedef struct
 	const char *filename;
 	vec3f hemi_dir;
 	bool hemi;
-    const char *config;
-    const char *include_path;
+	std::vector<std::string> configs;
+	std::vector<std::string> include_paths;
     vec2f res;
 	bool scenefile, objfile;
 	float merge_factor;

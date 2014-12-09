@@ -54,7 +54,7 @@ namespace local {
 		rta::image<vec3f, 1> hitpoints, normals;
 		scene_ref scene;
 		rta::cuda::cgls::light *gpu_lights;
-		rta::cuda::cgls::rect_light *gpu_rect_lights;
+		gi::rect_light *gpu_rect_lights;
 		int nr_of_gpu_lights, nr_of_gpu_rect_lights;
 		rta::raytracer *shadow_tracer;
 	public:

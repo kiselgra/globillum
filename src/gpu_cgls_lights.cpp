@@ -45,7 +45,7 @@ namespace local {
 	
 	template<typename _box_t, typename _tri_t> struct gpu_cgls_arealight_evaluator : public gpu_material_evaluator<forward_traits> {
 		declare_traits_types;
-		cuda::cgls::rect_light *lights;
+		gi::rect_light *lights;
 		int nr_of_lights;
 		gi::cuda::halton_pool2f uniform_random_numbers;
 		float3 *potential_sample_contribution; 
@@ -54,7 +54,7 @@ namespace local {
 		float3 *output_color;
 		triangle_intersection<cuda::simple_triangle> *primary_intersection;
 		gpu_cgls_arealight_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, 
-									 crgs_with_diffs *crgs, cuda::cgls::rect_light *lights, int nr_of_lights,
+									 crgs_with_diffs *crgs, gi::rect_light *lights, int nr_of_lights,
 									 gi::cuda::halton_pool2f rnd, int samples)
 		: gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs), 
 		  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), samples(samples) {
@@ -165,7 +165,7 @@ namespace local {
 			extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 			extract_up_vec3f_of_matrix(&up, lookat_matrix);
 			update_lights(scene, gpu_lights, nr_of_gpu_lights);
-			update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
+			rta::cuda::cgls::update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 			set.rt->trace_progressively(true);

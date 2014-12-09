@@ -31,8 +31,8 @@ struct Cmdline {
 	const char *filename;
 	vec3f hemi_dir;
 	bool hemi;
-    string config;
-    const char *include_path;
+	std::vector<std::string> configs;
+	std::vector<std::string> include_paths;
     vec2f res;
 	bool scenefile, objfile;
 	float merge_factor;
@@ -95,8 +95,8 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	switch (key)
 	{
 	case 'v':	cmdline.verbose = true; 	break;
-    case 'c':   cmdline.config = sarg; break;
-    case 'I':   cmdline.include_path = strdup(arg); break;
+    case 'c':   cmdline.configs.push_back(sarg); break;
+    case 'I':   cmdline.include_paths.push_back(sarg); break;
     case 'i':   cmdline.image_paths.push_back(sarg); break;
     case 'r':   cmdline.res = read_vec2f(sarg); break;
 	case MERGE: cmdline.merge_factor = atof(arg); break;
@@ -120,13 +120,15 @@ static struct argp parser = { options, parse_options, args_doc, doc };
 int parse_cmdline(int argc, char **argv)
 {
 	cmdline.filename = 0;
-    cmdline.config = "nogui.scm";
-    cmdline.include_path = ".";
     cmdline.res.x = 1366; 
     cmdline.res.y = 768;
 	cmdline.scenefile = cmdline.objfile = false;
 	cmdline.merge_factor = 10;
 	int ret = argp_parse(&parser, argc, argv, /*ARGP_NO_EXIT*/0, 0, 0);
+    
+	if (cmdline.configs.size() == 0)
+		cmdline.configs.push_back("nogui.scm");
+	cmdline.include_paths.push_back(".");
 
 	if (cmdline.filename == 0) {
 		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
@@ -379,28 +381,32 @@ static char* console_exposure(console_ref ref, int argc, char **argv) {
 
 //// 
 
+extern "C" {
+	void register_scheme_functions_for_light_setup();
+}
+
 void actual_main() {
-#ifdef WITH_GUILE
 	register_cgls_scheme_functions();
-#endif
+	register_scheme_functions_for_light_setup();
 
 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
 		append_image_path(it->c_str());
 
-	if (cmdline.config != "") {
-#ifdef WITH_GUILE
-		ostringstream oss; oss << "(define x-res " << cmdline.res.x << ") (define y-res " << cmdline.res.y << ")";
-		scm_c_eval_string(oss.str().c_str());
-		char *config = 0;
-		int n = asprintf(&config, "%s/%s", cmdline.include_path, cmdline.config.c_str());
-		load_configfile(config);
-		free(config);
-#endif
-	}
-// 	else
-// 		cerr << "no config file given" << endl;
-	
+	ostringstream oss; oss << "(define x-res " << cmdline.res.x << ") (define y-res " << cmdline.res.y << ")";
+	scm_c_eval_string(oss.str().c_str());
+	load_configfile("lights.scm");
 	scm_c_eval_string("(define gui #f)");
+	for (int c = 0; c < cmdline.configs.size(); ++c)
+		for (int p = 0; p < cmdline.configs.size(); ++p) {
+			char *config = 0;
+			int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
+			if (file_exists(config)) {
+				load_configfile(config);
+				free(config);
+				break;
+			}
+			free(config);
+		}
 	load_configfile("local.scm");
 
 	char *base = basename((char*)cmdline.filename);
@@ -416,7 +422,8 @@ void actual_main() {
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_cgls_lights_dof");
+	gi_algorithm::select("gpu_cgls_area_lights");
+// 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 
 

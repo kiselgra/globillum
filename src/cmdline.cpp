@@ -69,8 +69,8 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	switch (key)
 	{
 	case 'v':	cmdline.verbose = true; 	break;
-    case 'c':   cmdline.config = strdup(arg); break;
-    case 'I':   cmdline.include_path = strdup(arg); break;
+    case 'c':   cmdline.configs.push_back(sarg); break;
+    case 'I':   cmdline.include_paths.push_back(sarg); break;
     case 'i':   cmdline.image_paths.push_back(sarg); break;
     case 'r':   cmdline.res = read_vec2f(sarg); break;
 	case MERGE: cmdline.merge_factor = atof(arg); break;
@@ -94,14 +94,15 @@ static struct argp parser = { options, parse_options, args_doc, doc };
 int parse_cmdline(int argc, char **argv)
 {
 	cmdline.filename = 0;
-    cmdline.config = strdup("default.c.scm");
-    cmdline.include_path = DATADIR;
     cmdline.res.x = 1366; 
     cmdline.res.y = 768;
 	cmdline.scenefile = cmdline.objfile = false;
 	cmdline.merge_factor = 10;
 	int ret = argp_parse(&parser, argc, argv, /*ARGP_NO_EXIT*/0, 0, 0);
 
+    if (cmdline.configs.size() == 0)
+		cmdline.configs.push_back("default.c.scm");
+	cmdline.include_paths.push_back(DATADIR);
 	if (cmdline.filename == 0) {
 		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
 		exit(EXIT_FAILURE);

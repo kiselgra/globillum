@@ -63,7 +63,7 @@ void gpu_pt::compute() {
 		extract_pos_vec3f_of_matrix(&pos, lookat_matrix);
 		extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 		extract_up_vec3f_of_matrix(&up, lookat_matrix);
-		update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
+		rta::cuda::cgls::update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 		gpu_pt_bouncer<B,T> *bouncer = dynamic_cast<gpu_pt_bouncer<B, T>*>(set.bouncer);

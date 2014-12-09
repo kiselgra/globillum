@@ -2,6 +2,7 @@
 #define __AREALIGHT_SAMPLER_H__ 
 
 #include "util.h"
+#include "lights.h"
 
 #include <libcgls/scene.h>
 
@@ -12,24 +13,18 @@ namespace rta {
 	namespace cuda {
 		namespace cgls {
 
-	
-			struct rect_light {
-				float3 center, dir, up, col;
-				float2 wh;
-			};
+			gi::rect_light* convert_and_upload_rectangular_area_lights(scene_ref scene, int &N);
+			void update_rectangular_area_lights(scene_ref scene, gi::rect_light *data, int N);
 
-			rect_light* convert_and_upload_rectangular_area_lights(scene_ref scene, int &N);
-			void update_rectangular_area_lights(scene_ref scene, rect_light *data, int N);
-
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution,
 										   gi::cuda::random_sampler_path_info pi);
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::lcg_random_state uniform01, float3 *potential_sample_contribution,
 										   gi::cuda::random_sampler_path_info pi);
-			void generate_rectlight_sample(int w, int h, rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution,
 										   gi::cuda::random_sampler_path_info pi);

@@ -73,7 +73,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 	rta::cuda::material_t *materials;
 	rta::cuda::simple_triangle *tri_ptr;
 	rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
-	rta::cuda::cgls::rect_light *lights;
+	gi::rect_light *lights;
 	int nr_of_lights;
 	enum random_number_generator_t { none, simple_halton, lcg, per_frame_mt };
 	random_number_generator_t rnd_type;
@@ -106,7 +106,7 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 
 	gpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles,
 				   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs, 
-				   rta::cuda::cgls::rect_light *lights, int nr_of_lights, int max_path_len, int path_samples)
+				   gi::rect_light *lights, int nr_of_lights, int max_path_len, int path_samples)
 	: rta::cuda::gpu_ray_bouncer<forward_traits>(w, h), materials(materials), tri_ptr(triangles), crgs(crgs),
 	  lights(lights), nr_of_lights(nr_of_lights), rnd_type(none), w(w), h(h),
 	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), path_samples(path_samples), output_color(0), tracers(0),
@@ -280,7 +280,7 @@ protected:
 	rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
 	rta::rt_set set;
 	scene_ref scene;
-	rta::cuda::cgls::rect_light *gpu_rect_lights;
+	gi::rect_light *gpu_rect_lights;
 	int nr_of_gpu_rect_lights;
 	gpu_pt_bouncer<B, T> *pt;
 	tandem_tracer<B, T> *tracer;

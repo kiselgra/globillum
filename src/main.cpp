@@ -231,9 +231,11 @@ void adjust_view(const vec3f *bb_min, const vec3f *bb_max, vec3f *cam_pos, float
 #ifdef WITH_GUILE
 extern "C" {
 void register_scheme_functions_for_cmdline();
+void register_scheme_functions_for_light_setup();
 }
 static void register_scheme_functions() {
 	register_scheme_functions_for_cmdline();
+	register_scheme_functions_for_light_setup();
 }
 #endif
 
@@ -395,15 +397,23 @@ void actual_main()
 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
 		append_image_path(it->c_str());
 
-	if (cmdline.config != "") {
+	if (cmdline.configs.size() != 0) {
 #ifdef WITH_GUILE
-		char *config = 0;
-		int n = asprintf(&config, "%s/%s", cmdline.include_path, cmdline.config);
-		load_configfile(config);
-		free(config);
+		load_configfile("lights.scm");
+		scm_c_eval_string("(define gui #f)");
+		for (int c = 0; c < cmdline.configs.size(); ++c)
+			for (int p = 0; p < cmdline.configs.size(); ++p) {
+				char *config = 0;
+				int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
+				if (file_exists(config)) {
+					load_configfile(config);
+					free(config);
+					break;
+				}
+				free(config);
+			}
 		scene_ref scene = { 0 };
 		the_scene = scene;
-		scm_c_eval_string("(define gui #f)");
 		load_configfile("local.scm");
 #else
 		scene::scene::select(cmdline.config);
