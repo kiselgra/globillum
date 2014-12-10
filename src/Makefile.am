@@ -8,6 +8,7 @@ BUILT_SOURCES = cmdline.x lights.x hl-main.x
 libgi_la_SOURCES = 	\
 					arealight-sampler.cu arealight-sampler.h \
 					cgls-lights.cu cgls-lights.h \
+					direct-lighting.cpp direct-lighting.h \
 					dofrays.cu dofrays.h \
 					lights.cpp lights.h \
 					material.cu material-conversion.cpp material.h \

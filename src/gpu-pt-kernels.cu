@@ -13,44 +13,6 @@ using namespace rta::cuda;
 using namespace gi;
 using namespace gi::cuda;
 
-namespace k {
-	__global__ void reset_data(float3 *data, uint w, uint h, float3 val) {
-		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
-							 blockIdx.y * blockDim.y + threadIdx.y);
-		if (gid.x >= w || gid.y >= h) return;
-		int id = gid.y*w+gid.x;
-		data[id] = val;
-	}
-	
-	__global__ void combine_color_samples(float3 *data, uint w, uint h, float3 *sample, int samples_already_accumulated) {
-		int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
-							 blockIdx.y * blockDim.y + threadIdx.y);
-		if (gid.x >= w || gid.y >= h) return;
-		int id = gid.y*w+gid.x;
-		float3 sofar = data[id];
-		data[id] = (samples_already_accumulated * sofar + sample[id]) / (samples_already_accumulated + 1);
-	}
-}
-
-void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val) {
-	checked_cuda(cudaPeekAtLastError());
-	dim3 threads(16, 16);
-	dim3 blocks = block_configuration_2d(w, h, threads);
-	k::reset_data<<<blocks, threads>>>(data, w, h, val);
-	checked_cuda(cudaPeekAtLastError());
-	checked_cuda(cudaDeviceSynchronize());
-}
-
-void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int samples_already_accumulated) {
-	checked_cuda(cudaPeekAtLastError());
-	dim3 threads(16, 16);
-	dim3 blocks = block_configuration_2d(w, h, threads);
-	k::combine_color_samples<<<blocks, threads>>>(accum, w, h, sample, samples_already_accumulated);
-	checked_cuda(cudaPeekAtLastError());
-	checked_cuda(cudaDeviceSynchronize());
-}
-
-
 
 namespace k {
 	__device__ bool operator!=(const float3 &a, const float3 &b) {

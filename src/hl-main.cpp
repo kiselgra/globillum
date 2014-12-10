@@ -3,6 +3,8 @@
 #include <libobjloader/default.h>
 #include <librta/material.h>
 #include <libhyb/rta-cgls-connection.h>
+#include <termios.h>
+#include <unistd.h>
 
 #include "noscm.h"
 
@@ -396,6 +398,8 @@ extern "C" {
 static bool quit_loop = false;
 static bool restart_compute = true;
 static char *change_algo = 0;
+static struct termios termios;
+
 
 void actual_main() {
 	register_cgls_scheme_functions();
@@ -425,6 +429,10 @@ void actual_main() {
 	char *base = basename((char*)cmdline.filename);
 	string expr = string("(select-bookmark \"") + base + "\" \"start\")";
 	SCM r = scm_c_eval_string(expr.c_str());
+	expr = string("(define scene \"") + base + "\")";
+	r = scm_c_eval_string(expr.c_str());
+	scm_c_eval_string("(define (lbm) (list-bookmarks scene))");
+	scm_c_eval_string("(define (b n) (if (not (select-bookmark scene n)) (format #t \"Error: No such bookmark.~%\")))");
 
 	setup_rta("bbvh-cuda");
 
@@ -468,6 +476,8 @@ void actual_main() {
 		if (quit_loop) break;
 		sleep(1);
 	}
+	if (isatty(STDOUT_FILENO))
+		tcsetattr(STDOUT_FILENO, TCSANOW, &termios);
 }
 
 extern "C" {
@@ -488,6 +498,9 @@ static void hop(void *data, int argc, char **argv) {
 
 int main(int argc, char **argv)
 {	
+	if (isatty(STDOUT_FILENO))
+		tcgetattr(STDOUT_FILENO, &termios);
+
 	parse_cmdline(argc, argv);
 
 	char *p[1] = { 0 };

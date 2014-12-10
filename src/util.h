@@ -22,6 +22,19 @@ namespace gi {
 		template<typename T> inline T clamp(const T val, const T min, const T max) {
 			return std::max(std::min(val, max), min);
 		}
+
+		//! clear cuda buffer
+		void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val);
+
+		//! moving average
+		void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int samples_already_accumulated);
+		
+		//! for non-gui output, generates image <prefix><basename>.<seqnr>.png
+		void download_and_save_image(const std::string &basename, int seq, int w, int h, float3 *color);
+
+		// 
+		// random numbers
+		//  
 		
 		/*! \brief 32 bit linear congruential random number generator, copied from gpu gems 3. */
 		heterogenous inline unsigned int lcg_step(unsigned int *z, const unsigned int A, const unsigned int C)  {  
@@ -108,7 +121,6 @@ namespace gi {
 
 
 
-		void download_and_save_image(const std::string &basename, int seq, int w, int h, float3 *color);
 	}
 }
 

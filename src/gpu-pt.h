@@ -8,6 +8,7 @@
 
 #include "rayvis.h"
 #include "vars.h"
+#include "util.h"
 
 #include <iostream>
 
@@ -145,17 +146,17 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 	virtual void new_pass() {
 		curr_bounce = curr_path = 0;
 		path_len = 0;
-		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
-		reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
-		reset_gpu_buffer(output_color, w, h, make_float3(0,0,0));
+		gi::cuda::reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
+		gi::cuda::reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
+		gi::cuda::reset_gpu_buffer(output_color, w, h, make_float3(0,0,0));
 		restart_rayvis();
 	}
 	virtual void new_path() {
 		path_len = 0;
 		this->gpu_last_intersection = path_intersections;
-		combine_color_samples(output_color, w, h, path_accum_color, curr_path);
-		reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
-		reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
+		gi::cuda::combine_color_samples(output_color, w, h, path_accum_color, curr_path);
+		gi::cuda::reset_gpu_buffer(throughput, w, h, make_float3(1,1,1));
+		gi::cuda::reset_gpu_buffer(path_accum_color, w, h, make_float3(0,0,0));
 		this->crgs->generate_rays();
 		curr_path++;
 	}
