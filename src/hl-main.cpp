@@ -12,6 +12,7 @@
 
 #include "material.h"
 #include "vars.h"
+#include "util.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -55,6 +56,7 @@ static struct argp_option options[] =
     { "include-path", 'I', "path", 0, "Path to search for the config file. Default: " DATADIR "."},
     { "image-path", 'i', "path", 0, "Path to search for images. May be specified multiple times."},
 	{ "res", 'r', "w,h", 0, "Window resolution."},
+	{ "prefix", 'P', "path", 0, "Path prefix to store output images. Default: /tmp/"},
 	{ "merge-factor", MERGE, "x", 0, "Drawelement collapse threshold."},
 	{ 0 }
 };	
@@ -99,6 +101,10 @@ static error_t parse_options(int key, char *arg, argp_state *state)
     case 'I':   cmdline.include_paths.push_back(sarg); break;
     case 'i':   cmdline.image_paths.push_back(sarg); break;
     case 'r':   cmdline.res = read_vec2f(sarg); break;
+	case 'P':   gi::image_store_path = sarg; 
+				if (gi::image_store_path[gi::image_store_path.length()-1] != '/')
+					gi::image_store_path += "/";
+				break;
 	case MERGE: cmdline.merge_factor = atof(arg); break;
 	
 	case ARGP_KEY_ARG:		// process arguments. 
@@ -263,8 +269,9 @@ void setup_rta(std::string plugin) {
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = load_objfile_to_flat_tri_list(cmdline.filename);
 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	/*
 	gpu_materials = rta::cuda::convert_and_upload_materials();
+
+	/*
 
 	if (!use_cuda) {
 	}
@@ -430,7 +437,16 @@ void actual_main() {
 
 
 	// START COMPUTATION
-	
+	gi_algorithm *algo = gi_algorithm::selected;
+	while (true) {
+		algo->compute();
+		while (algo->progressive() && algo->in_progress()) {
+			cout << "algo in progress." << endl;
+			algo->update();
+		}
+		sleep(0);
+		break;
+	}
 }
 
 extern "C" {

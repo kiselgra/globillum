@@ -67,6 +67,7 @@ namespace local {
 		void save(vec3f *out);
 
 		virtual void activate(rta::rt_set *orig_set);
+		virtual bool in_progress();
 		virtual void compute();
 		virtual void update();
 		virtual bool progressive() { return true; }

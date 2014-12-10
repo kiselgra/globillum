@@ -12,8 +12,16 @@
 namespace gi {
 
 	float halton(int index, int base);
+		
+	//! See \ref download_and_save_image.
+	extern std::string image_store_path;
 
 	namespace cuda {
+
+		//! we don't use references as we expect this to be called for integral and floating point types, only.
+		template<typename T> inline T clamp(const T val, const T min, const T max) {
+			return std::max(std::min(val, max), min);
+		}
 		
 		/*! \brief 32 bit linear congruential random number generator, copied from gpu gems 3. */
 		heterogenous inline unsigned int lcg_step(unsigned int *z, const unsigned int A, const unsigned int C)  {  
@@ -99,6 +107,8 @@ namespace gi {
 		}
 
 
+
+		void download_and_save_image(const std::string &basename, int seq, int w, int h, float3 *color);
 	}
 }
 

@@ -123,7 +123,7 @@ namespace local {
 		gi_algorithm::activate(orig_set);
 		set = *orig_set;
 		set.rt = set.rt->copy();
-		if (scene.id >= 0) {
+		if (scene.id >= 0 && gi::lights.size() == 0) {
 			gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
 			gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
 		}
@@ -135,7 +135,8 @@ namespace local {
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 // 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 132);
+		gpu_cgls_arealight_evaluator<B,T> *bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 32);
+		set.bouncer = bouncer;
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 
@@ -155,10 +156,18 @@ namespace local {
 		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
 			shadow_tracer->trace_progressively(false);
 			gpu_cgls_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_cgls_arealight_evaluator<B, T>*>(set.bouncer);
+			cout << "bounce " << bouncer->curr_bounce << endl;
 			float3 *colors = bouncer->output_color;
 // 			float3 *colors = bouncer->material_colors;
-			cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+			if (scene.id >= 0)
+				cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+			else
+				gi::cuda::download_and_save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
+
 		}
+	}
+	bool gpu_cgls_lights_arealight_sampler::in_progress() {
+		return (shadow_tracer && shadow_tracer->progressive_trace_running());
 	}
 
 	void gpu_cgls_lights_arealight_sampler::compute() {
@@ -168,8 +177,12 @@ namespace local {
 			extract_pos_vec3f_of_matrix(&pos, lookat_matrix);
 			extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 			extract_up_vec3f_of_matrix(&up, lookat_matrix);
-			update_lights(scene, gpu_lights, nr_of_gpu_lights);
-			rta::cuda::cgls::update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
+			if (scene.id >= 0 && gi::lights.size() == 0) {
+				update_lights(scene, gpu_lights, nr_of_gpu_lights);
+				rta::cuda::cgls::update_rectangular_area_lights(scene, gpu_rect_lights, nr_of_gpu_rect_lights);
+			}
+			else
+				gi::cuda::update_lights(gpu_rect_lights, nr_of_gpu_rect_lights);
 			crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 			set.rt->trace_progressively(true);

@@ -32,6 +32,7 @@ public:
 	}
 	virtual void compute() = 0;
 	virtual bool progressive() { return false; }
+	virtual bool in_progress() { return false; }
 	virtual void update() { compute(); }
 
 	static void select(const std::string &name) {

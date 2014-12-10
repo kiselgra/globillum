@@ -61,11 +61,14 @@ float3 scm_to_float3(SCM s) {
 extern "C" {
 	SCM_DEFINE(s_addlight, "add-rectlight", 7, 0, 0, (SCM name, SCM center, SCM dir, SCM up, SCM col, SCM w, SCM h), "internal function") {
 		light l;
+		l.type = light::rect;
 		l.rectlight.center = scm_to_float3(center);
 		l.rectlight.dir    = scm_to_float3(dir);
 		l.rectlight.up     = scm_to_float3(up);
 		l.rectlight.col    = scm_to_float3(col);
+		l.rectlight.wh     = make_float2(scm_to_double(w), scm_to_double(h));
 		lights.push_back(l);
+		return SCM_BOOL_T;
 	}
 
 #ifndef SCM_MAGIC_SNARFER
