@@ -18,47 +18,48 @@ namespace rta {
 			
 			static float3 conv(const vec3f &v) { return make_float3(v.x, v.y, v.z); }
 
-			gi::rect_light* convert_and_upload_rectangular_area_lights(scene_ref scene, int &N) {
+			gi::light* convert_and_upload_rectangular_area_lights(scene_ref scene, int &N) {
 				N = 0;
 				for (light_list *run = scene_lights(scene); run; run = run->next) {
 					int t = light_type(run->ref);
 					if (t == rect_light_t)
 						++N;
 				}
-				gi::rect_light *L;
-				checked_cuda(cudaMalloc(&L, sizeof(gi::rect_light)*N));
+				gi::light *L;
+				checked_cuda(cudaMalloc(&L, sizeof(gi::light)*N));
 				update_rectangular_area_lights(scene, L, N);
 				return L;
 			}
 
-			void update_rectangular_area_lights(scene_ref scene, gi::rect_light *data, int N) {
-				vector<gi::rect_light> lights;
+			void update_rectangular_area_lights(scene_ref scene, gi::light *data, int N) {
+				vector<gi::light> lights;
 				int n = 0;
 				for (light_list *run = scene_lights(scene); run; run = run->next) {
 					int t = light_type(run->ref);
 					if (t == rect_light_t) {
-						gi::rect_light l;
+						gi::light l;
 						vec3f dir, pos, up;
 						extract_pos_vec3f_of_matrix(&pos, light_trafo(run->ref));
 						extract_dir_vec3f_of_matrix(&dir, light_trafo(run->ref));
 						extract_up_vec3f_of_matrix(&up, light_trafo(run->ref));
-						l.center = conv(pos);
-						l.dir = conv(dir);
-						l.up = conv(up);
-						l.col = conv(*light_color(run->ref));
-						l.wh = *(float2*)light_aux(run->ref);
+						l.type = gi::light::rect;
+						l.rectlight.center = conv(pos);
+						l.rectlight.dir = conv(dir);
+						l.rectlight.up = conv(up);
+						l.rectlight.col = conv(*light_color(run->ref));
+						l.rectlight.wh = *(float2*)light_aux(run->ref);
 						lights.push_back(l);
 						++n;
 					}
 				}
 				if (n != N)
 					throw std::runtime_error("number of lights changed in " "update_rectangular_area_lights");
-				checked_cuda(cudaMemcpy(data, &lights[0], sizeof(gi::rect_light)*n, cudaMemcpyHostToDevice));
+				checked_cuda(cudaMemcpy(data, &lights[0], sizeof(gi::light)*n, cudaMemcpyHostToDevice));
 			}
 				
 			namespace k {
 				template<typename rng_t> __global__ 
-				void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float3 *ray_orig, float3 *ray_dir, float *max_t,
+				void generate_rectlight_sample(int w, int h, gi::light *lights, int nr_of_lights, float3 *ray_orig, float3 *ray_dir, float *max_t,
 											   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 											   rng_t uniform01, float3 *potential_sample_contribution, gi::cuda::random_sampler_path_info pi) {
 					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
@@ -74,15 +75,15 @@ namespace rta {
 						is.barycentric_coord(&bc);
 						barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 						barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
-						float3 light_pos = lights[0].center;
-						float3 light_dir = lights[0].dir;
+						float3 light_pos = lights[0].rectlight.center;
+						float3 light_dir = lights[0].rectlight.dir;
 						float3 right = make_tangential(make_float3(1,0,0), light_dir);
 						float3 up = make_tangential(make_float3(0,1,0), light_dir);
 // 						float3 right = make_float3(1,0,0);
 // 						float3 up = make_float3(0,0,1);
 						float3 rnd = next_random3f(uniform01, id, pi);
-						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].wh.x,
-													(rnd.y - 0.5f) * lights[0].wh.y);
+						float2 offset = make_float2((rnd.x - 0.5f) * lights[0].rectlight.wh.x,
+													(rnd.y - 0.5f) * lights[0].rectlight.wh.y);
 						float3 light_sample = light_pos + offset.x * right + offset.y * up;
 						float3 dir = light_sample - P;
 						float len = length_of_vector(dir);
@@ -93,8 +94,8 @@ namespace rta {
 						max_t[id]    = len;
 						float ndotl = fmaxf((N|dir), 0.0f);
 						float light_cos = fmaxf((light_dir|-dir), 0.0f);
-						float factor = lights[0].wh.x * lights[0].wh.y * ndotl * light_cos / (len*len);
-						potential_sample_contribution[id] = lights[0].col * factor;
+						float factor = lights[0].rectlight.wh.x * lights[0].rectlight.wh.y * ndotl * light_cos / (len*len);
+						potential_sample_contribution[id] = lights[0].rectlight.col * factor;
 					}
 					else {
 						ray_dir[id]  = make_float3(0,0,0);
@@ -105,7 +106,7 @@ namespace rta {
 				}
 			}
 
-			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::halton_pool2f uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {
@@ -118,7 +119,7 @@ namespace rta {
 				checked_cuda(cudaDeviceSynchronize());
 			}
 			
-			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::lcg_random_state uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {
@@ -131,7 +132,7 @@ namespace rta {
 				checked_cuda(cudaDeviceSynchronize());
 			}
 
-			void generate_rectlight_sample(int w, int h, gi::rect_light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
+			void generate_rectlight_sample(int w, int h, gi::light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
 										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
 										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution, 
 										   gi::cuda::random_sampler_path_info pi) {

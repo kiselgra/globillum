@@ -397,10 +397,10 @@ void actual_main()
 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
 		append_image_path(it->c_str());
 
+	scm_c_eval_string("(define gui #t)");
+
 	if (cmdline.configs.size() != 0) {
-#ifdef WITH_GUILE
 		load_configfile("lights.scm");
-		scm_c_eval_string("(define gui #f)");
 		for (int c = 0; c < cmdline.configs.size(); ++c)
 			for (int p = 0; p < cmdline.configs.size(); ++p) {
 				char *config = 0;
@@ -415,10 +415,6 @@ void actual_main()
 		scene_ref scene = { 0 };
 		the_scene = scene;
 		load_configfile("local.scm");
-#else
-		scene::scene::select(cmdline.config);
-		scene::scene::selected->load();
-#endif
 	}
 	else
 		cerr << "no config file given" << endl;
@@ -491,7 +487,8 @@ void actual_main()
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_cgls_lights_dof");
+	gi_algorithm::select("gpu_cgls_area_lights");
+// 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 
 	init_rayvis(8, cmdline.res.x/200, cmdline.res.y/200);

@@ -1,6 +1,8 @@
 #ifndef __CGLS_LIGHTS_H__ 
 #define __CGLS_LIGHTS_H__ 
 
+#include "light.h"
+
 #include <libcgls/scene.h>
 
 #include <librta/cuda-kernels.h>

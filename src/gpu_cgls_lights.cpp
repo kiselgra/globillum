@@ -45,7 +45,7 @@ namespace local {
 	
 	template<typename _box_t, typename _tri_t> struct gpu_cgls_arealight_evaluator : public gpu_material_evaluator<forward_traits> {
 		declare_traits_types;
-		gi::rect_light *lights;
+		gi::light *lights;
 		int nr_of_lights;
 		gi::cuda::halton_pool2f uniform_random_numbers;
 		float3 *potential_sample_contribution; 
@@ -54,7 +54,7 @@ namespace local {
 		float3 *output_color;
 		triangle_intersection<cuda::simple_triangle> *primary_intersection;
 		gpu_cgls_arealight_evaluator(uint w, uint h, cuda::material_t *materials, cuda::simple_triangle *triangles, 
-									 crgs_with_diffs *crgs, gi::rect_light *lights, int nr_of_lights,
+									 crgs_with_diffs *crgs, gi::light *lights, int nr_of_lights,
 									 gi::cuda::halton_pool2f rnd, int samples)
 		: gpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs), 
 		  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), samples(samples) {
@@ -127,16 +127,20 @@ namespace local {
 			gpu_lights = cuda::cgls::convert_and_upload_lights(scene, nr_of_gpu_lights);
 			gpu_rect_lights = cuda::cgls::convert_and_upload_rectangular_area_lights(scene, nr_of_gpu_rect_lights);
 		}
+		else {
+			gpu_rect_lights = gi::cuda::convert_and_upload_lights(nr_of_gpu_rect_lights);
+		}
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 // 		set.bouncer = new gpu_material_evaluator<B, T>(w, h, gpu_materials, triangles, crgs);
 // 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
 		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
-		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 32);
+		set.bouncer = new gpu_cgls_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, pool, 132);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 
-		cuda::cgls::init_cuda_image_transfer(result);
+		if (scene.id >= 0)
+			cuda::cgls::init_cuda_image_transfer(result);
 
 		cout << "pool: " << pool.N << endl;
 			

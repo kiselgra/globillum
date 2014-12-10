@@ -1,5 +1,5 @@
 #define PNG_SKIP_SETJMP_CHECK
-
+#ifndef SCM_MAGIC_SNARFER
 #include <libobjloader/default.h>
 #include <librta/material.h>
 #include <libhyb/rta-cgls-connection.h>
@@ -383,11 +383,13 @@ static char* console_exposure(console_ref ref, int argc, char **argv) {
 
 extern "C" {
 	void register_scheme_functions_for_light_setup();
+	void register_scheme_functions_for_cmdline();
 }
 
 void actual_main() {
 	register_cgls_scheme_functions();
 	register_scheme_functions_for_light_setup();
+	register_scheme_functions_for_cmdline();
 
 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
 		append_image_path(it->c_str());
@@ -457,3 +459,47 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+
+#endif
+#ifdef WITH_GUILE
+
+#include <libguile.h>
+#include <libcgl/scheme.h>
+
+extern "C" {
+
+	SCM_DEFINE(s_cmdline, "query-cmdline", 1, 0, 0, (SCM what), "") {
+		if (!scm_is_symbol(what))
+			scm_throw(scm_from_locale_symbol("cmdline-error"), scm_list_2(what, scm_from_locale_string("is not a symbol")));
+		char *w = scm_to_locale_string(scm_symbol_to_string(what));
+		string s = w;
+		free(w);
+		if (s == "model") {
+			if (cmdline.objfile)
+				return scm_from_locale_string(cmdline.filename);
+			scm_throw(scm_from_locale_symbol("cmdline-error"), 
+			          scm_list_2(what, 
+			                    scm_from_locale_string("the program was invoked with a scene file, not a model file.")));
+		}
+		else if (s == "scene") {
+			return scm_from_locale_string(cmdline.filename);
+		}
+		else if (s == "filetype") {
+			return scm_string_to_symbol(scm_from_locale_string((cmdline.objfile ? string("obj") : string("scene")).c_str()));
+		}
+		else if (s == "merge-factor") {
+			return scm_from_double(cmdline.merge_factor);
+		}
+
+
+		scm_throw(scm_from_locale_symbol("cmdline-error"), 
+		          scm_list_2(what, 
+		                    scm_from_locale_string("invalid option. use scene, model, filetype")));
+	}
+
+	void register_scheme_functions_for_cmdline() {
+		#include "hl-main.x"
+	}
+}
+
+#endif

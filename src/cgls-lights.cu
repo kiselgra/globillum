@@ -20,6 +20,8 @@ namespace rta {
 					int t = light_type(run->ref);
 					if (t == hemi_light_t || t == spot_light_t)
 						++N;
+					else
+						cerr << "Ignoring Light '" << light_name(run->ref) << "' because of incompatible type." << endl;
 				}
 				light *L;
 				cout << "lights: " << N << endl;
@@ -49,7 +51,7 @@ namespace rta {
 						l.spot_cos_cutoff = cosf(*(float*)light_aux(run->ref));
 					}
 					else {
-// 						cerr << "ignoring light '" << light_name(run->ref) << "' because of incompatible type." << endl;
+						cerr << "ignoring light '" << light_name(run->ref) << "' because of incompatible type." << endl;
 						continue;
 					}
 					lights.push_back(l);

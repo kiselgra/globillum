@@ -2,7 +2,7 @@ noinst_LTLIBRARIES = libgi.la
 
 bin_PROGRAMS = gi-gui gi
 
-BUILT_SOURCES = cmdline.x lights.x
+BUILT_SOURCES = cmdline.x lights.x hl-main.x
 
 # libconfigfiles_la_SOURCES = grammar.yy  lexer.ll  parser.h  token.h lexer.h config_creator.h configfile.h configfile.cpp
 libgi_la_SOURCES = 	\
@@ -53,6 +53,7 @@ gi_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.so
 SUFFIXES: .x
 cmdline.x: cmdline.cpp
 lights.x: lights.cpp
+hl-main.x: hl-main.cpp
 
 if CAN_USE_GUILE
 snarf_opts = @GUILE_DEF@ $(AM_CPPFLAGS) $(CPPFLAGS) $(gi_CPPFLAGS)
