@@ -393,6 +393,10 @@ extern "C" {
 	void register_scheme_functions_for_cmdline();
 }
 
+static bool quit_loop = false;
+static bool restart_compute = true;
+static char *change_algo = 0;
+
 void actual_main() {
 	register_cgls_scheme_functions();
 	register_scheme_functions_for_light_setup();
@@ -438,14 +442,31 @@ void actual_main() {
 
 	// START COMPUTATION
 	gi_algorithm *algo = gi_algorithm::selected;
+	char *argv[5];
+	console_ref console = {-1};
 	while (true) {
-		algo->compute();
+		if (restart_compute) {
+			if (change_algo) {
+				argv[0] = (char*)"a";
+				argv[1] = change_algo;
+				char *res = console_algo(console, 1, argv);
+				if (res != 0) {
+					cerr << "Error: " << res << endl;
+					free(res);
+				}
+				free(change_algo);
+				change_algo = 0;
+			}
+			algo->compute();
+			restart_compute = false;
+		}
 		while (algo->progressive() && algo->in_progress()) {
 			cout << "algo in progress." << endl;
 			algo->update();
+			if (quit_loop) break;
 		}
-		sleep(0);
-		break;
+		if (quit_loop) break;
+		sleep(1);
 	}
 }
 
@@ -513,8 +534,26 @@ extern "C" {
 		                    scm_from_locale_string("invalid option. use scene, model, filetype")));
 	}
 
+	SCM_DEFINE(s_quit, "quit", 0, 0, 0, (), "terminate interactive loop") {
+		quit_loop = true;
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_recomp, "recompute", 0, 0, 0, (), "restart selected algorithm") {
+		restart_compute = true;
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_select, "select", 1, 0, 0, (SCM namepart), "select different algorithm and start computation") {
+		restart_compute = true;
+		change_algo = scm_to_locale_string(namepart);
+		return SCM_BOOL_T;
+	}
+
 	void register_scheme_functions_for_cmdline() {
 		#include "hl-main.x"
+		scm_c_eval_string("(define exit quit)");
+		scm_c_eval_string("(define q quit)");
 	}
 }
 
