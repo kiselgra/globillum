@@ -1,0 +1,15 @@
+NOTES ON THE HEADLESS VERSION
+=============================
+That is ./src/gi.
+
+If your terminal get corrupted after a crash this is because the scheme
+interpreter changes some terminal properties which are not reset on crash.
+
+Example command line
+--------------------
+$ ./src/gi /home/kai/render-data/models/sponza.noflag.obj -r 1024x720 -c nogui.scm -c sponza.lights.scm
+
+This loads the model and executes the default renderer right away. Use -l (ell)
+to not render directly, leaving you the chance to make settings at the repl.
+
+

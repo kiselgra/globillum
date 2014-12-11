@@ -40,6 +40,7 @@ struct Cmdline {
 	bool scenefile, objfile;
 	float merge_factor;
 	std::list<std::string> image_paths;
+	bool lazy;
 } cmdline;
 
 const char *argp_program_version = VERSION;
@@ -60,6 +61,7 @@ static struct argp_option options[] =
 	{ "res", 'r', "w,h", 0, "Window resolution."},
 	{ "prefix", 'P', "path", 0, "Path prefix to store output images. Default: /tmp/"},
 	{ "merge-factor", MERGE, "x", 0, "Drawelement collapse threshold."},
+	{ "lazy", 'l', 0, 0, "Don't start computation right ahead."},
 	{ 0 }
 };	
 
@@ -101,6 +103,7 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	case 'v':	cmdline.verbose = true; 	break;
     case 'c':   cmdline.configs.push_back(sarg); break;
     case 'I':   cmdline.include_paths.push_back(sarg); break;
+    case 'l':   cmdline.lazy = true; break;
     case 'i':   cmdline.image_paths.push_back(sarg); break;
     case 'r':   cmdline.res = read_vec2f(sarg); break;
 	case 'P':   gi::image_store_path = sarg; 
@@ -132,6 +135,7 @@ int parse_cmdline(int argc, char **argv)
     cmdline.res.y = 768;
 	cmdline.scenefile = cmdline.objfile = false;
 	cmdline.merge_factor = 10;
+	cmdline.lazy = true;
 	int ret = argp_parse(&parser, argc, argv, /*ARGP_NO_EXIT*/0, 0, 0);
     
 	if (cmdline.configs.size() == 0)
@@ -453,6 +457,7 @@ void actual_main() {
 	gi_algorithm *algo = gi_algorithm::selected;
 	char *argv[5];
 	console_ref console = {-1};
+	restart_compute = !cmdline.lazy;
 	while (true) {
 		if (restart_compute) {
 			if (change_algo) {
