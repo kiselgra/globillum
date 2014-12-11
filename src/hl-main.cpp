@@ -135,7 +135,7 @@ int parse_cmdline(int argc, char **argv)
     cmdline.res.y = 768;
 	cmdline.scenefile = cmdline.objfile = false;
 	cmdline.merge_factor = 10;
-	cmdline.lazy = true;
+	cmdline.lazy = false;
 	int ret = argp_parse(&parser, argc, argv, /*ARGP_NO_EXIT*/0, 0, 0);
     
 	if (cmdline.configs.size() == 0)
@@ -440,14 +440,14 @@ void actual_main() {
 
 	setup_rta("bbvh-cuda");
 
-	new local::gpu_cgls_lights_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
+	new local::gpu_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
 // 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, 45.f, .5f, 5.f);
 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, focus_distance, aperture, 5.f);
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_cgls_area_lights");
+	gi_algorithm::select("gpu_area_lights");
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 
@@ -480,7 +480,7 @@ void actual_main() {
 			if (quit_loop) break;
 		}
 		if (quit_loop) break;
-		sleep(1);
+		usleep(100000);
 	}
 	if (isatty(STDOUT_FILENO))
 		tcsetattr(STDOUT_FILENO, TCSANOW, &termios);

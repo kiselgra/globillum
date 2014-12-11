@@ -14,7 +14,7 @@ namespace gi {
 
 	namespace cuda {
 			
-		light* convert_and_upload_lights(int &N) {
+		light* convert_and_upload_lights(int &N, float &power) {
 			N = 0;
 			for (light &l : lights) {
 				if (l.type == light::rect)
@@ -23,16 +23,18 @@ namespace gi {
 			light *L;
 			cout << "lights: " << N << endl;
 			checked_cuda(cudaMalloc(&L, sizeof(light)*N));
-			update_lights(L, N);
+			update_lights(L, N, power);
 			return L;
 		}
 
-		void update_lights(light *data, int N) {
+		void update_lights(light *data, int N, float &power) {
 			vector<light> use_lights;
+			power = 0;
 			int n = 0;
 			for (light &l : lights) {
 				if (l.type == light::rect) {
 					use_lights.push_back(l);
+					power += l.power;
 					++n;
 				}
 			}
@@ -67,6 +69,7 @@ extern "C" {
 		l.rectlight.up     = scm_to_float3(up);
 		l.rectlight.col    = scm_to_float3(col);
 		l.rectlight.wh     = make_float2(scm_to_double(w), scm_to_double(h));
+		l.power = l.rectlight.wh.x * l.rectlight.wh.y * (l.rectlight.col.x + l.rectlight.col.y + l.rectlight.col.z)*.333;
 		lights.push_back(l);
 		return SCM_BOOL_T;
 	}

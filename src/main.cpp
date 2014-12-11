@@ -480,14 +480,14 @@ void actual_main()
 	reload_shaders();
 	activate_automatic_shader_reload();
 
-	new local::gpu_cgls_lights_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
+	new local::gpu_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
 // 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, 45.f, .5f, 5.f);
 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, focus_distance, aperture, 5.f);
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_cgls_area_lights");
+	gi_algorithm::select("gpu_area_lights");
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 

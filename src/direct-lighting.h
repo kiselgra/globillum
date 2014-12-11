@@ -43,7 +43,7 @@ namespace local {
 	};
 
 
-	class gpu_cgls_lights_arealight_sampler : public gi_algorithm {
+	class gpu_arealight_sampler : public gi_algorithm {
 		typedef rta::cuda::simple_aabb B;
 		typedef rta::cuda::simple_triangle T;
 	protected:
@@ -56,10 +56,11 @@ namespace local {
 		gi::light *gpu_lights;
 		int nr_of_gpu_lights;
 		rta::raytracer *shadow_tracer;
+		float overall_light_power;
 	public:
-		gpu_cgls_lights_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "gpu_cgls_area_lights")
+		gpu_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "gpu_area_lights")
 			: gi_algorithm(name), w(w), h(h),  /*TMP*/ hitpoints(w,h), normals(w,h),
-			  collector(0), crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0) {
+			  collector(0), crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0) {
 		}
 
 		void evaluate_material();

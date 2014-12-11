@@ -15,6 +15,7 @@ namespace gi {
 	struct light {
 		enum type_t { rect };
 		type_t type;
+		float power;	//!< for light selection, only.
 
 		union {
 			struct rect_light rectlight;
@@ -25,8 +26,8 @@ namespace gi {
 
 	namespace cuda {
 
-		light* convert_and_upload_lights(int &N);
-		void update_lights(light *data, int N);
+		light* convert_and_upload_lights(int &N, float &power);
+		void update_lights(light *data, int N, float &power);
 
 	}
 }

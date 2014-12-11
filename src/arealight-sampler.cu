@@ -104,6 +104,61 @@ namespace rta {
 						potential_sample_contribution[id] = make_float3(0, 0, 0);
 					}
 				}
+					
+				template<typename rng_t> __global__ 
+				void generate_arealight_sample(int w, int h, gi::light *lights, int nr_of_lights, float overall_power,
+											   float3 *ray_orig, float3 *ray_dir, float *max_t,
+											   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+											   rng_t uniform01, float3 *potential_sample_contribution, gi::cuda::random_sampler_path_info pi) {
+					int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+										 blockIdx.y * blockDim.y + threadIdx.y);
+					if (gid.x >= w || gid.y >= h) return;
+					int id = gid.y*w+gid.x;
+					float3 rnd = next_random3f(uniform01, id, pi);
+					float choice = rnd.z*overall_power;
+					float light_acc = 0;
+					int light = 0;
+					while (choice > light_acc+lights[light].power && light < nr_of_lights) {
+						light_acc += lights[light].power;
+						++light;
+					}
+					
+					triangle_intersection<cuda::simple_triangle> is = ti[id];
+					if (is.valid()) {
+						float3 bc; 
+						float3 P, N;
+						cuda::simple_triangle tri = triangles[is.ref];
+						is.barycentric_coord(&bc);
+						barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
+						barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
+						float3 light_pos = lights[light].rectlight.center;
+						float3 light_dir = lights[light].rectlight.dir;
+						float3 right = make_tangential(make_float3(1,0,0), light_dir);
+						float3 up = make_tangential(make_float3(0,1,0), light_dir);
+// 						float3 right = make_float3(1,0,0);
+// 						float3 up = make_float3(0,0,1);
+						float2 offset = make_float2((rnd.x - 0.5f) * lights[light].rectlight.wh.x,
+													(rnd.y - 0.5f) * lights[light].rectlight.wh.y);
+						float3 light_sample = light_pos + offset.x * right + offset.y * up;
+						float3 dir = light_sample - P;
+						float len = length_of_vector(dir);
+						dir /= len;
+						P += 0.01*dir;
+						ray_orig[id] = P;
+						ray_dir[id]  = dir;
+						max_t[id]    = len;
+						float ndotl = fmaxf((N|dir), 0.0f);
+						float light_cos = fmaxf((light_dir|-dir), 0.0f);
+						float factor = lights[light].rectlight.wh.x * lights[light].rectlight.wh.y * ndotl * light_cos / (len*len);
+						potential_sample_contribution[id] = lights[light].rectlight.col * factor * (overall_power/lights[light].power);
+					}
+					else {
+						ray_dir[id]  = make_float3(0,0,0);
+						ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+						max_t[id] = -1;
+						potential_sample_contribution[id] = make_float3(0, 0, 0);
+					}
+				}
 			}
 
 			void generate_rectlight_sample(int w, int h, gi::light *lights, int nr_of_lights, float *ray_orig, float *ray_dir, float *max_t,
@@ -140,6 +195,20 @@ namespace rta {
 				dim3 threads(16, 16);
 				dim3 blocks = block_configuration_2d(w, h, threads);
 				k::generate_rectlight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, (float3*)ray_orig, (float3*)ray_dir, max_t, 
+																  ti, triangles, uniform01, potential_sample_contribution, pi);
+				checked_cuda(cudaPeekAtLastError());
+				checked_cuda(cudaDeviceSynchronize());
+			}
+
+			void generate_arealight_sample(int w, int h, gi::light *lights, int nr_of_lights, float overall_power,
+										   float *ray_orig, float *ray_dir, float *max_t,
+										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution, 
+										   gi::cuda::random_sampler_path_info pi) {
+				checked_cuda(cudaPeekAtLastError());
+				dim3 threads(16, 16);
+				dim3 blocks = block_configuration_2d(w, h, threads);
+				k::generate_arealight_sample<<<blocks, threads>>>(w, h, lights, nr_of_lights, overall_power, (float3*)ray_orig, (float3*)ray_dir, max_t, 
 																  ti, triangles, uniform01, potential_sample_contribution, pi);
 				checked_cuda(cudaPeekAtLastError());
 				checked_cuda(cudaDeviceSynchronize());

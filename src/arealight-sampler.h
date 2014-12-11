@@ -29,6 +29,11 @@ namespace rta {
 										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution,
 										   gi::cuda::random_sampler_path_info pi);
 			
+			void generate_arealight_sample(int w, int h, gi::light *lights, int nr_of_lights, float overall_power,
+										   float *ray_orig, float *ray_dir, float *max_t,
+										   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
+										   gi::cuda::mt_pool3f uniform01, float3 *potential_sample_contribution, 
+										   gi::cuda::random_sampler_path_info pi);
 			
 			void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
 										float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, int sample);
