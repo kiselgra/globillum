@@ -447,6 +447,7 @@ void actual_main() {
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 
+	scm_c_eval_string("(set! gi-initialization-done #t)");
 
 	// START COMPUTATION
 	gi_algorithm *algo = gi_algorithm::selected;
@@ -490,7 +491,17 @@ static void hop(void *data, int argc, char **argv) {
 	load_snarfed_definitions();
 // 	load_internal_configfiles();
 	if (argv[0]) load_configfile(argv[0]);
-	start_console_thread();
+// 	start_console_thread();
+
+	scm_c_eval_string("(define gi-initialization-done #f)");
+	scm_c_eval_string("(define repl-thread (call-with-new-thread (lambda () "
+	                                          "(use-modules (ice-9 readline)) "
+											  "(activate-readline) "
+											  "(while (not gi-initialization-done) (yield))"
+											  "(format #t \"we're ready now.~%\")"
+											  "(top-repl) "
+											  "(format #t \"THE GUILE REPL IS TERMINATING NOW.~%\"))))");
+
 #endif
 
 	((void(*)())data)();    // run the user supplied 'inner main'
