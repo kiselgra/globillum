@@ -507,7 +507,7 @@ static void hop(void *data, int argc, char **argv) {
 											  "(while (not gi-initialization-done) (yield))"
 											  "(format #t \"we're ready now.~%\")"
 											  "(top-repl) "
-											  "(format #t \"THE GUILE REPL IS TERMINATING NOW.~%\"))))");
+											  "(q))))");
 
 #endif
 
