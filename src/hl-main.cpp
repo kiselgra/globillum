@@ -190,10 +190,6 @@ rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_lis
 
 	rta::basic_flat_triangle_list<rta::simple_triangle> ftl(triangles);
 
-	for (auto path : cmdline.image_paths)
-		rta::append_image_path(path);
-	rta::append_image_path(string(getenv("HOME")) + "/render-data/images");
-	rta::append_image_path(string(getenv("HOME")) + "/render-data/images/sponza");
 	rta::prepend_image_path(dirname((char*)filename.c_str()));
 
 	int run = 0;
@@ -410,8 +406,13 @@ void actual_main() {
 	register_scheme_functions_for_light_setup();
 	register_scheme_functions_for_cmdline();
 
-	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
-		append_image_path(it->c_str());
+// 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
+// 		append_image_path(it->c_str());
+	
+	for (auto path : cmdline.image_paths)
+		rta::append_image_path(path);
+	rta::append_image_path(string(getenv("HOME")) + "/render-data/images");
+	rta::append_image_path(string(getenv("HOME")) + "/render-data/images/sponza");
 
 	ostringstream oss; oss << "(define x-res " << cmdline.res.x << ") (define y-res " << cmdline.res.y << ")";
 	scm_c_eval_string(oss.str().c_str());
@@ -422,6 +423,7 @@ void actual_main() {
 			char *config = 0;
 			int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
 			if (file_exists(config)) {
+				cout << config << endl;
 				load_configfile(config);
 				free(config);
 				break;

@@ -11,6 +11,8 @@
 #include <cuda_gl_interop.h>
 
 using namespace std;
+using namespace rta;
+using namespace gi;
 
 namespace rta {
 	namespace cuda {
@@ -131,26 +133,52 @@ namespace rta {
 						is.barycentric_coord(&bc);
 						barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 						barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
-						float3 light_pos = lights[light].rectlight.center;
-						float3 light_dir = lights[light].rectlight.dir;
-						float3 right = make_tangential(make_float3(1,0,0), light_dir);
-						float3 up = make_tangential(make_float3(0,1,0), light_dir);
-// 						float3 right = make_float3(1,0,0);
-// 						float3 up = make_float3(0,0,1);
-						float2 offset = make_float2((rnd.x - 0.5f) * lights[light].rectlight.wh.x,
-													(rnd.y - 0.5f) * lights[light].rectlight.wh.y);
-						float3 light_sample = light_pos + offset.x * right + offset.y * up;
-						float3 dir = light_sample - P;
-						float len = length_of_vector(dir);
-						dir /= len;
+
+						float3 contribution = make_float3(0.0f,0.0f,0.0f);
+						float3 dir;
+						float len;
+
+						if (lights[light].type == gi::light::rect) {
+							float3 light_pos = lights[light].rectlight.center;
+							float3 light_dir = lights[light].rectlight.dir;
+							float3 right = make_tangential(make_float3(1,0,0), light_dir);
+							float3 up = make_tangential(make_float3(0,1,0), light_dir);
+							// 						float3 right = make_float3(1,0,0);
+							// 						float3 up = make_float3(0,0,1);
+							float2 offset = make_float2((rnd.x - 0.5f) * lights[light].rectlight.wh.x,
+														(rnd.y - 0.5f) * lights[light].rectlight.wh.y);
+							float3 light_sample = light_pos + offset.x * right + offset.y * up;
+							dir = light_sample - P;
+							len = length_of_vector(dir);
+							dir /= len;
+							float ndotl = fmaxf((N|dir), 0.0f);
+							float light_cos = fmaxf((light_dir|-dir), 0.0f);
+							float factor = lights[light].rectlight.wh.x * lights[light].rectlight.wh.y * ndotl * light_cos / (len*len);
+							contribution = lights[light].rectlight.col * factor;
+						}
+						else if (lights[light].type == gi::light::sky) {
+							float sq = sqrtf(1-rnd.x*rnd.x);
+							dir.x = sq * cosf(2.0f*float(M_PI)*rnd.y);
+							dir.y = sq * sinf(2.0f*float(M_PI)*rnd.y);
+							dir.z = rnd.x;
+							dir = make_tangential(dir, N);
+							len = FLT_MAX;
+							sky_light &sl = lights[light].skylight;
+							float theta = acosf(dir.y);
+							float phi = atan2f(dir.z, dir.x);
+// 							float theta = acosf(dir.z);
+// 							float phi = atan2f(dir.y, dir.x);
+							if (phi < 0) phi += 2.0f*float(M_PI);
+							float s = phi/(2.0f*float(M_PI));
+							float t = theta/float(M_PI);
+							contribution = sl.scale * sl.data[int(t*sl.h) * sl.w + int(s*sl.w)];// * (dir|N);
+						}
+						
 						P += 0.01*dir;
 						ray_orig[id] = P;
 						ray_dir[id]  = dir;
 						max_t[id]    = len;
-						float ndotl = fmaxf((N|dir), 0.0f);
-						float light_cos = fmaxf((light_dir|-dir), 0.0f);
-						float factor = lights[light].rectlight.wh.x * lights[light].rectlight.wh.y * ndotl * light_cos / (len*len);
-						potential_sample_contribution[id] = lights[light].rectlight.col * factor * (overall_power/lights[light].power);
+						potential_sample_contribution[id] = contribution * (overall_power/lights[light].power);
 					}
 					else {
 						ray_dir[id]  = make_float3(0,0,0);

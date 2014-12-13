@@ -12,13 +12,21 @@ namespace gi {
 		float2 wh;
 	};
 
+	struct sky_light {
+		float scale;
+		char *map;
+		float3 *data;
+		int w, h;
+	};
+
 	struct light {
-		enum type_t { rect };
+		enum type_t { rect, sky };
 		type_t type;
 		float power;	//!< for light selection, only.
 
 		union {
 			struct rect_light rectlight;
+			struct sky_light  skylight;
 		};
 	};
 
