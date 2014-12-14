@@ -5,6 +5,8 @@
 #include <libcgls/console.h>
 #include <libcgl/wall-time.h>
 
+#include <librta/material.h>
+
 #include <libhyb/rta-cgls-connection.h>
 
 #include "cmdline.h"
@@ -396,6 +398,12 @@ void actual_main()
 
 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
 		append_image_path(it->c_str());
+	
+	for (auto path : cmdline.image_paths)
+		rta::append_image_path(path);
+	rta::append_image_path(string(getenv("HOME")) + "/render-data/images");
+	rta::append_image_path(string(getenv("HOME")) + "/render-data/images/sponza");
+
 
 	scm_c_eval_string("(define gui #t)");
 

@@ -171,7 +171,7 @@ namespace rta {
 							if (phi < 0) phi += 2.0f*float(M_PI);
 							float s = phi/(2.0f*float(M_PI));
 							float t = theta/float(M_PI);
-							contribution = sl.scale * sl.data[int(t*sl.h) * sl.w + int(s*sl.w)];// * (dir|N);
+							contribution = sl.scale * sl.data[int(t*sl.h) * sl.w + int(s*sl.w)] * (dir|N);
 						}
 						
 						P += 0.01*dir;
@@ -181,10 +181,26 @@ namespace rta {
 						potential_sample_contribution[id] = contribution * (overall_power/lights[light].power);
 					}
 					else {
+						float3 dir = ray_dir[id];
 						ray_dir[id]  = make_float3(0,0,0);
 						ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 						max_t[id] = -1;
-						potential_sample_contribution[id] = make_float3(0, 0, 0);
+						// potential_sample_contribution[id] = make_float3(0, 0, 0);
+						float3 Le = make_float3(0.0f,0.0f,0.0f);
+						int i = 0;
+						for (i = nr_of_lights-1; i >= 0; i--)
+							if (lights[i].type == gi::light::sky)
+								break;
+						if (i >= 0) {
+							float theta = acosf(dir.y);
+							float phi = atan2f(dir.z, dir.x);
+							if (phi < 0) phi += 2.0f*float(M_PI);
+							float s = phi/(2.0f*float(M_PI));
+							float t = theta/float(M_PI);
+							sky_light &sl = lights[i].skylight;
+							Le = sl.data[int(t*sl.h) * sl.w + int(s*sl.w)];
+						}
+						potential_sample_contribution[id] = Le;
 					}
 				}
 			}
@@ -310,7 +326,6 @@ namespace rta {
 				checked_cuda(cudaDeviceSynchronize());
 			}
 			
-
 			// copy cuda colors to gl texture
 
 			static cudaGraphicsResource *cuda_resource = 0;

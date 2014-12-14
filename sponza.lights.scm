@@ -16,6 +16,7 @@
 
 (light "sky"
        :type :sky
-       :map "cgskies-0319-free.png"
+       ;:map "cgskies-0319-free.png"
+       :map "CGSkies_0056_free.exr"
        :diameter 1000
-       :scale 10)
+       :scale 20)

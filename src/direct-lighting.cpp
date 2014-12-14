@@ -41,6 +41,7 @@ namespace local {
 			  checked_cuda(cudaMalloc(&output_color, sizeof(float3)*w*h));
 			  checked_cuda(cudaMalloc(&primary_intersection, sizeof(triangle_intersection<cuda::simple_triangle>)*w*h));
 			  curr_bounce = 0;
+			  this->background = make_float3(1,1,1);
 		}
 		~gpu_arealight_evaluator() {
 			checked_cuda(cudaFree(potential_sample_contribution));
@@ -70,7 +71,7 @@ namespace local {
 													this->material_colors, output_color, curr_bounce-1);
 		}
 		virtual void bounce() {
-			cout << "bounce " << curr_bounce << endl;
+			cout << "direct lighting sample " << curr_bounce << endl;
 			if (curr_bounce == 0) {
 				// this has to be done before switching the intersection data.
 				this->evaluate_material();
@@ -149,6 +150,11 @@ namespace local {
 		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 	}
 
+	void gpu_arealight_sampler::light_samples(int n) {
+		cout << name << " is accumulating " << n << " direct lighting samples, now." << endl;
+		gpu_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_arealight_evaluator<B, T>*>(set.bouncer);
+		bouncer->samples = n;
+	}
 }
 
 

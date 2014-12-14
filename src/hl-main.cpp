@@ -581,6 +581,13 @@ extern "C" {
 		return SCM_BOOL_T;
 	}
 
+	SCM_DEFINE(s_light_samples, "light-samples", 1, 0, 0, (SCM samples), "change number of the current algorithm's light samples (whatever that might mean)") {
+		int s = scm_to_int(samples);
+		s = max(1, s);
+		gi_algorithm::selected->light_samples(s);
+		return SCM_BOOL_T;
+	}
+
 	void register_scheme_functions_for_cmdline() {
 		#include "hl-main.x"
 		scm_c_eval_string("(define exit quit)");

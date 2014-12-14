@@ -17,11 +17,12 @@ namespace local {
 		rta::cuda::material_t *materials;
 		rta::cuda::simple_triangle *tri_ptr;
 		float3 *material_colors;
+		float3 background;
 		rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
 		gpu_material_evaluator(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles, 
 							   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs)
 			: rta::cuda::gpu_ray_bouncer<forward_traits>(w, h), materials(materials), material_colors(0), tri_ptr(triangles),
-			  crgs(crgs) {
+			  crgs(crgs), background(make_float3(0,0,0)) {
 			checked_cuda(cudaMalloc(&material_colors, sizeof(float3)*w*h));
 		}
 		~gpu_material_evaluator() {
@@ -32,7 +33,7 @@ namespace local {
 		}
 		virtual void evaluate_material() {
 			rta::cuda::evaluate_material(this->w, this->h, this->gpu_last_intersection, tri_ptr, materials, material_colors, 
-										 crgs->gpu_origin, crgs->gpu_direction, crgs->differentials_origin, crgs->differentials_direction);
+										 crgs->gpu_origin, crgs->gpu_direction, crgs->differentials_origin, crgs->differentials_direction, background);
 		}
 		virtual void bounce() {
 			evaluate_material();
@@ -71,6 +72,7 @@ namespace local {
 		virtual void compute();
 		virtual void update();
 		virtual bool progressive() { return true; }
+		virtual void light_samples(int n);
 	};
 
 }

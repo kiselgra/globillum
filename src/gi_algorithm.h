@@ -59,6 +59,9 @@ public:
 		return l;
 	}
 
+	virtual void path_samples(int n)  { std::cerr << "the algorithm '" << name << "' does not know about path samples." << std::endl; }
+	virtual void path_length(int n)   { std::cerr << "the algorithm '" << name << "' does not know about path length." << std::endl; }
+	virtual void light_samples(int n) { std::cerr << "the algorithm '" << name << "' does not know about light samples." << std::endl; }
 };
 
 #endif

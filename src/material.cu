@@ -25,12 +25,12 @@ namespace rta {
 // 				return a.x*b.x + a.y*b.y + a.z*b.z;
 // 			}
 
-			__global__ void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst) {
+			__global__ void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float3 background) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
-				float3 out = make_float3(0,0,0);
+				float3 out = background;
 				if (is.valid()) {
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
@@ -54,12 +54,12 @@ namespace rta {
 			}
 
 			__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, 
-														float3 *dst, float3 *ray_org, float3 *ray_dir) {
+														float3 *dst, float3 *ray_org, float3 *ray_dir, float3 background) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
-				float3 out = make_float3(0,0,0);
+				float3 out = background;
 				if (is.valid()) {
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
@@ -114,12 +114,12 @@ namespace rta {
 			}
 
 			__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, 
-														float3 *dst, float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir) {
+														float3 *dst, float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
-				float3 out = make_float3(0,0,0);
+				float3 out = background;
 				if (is.valid()) {
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
@@ -174,30 +174,30 @@ namespace rta {
 			}
 		}
 
-		void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst) {
+		void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float3 background) {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
-			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst);
+			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, background);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}
 
-		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir) {
+		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float3 background) {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
 // 			k::evaluate_material_bilin<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_dir);
-			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_org, (float3*)ray_dir);
+			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_org, (float3*)ray_dir, background);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}
 
-		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float *ray_diff_org, float *ray_diff_dir) {
+		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float *ray_diff_org, float *ray_diff_dir, float3 background) {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
-			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_org, (float3*)ray_dir, (float3*)ray_diff_org, (float3*)ray_diff_dir);
+			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_org, (float3*)ray_dir, (float3*)ray_diff_org, (float3*)ray_diff_dir, background);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}
