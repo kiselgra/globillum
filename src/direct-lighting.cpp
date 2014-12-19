@@ -123,6 +123,7 @@ namespace local {
 			shadow_tracer->trace_progressively(false);
 			gpu_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_arealight_evaluator<B, T>*>(set.bouncer);
 			float3 *colors = bouncer->output_color;
+// 			float3 *colors = bouncer->material_colors;
 			if (scene.id >= 0)
 				cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 			else
