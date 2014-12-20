@@ -144,16 +144,17 @@ int parse_cmdline(int argc, char **argv)
 
 	if (cmdline.filename == 0) {
 		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
-		exit(EXIT_FAILURE);
+// 		exit(EXIT_FAILURE);
 	}
-
-	int dot = string(cmdline.filename).find_last_of(".");
-	if (string(cmdline.filename).substr(dot) == ".obj")
-		cmdline.objfile = true;
-	else if (string(cmdline.filename).substr(dot) == ".bobj")
-		cmdline.objfile = true;
-	else
-		cmdline.scenefile = true;
+	else {
+		int dot = string(cmdline.filename).find_last_of(".");
+		if (string(cmdline.filename).substr(dot) == ".obj")
+			cmdline.objfile = true;
+		else if (string(cmdline.filename).substr(dot) == ".bobj")
+			cmdline.objfile = true;
+		else
+			cmdline.scenefile = true;
+	}
 	return ret;
 }
 	
@@ -181,6 +182,7 @@ rta::cgls::connection::cuda_triangle_data *ctd = 0;
 rta::cuda::material_t *gpu_materials = 0;
 
 //! this is a direct copy of rta code.
+/*
 rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_list(const std::string &filename) {
 	obj_default::ObjFileLoader loader(filename, "1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1");
 
@@ -240,6 +242,72 @@ rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_lis
 	rta::pop_image_path_front();
 
 	return ftl;
+}*/
+
+void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_triangle_list<rta::simple_triangle> &ftl) {
+	obj_default::ObjFileLoader loader(filename, "1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1");
+
+	int triangles = 0;
+	for (auto &group : loader.groups)
+		triangles += group.load_idxs_v.size();
+
+// 	rta::basic_flat_triangle_list<rta::simple_triangle> ftl(triangles);
+	rta::simple_triangle *old = ftl.triangle;
+	ftl.triangle = new rta::simple_triangle[ftl.triangles+triangles];
+	memcpy(ftl.triangle, old, sizeof(rta::simple_triangle)*ftl.triangles);
+	delete [] old;
+	int offset = ftl.triangles;
+	ftl.triangles += triangles;
+	cout << "ftl with " << ftl.triangles << " tris now" << endl;
+
+	rta::prepend_image_path(dirname((char*)filename.c_str()));
+
+	int run = 0;
+	for (auto &group : loader.groups) {
+		// building those is expensive!
+		auto vertex   = [=](int id, int i) { auto v = loader.load_verts[((int*)&group.load_idxs_v[i])[id]]; vec3f r = {v.x,v.y,v.z}; return r; };
+		auto normal   = [=](int id, int i) { auto v = loader.load_norms[((int*)&group.load_idxs_n[i])[id]]; vec3f r = {v.x,v.y,v.z}; return r; };
+		auto texcoord = [=](int id, int i) { auto v = loader.load_texs[((int*)&group.load_idxs_t[i])[id]]; vec2f r = {v.x,v.y}; return r; };
+		int t = group.load_idxs_v.size();
+		int mid = -1;
+		if (group.mat) {
+			mid = rta::material(group.mat->name);
+			if (mid == -1) {
+				vec3f d = { group.mat->dif_r, group.mat->dif_g, group.mat->dif_b };
+				vec3f s = { group.mat->spe_r, group.mat->spe_g, group.mat->spe_b };
+				rta::material_t *mat = new rta::material_t(group.mat->name, d, group.mat->tex_d);
+				mat->specular_color = s;
+				if (group.mat->tex_s != "")
+					mat->add_specular_texture(group.mat->tex_s);
+				mat->alpha = group.mat->alpha;
+				if (group.mat->tex_alpha != "")
+					mat->add_alpha_texture(group.mat->tex_alpha);
+				mid = rta::register_material(mat);
+			}
+		}
+		for (int i = 0; i < t; ++i)	{
+			ftl.triangle[offset + run + i].a = vertex(0, i);
+			ftl.triangle[offset + run + i].b = vertex(1, i);
+			ftl.triangle[offset + run + i].c = vertex(2, i);
+			ftl.triangle[offset + run + i].na = normal(0, i);
+			ftl.triangle[offset + run + i].nb = normal(1, i);
+			ftl.triangle[offset + run + i].nc = normal(2, i);
+			if (mid >= 0 && rta::material(mid)->diffuse_texture) {
+				ftl.triangle[offset + run + i].ta = texcoord(0, i);
+				ftl.triangle[offset + run + i].tb = texcoord(1, i);
+				ftl.triangle[offset + run + i].tc = texcoord(2, i);
+			}
+			else {
+				ftl.triangle[offset + run + i].ta = {0,0};
+				ftl.triangle[offset + run + i].tb = {0,0};
+				ftl.triangle[offset + run + i].tc = {0,0};
+			}
+			ftl.triangle[offset + run + i].material_index = mid;
+		}
+		run += t;
+	}
+
+	rta::pop_image_path_front();
 }
 
 
@@ -268,8 +336,9 @@ void setup_rta(std::string plugin) {
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
 	*/
 	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
-	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = load_objfile_to_flat_tri_list(cmdline.filename);
-	ftl = &the_ftl;
+// 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = load_objfile_to_flat_tri_list(cmdline.filename);
+// 	add_objfile_to_flat_tri_list(cmdline.filename, *ftl);
+// 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
 	gpu_materials = rta::cuda::convert_and_upload_materials();
 
@@ -406,6 +475,8 @@ void actual_main() {
 	register_scheme_functions_for_light_setup();
 	register_scheme_functions_for_cmdline();
 
+	ftl = new rta::basic_flat_triangle_list<rta::simple_triangle>;
+
 // 	for (list<string>::iterator it = cmdline.image_paths.begin(); it != cmdline.image_paths.end(); ++it)
 // 		append_image_path(it->c_str());
 	
@@ -417,6 +488,7 @@ void actual_main() {
 	ostringstream oss; oss << "(define x-res " << cmdline.res.x << ") (define y-res " << cmdline.res.y << ")";
 	scm_c_eval_string(oss.str().c_str());
 	load_configfile("lights.scm");
+	load_configfile("scenes.scm");
 	scm_c_eval_string("(define gui #f)");
 	for (int c = 0; c < cmdline.configs.size(); ++c)
 		for (int p = 0; p < cmdline.configs.size(); ++p) {
@@ -586,6 +658,20 @@ extern "C" {
 		s = max(1, s);
 		gi_algorithm::selected->light_samples(s);
 		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_add_model, "add-model%", 3, 0, 0, (SCM filename, SCM type, SCM is_base), "internal function to load a model.") {
+		char *file = scm_to_locale_string(filename);
+		int typecode = scm_to_int(type);
+		bool base = scm_is_true(is_base);
+		if (base)
+			cmdline.filename = file;
+		if (typecode == 0) {
+			add_objfile_to_flat_tri_list(file, *ftl);
+			return SCM_BOOL_T;
+		}
+		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
+		return SCM_BOOL_F;
 	}
 
 	void register_scheme_functions_for_cmdline() {
