@@ -13,3 +13,11 @@ This loads the model and executes the default renderer right away. Use -l (ell)
 to not render directly, leaving you the chance to make settings at the repl.
 
 
+Running it in the GraLab 
+------------------------
+gui version:
+$ ./src/gi-gui -c default.c.scm -I. -c sponza.lights.scm /soft/devtools/kai/share/render-data/models/sponza.noflag.obj -r 1280x720 -i /soft/devtools/kai/share/render-data/images/sponza/
+non-gui version:
+$ ./src/gi -c nogui.scm -I. -c sponza.lights.scm /soft/devtools/kai/share/render-data/models/sponza.noflag.obj -r 1280x720 -i /soft/devtools/kai/share/render-data/images/sponza/
+
+If it segfaults, have a look at the lights-file (sponza.lights.scm here) an check if you skylight texture can be found.
