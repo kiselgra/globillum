@@ -21,6 +21,10 @@ namespace local {
 
 	typedef cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials> crgs_with_diffs;
 
+	// 
+	// gpu area light evaluator
+	// 
+
 	template<typename _box_t, typename _tri_t> struct gpu_arealight_evaluator : public gpu_material_evaluator<forward_traits> {
 		declare_traits_types;
 		gi::light *lights;
@@ -99,6 +103,10 @@ namespace local {
 	};
 
 
+	// 
+	// gpu area light sampler (the `bouncer')
+	// 
+
 	void gpu_arealight_sampler::activate(rt_set *orig_set) {
 		if (activated) return;
 		gi_algorithm::activate(orig_set);
@@ -122,8 +130,8 @@ namespace local {
 		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
 			shadow_tracer->trace_progressively(false);
 			gpu_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_arealight_evaluator<B, T>*>(set.bouncer);
-			float3 *colors = bouncer->output_color;
-// 			float3 *colors = bouncer->material_colors;
+// 			float3 *colors = bouncer->output_color;
+			float3 *colors = bouncer->material_colors;
 			if (scene.id >= 0)
 				cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 			else
@@ -156,6 +164,76 @@ namespace local {
 		gpu_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_arealight_evaluator<B, T>*>(set.bouncer);
 		bouncer->samples = n;
 	}
+
+
+	// 
+	// gpu area light sampler (the `bouncer')
+	// 
+
+	void hybrid_arealight_sampler::activate(rta::rt_set *orig_set) {
+		if (activated) return;
+		gi_algorithm::activate(orig_set);
+		set = *orig_set;
+		set.rt = set.rt->copy();
+		cpu_lights = gi::cuda::convert_and_upload_lights(nr_of_lights, overall_light_power);
+		triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
+		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
+		gi::cuda::mt_pool3f pool = gi::cuda::generate_mt_pool_on_gpu(w,h); 
+		
+		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, 32);
+		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
+		set.basic_rt<B, T>()->ray_generator(set.rgen);
+
+		if (scene.id >= 0)
+			cuda::cgls::init_cuda_image_transfer(result);
+	}
+
+	bool hybrid_arealight_sampler::in_progress() {
+		return (shadow_tracer && shadow_tracer->progressive_trace_running());
+	}
+
+	void hybrid_arealight_sampler::update() {
+		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
+			shadow_tracer->trace_progressively(false);
+			hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
+			// float3 *colors = bouncer->output_color;
+			float3 *colors = bouncer->material_colors.data;
+			if (scene.id >= 0)
+				cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
+			else
+				gi::cuda::download_and_save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
+
+		}
+	}
+
+	void hybrid_arealight_sampler::compute() {
+		cout << "restarting progressive display" << endl;
+		vec3f pos, dir, up;
+		matrix4x4f *lookat_matrix = lookat_matrix_of_cam(current_camera());
+		extract_pos_vec3f_of_matrix(&pos, lookat_matrix);
+		extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
+		extract_up_vec3f_of_matrix(&up, lookat_matrix);
+		gi::cuda::update_lights(cpu_lights, nr_of_lights, overall_light_power);
+		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
+		bouncer->overall_light_power = overall_light_power;
+		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
+
+		set.rt->trace_progressively(true);
+
+		float3 *colors = bouncer->material_colors.data;
+		gi::save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
+
+		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
+	}
+
+	void hybrid_arealight_sampler::light_samples(int n) {
+		cout << name << " is accumulating " << n << " direct lighting samples, now." << endl;
+		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
+		bouncer->samples = n;
+	}
+
+
+
 }
 
 

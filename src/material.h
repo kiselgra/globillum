@@ -24,7 +24,7 @@ namespace rta {
 			void upload(unsigned char *src) {
 				checked_cuda(cudaMemcpy(rgba, src, 4*w*h, cudaMemcpyHostToDevice));
 			}
-			__device__ float3 sample_nearest(float s, float t) {
+			__host__ __device__ float3 sample_nearest(float s, float t) {
 				float x = s*w;
 				float y = (1.0f-t)*h;
 				int nearest_x = int(x);
@@ -36,7 +36,7 @@ namespace rta {
 										 float(rgba[4*(nearest_y*w+nearest_x)+2])/255.0f);
 				return a00;
 			}
-			__device__ float3 sample_bilin(float s, float t) {
+			__host__ __device__ float3 sample_bilin(float s, float t) {
 				float x = s*w;
 				float y = (1.0f-t)*h;
 				int nearest_x = int(x);
@@ -69,7 +69,7 @@ namespace rta {
 				float3 a1x = wx*a10 + (1.0f-wx)*a11;
 				return wy*a0x + (1.0f-wy)*a1x;
 			}
-			__device__ float3 sample_bilin_lod(float s, float t, float diff, int2 gid, uint3 bid, uint3 tid) {
+			__host__ __device__ float3 sample_bilin_lod(float s, float t, float diff) {
 				int W = w;
 			   	int H = h;
 				float lod = log2f(diff * fmaxf(w,h));
@@ -152,6 +152,11 @@ namespace rta {
 							   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float *ray_diff_org, float *ray_diff_dir, 
 							   float3 background);
 	}
+	
+	//! cpu material evaluation. all pointers must be downloaded, already.
+	void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+						   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
+						   float3 *ray_diff_org, float3 *ray_diff_dir, float3 background);
 }
 
 #endif

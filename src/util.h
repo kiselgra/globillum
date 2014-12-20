@@ -15,13 +15,15 @@ namespace gi {
 		
 	//! See \ref download_and_save_image.
 	extern std::string image_store_path;
+	
+	void save_image(const std::string &basename, int seq, int w, int h, float3 *color);
+		
+	//! we don't use references as we expect this to be called for integral and floating point types, only.
+	template<typename T> inline T clamp(const T val, const T min, const T max) {
+		return std::max(std::min(val, max), min);
+	}
 
 	namespace cuda {
-
-		//! we don't use references as we expect this to be called for integral and floating point types, only.
-		template<typename T> inline T clamp(const T val, const T min, const T max) {
-			return std::max(std::min(val, max), min);
-		}
 
 		//! clear cuda buffer
 		void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val);
