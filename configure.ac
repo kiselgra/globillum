@@ -86,6 +86,8 @@ AC_SUBST(RTA_LIBS)
 RTA_PLUGIN_DIR="$(pkg-config rta --variable=plugindir)"
 AC_SUBST([RTA_PLUGIN_DIR])
 
+AC_CHECK_LIB([osdInterface], [main])
+
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([inttypes.h stdlib.h string.h unistd.h])

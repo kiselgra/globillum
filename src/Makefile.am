@@ -16,6 +16,7 @@ libgi_la_SOURCES = 	\
 					gpu_cgls_lights.cpp gpu_cgls_lights.h \
 					gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
 					rayvis.cu rayvis.h \
+					subd.cpp subd.h \
 					tracers.cu tracers.h \
 					util.cpp util-kernels.cu util.h
 

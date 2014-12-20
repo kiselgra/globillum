@@ -12,6 +12,8 @@
 #include "gpu_cgls_lights.h"
 #include "gpu-pt.h"
 
+#include "subd.h"
+
 #include "material.h"
 #include "vars.h"
 #include "util.h"
@@ -669,6 +671,9 @@ extern "C" {
 		if (typecode == 0) {
 			add_objfile_to_flat_tri_list(file, *ftl);
 			return SCM_BOOL_T;
+		}
+		if (typecode == 1) {
+			add_subd_model(file);
 		}
 		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
 		return SCM_BOOL_F;
