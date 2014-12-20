@@ -12,6 +12,7 @@
 class gi_algorithm {
 public:
 	static rta::rt_set *original_rt_set;
+	static rta::rt_set *original_subd_set;
 	static gi_algorithm *selected;
 protected:
 	static std::vector<gi_algorithm*> algorithms;

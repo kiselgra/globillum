@@ -314,8 +314,14 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 
 
 void setup_rta(std::string plugin) {
+
 	bool use_cuda = true;
 	vector<string> args;
+	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
+
+	// load subd plugin
+	rta::rt_set *subd_set = generate_compressed_bvhs_and_tracer(rays_w, rays_h);
+	
 	if (plugin == "default/choice")
 		if (use_cuda) 
 			plugin = "bbvh-cuda";
@@ -337,7 +343,6 @@ void setup_rta(std::string plugin) {
 	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
 	*/
-	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
 // 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = load_objfile_to_flat_tri_list(cmdline.filename);
 // 	add_objfile_to_flat_tri_list(cmdline.filename, *ftl);
 // 	ftl = &the_ftl;
@@ -373,6 +378,7 @@ void setup_rta(std::string plugin) {
 	}
 	
 	gi_algorithm::original_rt_set = set;
+	gi_algorithm::original_subd_set = subd_set;
 }
 
 //// guile/console hacks
@@ -662,8 +668,9 @@ extern "C" {
 		return SCM_BOOL_T;
 	}
 
-	SCM_DEFINE(s_add_model, "add-model%", 3, 0, 0, (SCM filename, SCM type, SCM is_base), "internal function to load a model.") {
+	SCM_DEFINE(s_add_model, "add-model%", 4, 0, 0, (SCM filename, SCM type, SCM is_base, SCM subd_disp), "internal function to load a model.") {
 		char *file = scm_to_locale_string(filename);
+		char *d_file = scm_to_locale_string(subd_disp);
 		int typecode = scm_to_int(type);
 		bool base = scm_is_true(is_base);
 		if (base)
@@ -673,7 +680,8 @@ extern "C" {
 			return SCM_BOOL_T;
 		}
 		if (typecode == 1) {
-			add_subd_model(file);
+			add_subd_model(file, d_file);
+			return SCM_BOOL_T;
 		}
 		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
 		return SCM_BOOL_F;

@@ -42,15 +42,15 @@ AM_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$
 
 libgi_la_CPPFLAGS =  $(AM_CPPFLAGS)
 libgi_la_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
-libgi_la_LIBADD   = $(RTA_PLUGIN_DIR)/bbvh-cuda.a
+libgi_la_LIBADD   = $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
 
 gi_gui_CPPFLAGS = $(AM_CPPFLAGS)
 gi_gui_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
-gi_gui_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a
+gi_gui_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
 
 gi_CPPFLAGS = $(AM_CPPFLAGS)
 gi_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
-gi_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a
+gi_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
 
 SUFFIXES: .x
 cmdline.x: cmdline.cpp
