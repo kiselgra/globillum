@@ -6,6 +6,7 @@
 #include "arealight-sampler.h"
 #include "cgls-lights.h"
 #include "material.h"
+#include "tracers.h"
 
 #include <libcgls/scene.h>
 #include <librta/cuda.h>
@@ -58,10 +59,12 @@ namespace local {
 		int nr_of_gpu_lights;
 		rta::raytracer *shadow_tracer;
 		float overall_light_power;
+		iterated_gpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
+		iterated_gpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
 	public:
 		gpu_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "gpu_area_lights")
 			: gi_algorithm(name), w(w), h(h),  /*TMP*/ hitpoints(w,h), normals(w,h),
-			  collector(0), crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0) {
+			  collector(0), crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0), tracers(0) {
 		}
 
 		void evaluate_material();

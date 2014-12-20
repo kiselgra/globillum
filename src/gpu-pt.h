@@ -8,54 +8,10 @@
 
 #include "rayvis.h"
 #include "vars.h"
+#include "tracers.h"
 #include "util.h"
 
 #include <iostream>
-
-template<typename _box_t, typename _tri_t> struct tandem_tracer : public rta::raytracer {
-	declare_traits_types;
-	
-	typedef rta::basic_raytracer<box_t, tri_t> tracer_t;
-	tracer_t *closest_hit_tracer;
-	tracer_t *any_hit_tracer;
-	tracer_t *use_tracer, *other, *last;
-
-	tandem_tracer(tracer_t *ch, tracer_t *ah) : closest_hit_tracer(ch), any_hit_tracer(ah), use_tracer(0), other(0), last(0) {
-	}
-	void select_closest_hit_tracer() {
-		use_tracer = closest_hit_tracer;
-		other = any_hit_tracer;
-	}
-	void select_any_hit_tracer() {
-		use_tracer = any_hit_tracer;
-		other = closest_hit_tracer;
-	}
-	virtual void trace() {
-		throw std::logic_error("a tandem tracer is for progressive tracing, only.");
-	}
-	// bounce() might change the tracer, or might keep it
-	// therefore, after bounce() and tracer_furhter_boucnes() was called with the `last'
-	// tracer, we copy its information over to both versions.
-	virtual void trace_progressively(bool first) {
-		last = use_tracer;
-		use_tracer->trace_progressively(first);
-		use_tracer->copy_progressive_state(last);
-		other->copy_progressive_state(last);
-	}
-	virtual std::string identification() {
-		return std::string("wrapper to trace using two basic_raytracers in tandem, in this case: (")
-			   + closest_hit_tracer->identification() + ", and " + any_hit_tracer->identification() + ")";
-	}
-	virtual bool progressive_trace_running() {
-		return use_tracer->progressive_trace_running();
-	}
-	virtual rta::raytracer* copy() {
-		return new tandem_tracer(*this);
-	}
-	virtual bool supports_max_t() {
-		return closest_hit_tracer->supports_max_t() && any_hit_tracer->supports_max_t();
-	}
-};
 
 struct light_sample_ray_storage : public rta::ray_generator, rta::cuda::gpu_ray_generator {
 	light_sample_ray_storage(uint w, uint h) : rta::ray_generator(w, h), rta::cuda::gpu_ray_generator(w, h) {
