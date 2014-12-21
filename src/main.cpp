@@ -156,7 +156,9 @@ void compute_trace(interaction_mode *m, int x, int y) {
 static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
+int material_count = 0;
 rta::cuda::material_t *gpu_materials = 0;
+rta::cuda::material_t *cpu_materials = 0;
 
 
 void setup_rta(std::string plugin) {
@@ -184,7 +186,7 @@ void setup_rta(std::string plugin) {
 	ftl = &the_ftl;
 	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials();
+	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
 
 	if (!use_cuda) {
 // 		use_case = new example::simple_lighting_with_shadows<rta::simple_aabb, rta::simple_triangle>(set, rays_w, rays_h, the_scene);

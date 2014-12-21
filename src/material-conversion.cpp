@@ -12,13 +12,15 @@ static size_t data_size = 0;
 
 namespace rta {
 	namespace cuda {
-		bool verbose = false;
+		bool verbose = true;
+		int T;
+
 		
 		texture_data* convert_texture(rta::texture *t) {
-			texture_data *new_tex = new cuda::texture_data(t->w, t->h);
+			texture_data *new_tex = new cuda::texture_data(t->w, t->h, texture_data::device);
 			// cpu rta uses float textures, this is to expensive on the gpu.
 			unsigned char *data = new unsigned char[t->w*t->h*4];
-			if (verbose) cout << "texture " << t->filename << ": " << (t->w*t->h*6)/(1024*1024) << " MB" << endl;
+			if (verbose) cout << "texture (" << T++ << ") " << t->filename << ": " << t->w << " x " << t->h << ": " << (t->w*t->h*6)/(1024*1024) << " MB" << endl;
 			data_size += t->w*t->h*6;
 			for (int y = 0; y < t->h; ++y)
 				for (int x = 0; x < t->w; ++x) {
@@ -39,8 +41,7 @@ namespace rta {
 			return gpu_tex;
 		}
 
-
-		cuda::material_t* convert_and_upload_materials() {
+		cuda::material_t* convert_and_upload_materials(int &N) {
 			vector<rta::material_t*> coll;
 			for (int i = 0; ; ++i)  {
 				try {
@@ -50,8 +51,10 @@ namespace rta {
 					break;
 				}
 			}
+			N = coll.size();
 			cuda::material_t *materials = new cuda::material_t[coll.size()];
 			data_size = 0;
+			T=0;
 			for (int i = 0; i < coll.size(); ++i) {
 				rta::material_t *src = coll[i];
 				cuda::material_t *m = &materials[i];
@@ -75,6 +78,29 @@ namespace rta {
 			delete [] materials;
 			cout << coll.size() << " materials (" << data_size/(1024*1024) << "MiB)." << endl;
 			return gpu_mats;
+		}
+
+		cuda::texture_data* download_texture(cuda::texture_data *gpu) {
+			cuda::texture_data *tex = new cuda::texture_data;
+			checked_cuda(cudaMemcpy(tex, gpu, sizeof(cuda::texture_data), cudaMemcpyDeviceToHost));
+			tex->location = cuda::texture_data::host;
+			unsigned char *gpu_data = tex->rgba;
+			tex->rgba = new unsigned char[tex->w * tex->h * 6];
+			checked_cuda(cudaMemcpy(tex->rgba, gpu_data, sizeof(unsigned char)*6*tex->w*tex->h, cudaMemcpyDeviceToHost));
+			cout << "converted tex " << tex->w << " x " << tex->h << ", mm=" << tex->max_mm << " on " << tex->location << endl;
+			return tex;
+		}
+
+		cuda::material_t* download_materials(cuda::material_t *gpu_mats, int nr_of_materials) {
+			cuda::material_t *materials = new cuda::material_t[nr_of_materials];
+			checked_cuda(cudaMemcpy(materials, gpu_mats, sizeof(cuda::material_t)*nr_of_materials, cudaMemcpyDeviceToHost));
+			for (int i = 0; i < nr_of_materials; ++i) {
+				auto &mtl = materials[i];
+				if (mtl.diffuse_texture)  mtl.diffuse_texture  = download_texture(mtl.diffuse_texture);
+				if (mtl.specular_texture) mtl.specular_texture = download_texture(mtl.specular_texture);
+				if (mtl.alpha_texture)    mtl.alpha_texture    = download_texture(mtl.alpha_texture);
+			}
+			return materials;
 		}
 
 	}

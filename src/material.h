@@ -16,10 +16,20 @@ namespace rta {
 			unsigned int w, h;
 			unsigned char *rgba;
 			int max_mm;
-			texture_data(int w, int h) : w(w), h(h), rgba(0) {
-				checked_cuda(cudaMalloc(&rgba, 6*w*h));	// 6: 4 components times 1.5 for mip maps.
+			enum where_t { host, device };
+			where_t location;
+			texture_data(int w, int h, where_t where) : w(w), h(h), rgba(0) {
+				if (where == device) {
+					checked_cuda(cudaMalloc(&rgba, 6*w*h));	// 6: 4 components times 1.5 for mip maps.
+				}
+				else
+					rgba = new unsigned char[6*w*h];
 				int min = w<h?w:h;
 				max_mm = int(floor(log2f(float(min))));
+				location = where;
+			}
+			texture_data() {
+				w = h = 0; rgba = 0; max_mm = 0; location = host;
 			}
 			void upload(unsigned char *src) {
 				checked_cuda(cudaMemcpy(rgba, src, 4*w*h, cudaMemcpyHostToDevice));
@@ -97,10 +107,12 @@ namespace rta {
 				float wx = fabsf(float(other_x)+.5 - x);
 				float wy = fabsf(float(other_y)+.5 - y);
 				// nearest is in bounds.
+// 				printf("a) x=%04d y=%04d ox=%04d oy=%04d\n", nearest_x, nearest_y, other_x, other_y);
 				if (other_x > W) other_x -= W;
 				if (other_x < 0) other_x += W;
 				if (other_y > H) other_y -= H;
 				if (other_y < 0) other_y += H;
+// 				printf("b) x=%04d y=%04d ox=%04d oy=%04d\n", nearest_x, nearest_y, other_x, other_y);
 				float3 a00 = make_float3(float(rgba[4*(offset + nearest_y*W+nearest_x)+0])/255.0f,
 										 float(rgba[4*(offset + nearest_y*W+nearest_x)+1])/255.0f,
 										 float(rgba[4*(offset + nearest_y*W+nearest_x)+2])/255.0f);
@@ -118,44 +130,46 @@ namespace rta {
 				return wy*a0x + (1.0f-wy)*a1x;
 			}
 		};
+			
+			void compute_mipmaps(texture_data *tex);
+
+			struct material_t {
+				float3 diffuse_color, specular_color;
+				float alpha;
+				texture_data *diffuse_texture;
+				texture_data *specular_texture;
+				texture_data *alpha_texture;
+
+				material_t() 
+				: diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), alpha(1), diffuse_texture(0), specular_texture(0), alpha_texture(0) {
+				}
+			};
+
+			//! convert standard rta cpu tracer materials to a version suitable for gpu use.
+			material_t* convert_and_upload_materials(int &N);
+			//! we do it this way because we compute mipmaps on the gpu.
+			cuda::material_t* download_materials(cuda::material_t *gpumat, int N);
+			
+			
+			//! evaluate material using point sampling with bilinear interpolation.
+			void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+										 cuda::material_t *mats, float3 *dst, float3 background);
+
+			/*! \brief evaluate material using ray differentials computed via neighboring rays.
+			 *  \attention this only works for camera rays!
+			 */
+			void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+								   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dirs, float3 background);
+			/*! \brief evaluate material using ray differentials stored in rta container (ray_diff_org,_dir are expected to be of size w * (2h).
+			 */
+			void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+								   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float *ray_diff_org, float *ray_diff_dir, 
+								   float3 background);
+		}
 		
-		void compute_mipmaps(texture_data *tex);
-
-		struct material_t {
-			float3 diffuse_color, specular_color;
-			float alpha;
-			texture_data *diffuse_texture;
-			texture_data *specular_texture;
-			texture_data *alpha_texture;
-
-			material_t() 
-			: diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), alpha(1), diffuse_texture(0), specular_texture(0), alpha_texture(0) {
-			}
-		};
-
-		//! convert standard rta cpu tracer materials to a version suitable for gpu use.
-		material_t* convert_and_upload_materials();
-		
-		
-		//! evaluate material using point sampling with bilinear interpolation.
-		void evaluate_material_bilin(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
-									 cuda::material_t *mats, float3 *dst, float3 background);
-
-		/*! \brief evaluate material using ray differentials computed via neighboring rays.
-		 *  \attention this only works for camera rays!
-		 */
+		//! cpu material evaluation. all pointers must be downloaded, already.
 		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
-							   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dirs, float3 background);
-		/*! \brief evaluate material using ray differentials stored in rta container (ray_diff_org,_dir are expected to be of size w * (2h).
-		 */
-		void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
-							   cuda::material_t *mats, float3 *dst, float *ray_org, float *ray_dir, float *ray_diff_org, float *ray_diff_dir, 
-							   float3 background);
-	}
-	
-	//! cpu material evaluation. all pointers must be downloaded, already.
-	void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
-						   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
+							   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
 						   float3 *ray_diff_org, float3 *ray_diff_dir, float3 background);
 }
 

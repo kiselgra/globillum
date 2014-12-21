@@ -123,9 +123,9 @@ namespace rta {
 				float3 out = background;
 				if (is.valid()) {
 					cuda::simple_triangle tri = triangles[is.ref];
-// 					material_t mat = mats[tri.material_index];
-// 					out = mat.diffuse_color;
-// 					if (mat.diffuse_texture) {
+					material_t mat = mats[tri.material_index];
+					out = mat.diffuse_color;
+					if (mat.diffuse_texture) {
 						float3 bc; 
 						is.barycentric_coord(&bc);
 						// tex coord
@@ -140,7 +140,6 @@ namespace rta {
 						const float3 &nc = tri.nc;
 						float3 N;
 						barycentric_interpolation(&N, &bc, &na, &nb, &nc);
-						/*
 						// eval other rays
 						// - upper ray
 						float3 other_org = ray_diff_org[gid.y*w+gid.x];
@@ -162,15 +161,18 @@ namespace rta {
 						diff_x = fmaxf(fabsf(T.x - other_T.x), diff_x);
 						diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
 						float diff = fmaxf(diff_x, diff_y);
+// 						diff = 0;
 // access texture
 // 						float3 tex = mat.specular_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
 						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff);
+// 						printf("mat %03d %d %d\n", tri.material_index, mat.diffuse_texture->w, mat.diffuse_texture->h);
 						out.x *= tex.x;
 						out.y *= tex.y;
 						out.z *= tex.z;
-						*/
-						out = N;
-// 					}
+// 						out.x = T.x;
+// 						out.y = T.y;
+// 						out.z = 0;
+					}
 				}
 				dst[gid.y*w+gid.x] = out;
 			}
@@ -266,7 +268,7 @@ namespace rta {
 	void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
 						   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
 						   float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
-		#pragma omp prallel for schedule(dynamic, 1)
+// 		#pragma omp prallel for schedule(dynamic, 1)
 		for (int y = 0; y < h; ++y) {
 			for (int x = 0; x < w; ++x) {
 				cuda::k::pixel_evaluate_material_bilin_lod(make_int2(x, y), 

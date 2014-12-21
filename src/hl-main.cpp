@@ -179,7 +179,9 @@ scene_ref the_scene = { -1 };
 static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
+int material_count = 0;
 rta::cuda::material_t *gpu_materials = 0;
+rta::cuda::material_t *cpu_materials = 0;
 
 //! this is a direct copy of rta code.
 /*
@@ -340,7 +342,8 @@ void setup_rta(std::string plugin) {
 // 	add_objfile_to_flat_tri_list(cmdline.filename, *ftl);
 // 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials();
+	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
+	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
 
 	/*
 

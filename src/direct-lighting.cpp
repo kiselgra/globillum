@@ -14,6 +14,7 @@ using namespace std;
 using namespace rta;
 
 extern cuda::material_t *gpu_materials;
+extern cuda::material_t *cpu_materials;
 
 extern float aperture, focus_distance;
 
@@ -180,7 +181,7 @@ namespace local {
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 		gi::cuda::mt_pool3f pool = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 		
-		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, 32);
+		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, 32);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 
