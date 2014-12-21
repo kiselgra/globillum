@@ -273,6 +273,11 @@ namespace rta {
 						material = material_col[id];
 					// use accum color if we should not clear
 					float3 out = make_float3(0,0,0);
+// 					if (is.valid()) out = make_float3(0,0.3,0);
+// 					else out = make_float3(0,0,.3);
+// 					if (gid.x == 600 && gid.y == 100)
+// 						if (is.valid()) out = make_float3(1,0,0);
+// 						else out = make_float3(1,1,0);
 					if (sample > 0)
 						out = col_accum[id];
 					// out we go.

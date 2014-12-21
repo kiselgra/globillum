@@ -51,8 +51,8 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 	float *light_sample_maxt, *path_sample_maxt;
 	
 	// maintain which tracer to use for the next bounce
-	tandem_tracer<box_t, tri_t> *tracers;
-	void register_tracers(tandem_tracer<box_t, tri_t> *tt) {
+	rta::tandem_tracer<box_t, tri_t> *tracers;
+	void register_tracers(rta::tandem_tracer<box_t, tri_t> *tt) {
 		tracers = tt;
 		light_sample_ray_storage *gpurg = new light_sample_ray_storage(w, h);
 		tracers->any_hit_tracer->ray_generator(gpurg);
@@ -240,7 +240,7 @@ protected:
 	gi::light *gpu_rect_lights;
 	int nr_of_gpu_rect_lights;
 	gpu_pt_bouncer<B, T> *pt;
-	tandem_tracer<B, T> *tracer;
+	rta::tandem_tracer<B, T> *tracer;
 	rta::raytracer *shadow_tracer;
 public:
 	gpu_pt(int w, int h, scene_ref scene, const std::string &name = "gpu_pt")

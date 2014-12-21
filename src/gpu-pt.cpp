@@ -38,8 +38,8 @@ void gpu_pt::activate(rt_set *orig_set) {
 	set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 	set.basic_rt<B, T>()->ray_generator(set.rgen);
 	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
-	tracer = new tandem_tracer<B, T>(dynamic_cast<basic_raytracer<B,T>*>(set.rt), 
-									 dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer));
+	tracer = new rta::tandem_tracer<B, T>(dynamic_cast<basic_raytracer<B,T>*>(set.rt), 
+										  dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer));
 	tracer->select_closest_hit_tracer();
 	pt->register_tracers(tracer);
 

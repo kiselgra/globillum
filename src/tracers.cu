@@ -2,6 +2,8 @@
 #include "material.h"
 #include "util.h"
 
+#include <iostream>
+
 #include <librta/basic_types.h>
 #include <bbvh-cuda/bbvh-cuda-node.h>
 
@@ -14,6 +16,11 @@
 
 namespace rta {
 	namespace cuda {
+
+		// 
+		// Tracer with Alphamapping
+		// 
+
 		namespace k {
 
 			#define is_inner(F)       ((__float_as_int(F.x)&0x01)==1)
@@ -158,6 +165,39 @@ namespace rta {
 			dim3 blocks = block_configuration_2d(w, h, threads);
 			k::trace_cis_ailabox_indexed_with_alphamaps<<<blocks, threads>>>(triangles, n, (float4*)nodes, indices, 
 																			 ray_orig, ray_dir, max_t, w, h, is, materials, uniform_random_01);
+			checked_cuda(cudaPeekAtLastError());
+			checked_cuda(cudaDeviceSynchronize());
+		}
+		
+
+		// 
+		// Iterated Tracers
+		// 
+		
+		namespace k {
+			__global__ void copy_intersection_distance_to_max_t(int w, int h, rta::triangle_intersection<rta::cuda::simple_triangle> *is, float *max_t) {
+				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+									 blockIdx.y * blockDim.y + threadIdx.y);
+				if (gid.x >= w || gid.y >= h) return;
+				int id = gid.y*w+gid.x;
+				if (is[id].valid()) {
+					if (gid.x == 600 && gid.y == 100)
+						printf("copying intersection t=%6.6f -> maxt=%6.6f\n", is[id].t, max_t[id]);
+					max_t[id] = is[id].t;
+				}
+				else
+					if (gid.x == 600 && gid.y == 100)
+						printf("not copying new maxt because intersection is bad. t=%6.6f  maxt=%6.6f\n", is[id].t, max_t[id]);
+			}
+		}
+		
+		void copy_intersection_distance_to_max_t(int w, int h, 
+												 rta::triangle_intersection<rta::cuda::simple_triangle> *is, float *max_t) {
+			checked_cuda(cudaPeekAtLastError());
+			dim3 threads(16, 16);
+			dim3 blocks = block_configuration_2d(w, h, threads);
+			std::cout << "copy_intersection_distance_to_max_t " << w << " " << h << " on " << is << " with mt: " << max_t << std::endl;
+			k::copy_intersection_distance_to_max_t<<<blocks, threads>>>(w, h, is, max_t);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
 		}

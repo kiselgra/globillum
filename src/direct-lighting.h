@@ -53,17 +53,16 @@ namespace local {
 		rta::cuda::primary_intersection_collector<B, T> *collector;
 		rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
 		rta::rt_set set;
-		rta::image<vec3f, 1> hitpoints, normals;
 		scene_ref scene;
 		gi::light *gpu_lights;
 		int nr_of_gpu_lights;
 		rta::raytracer *shadow_tracer;
 		float overall_light_power;
-		iterated_gpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
-		iterated_gpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
+		rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
+		rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
 	public:
 		gpu_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "gpu_area_lights")
-			: gi_algorithm(name), w(w), h(h),  /*TMP*/ hitpoints(w,h), normals(w,h),
+			: gi_algorithm(name), w(w), h(h),
 			  collector(0), crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0), tracers(0) {
 		}
 
