@@ -10,6 +10,8 @@ args=""
 while (( "$#" )); do
 	if [[ "$1" =~ -.PIC ]] ; then
 		args="$args -Xcompiler $1"
+	elif [[ "$1" == "-fopenmp" ]] ; then
+		args="$args -Xcompiler $1"
 	elif [[ "$1" == "-ggdb3" ]] ; then
 		args="$args -g"
 	elif [[ "$1" =~ -O. ]] ; then

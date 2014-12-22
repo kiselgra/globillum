@@ -423,7 +423,7 @@ namespace rta {
 			
 		void integrate_light_sample(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
 									float3 *potential_sample_contribution, float3 *material_col, float3 *col_accum, int sample) {
-			#pragma omp prallel for schedule(dynamic, 1)
+			#pragma omp parallel for 
 			for (int y = 0; y < h; ++y) {
 				for (int x = 0; x < w; ++x) {
 					cuda::k::pixel_integrate_light_sample(make_int2(x, y), 

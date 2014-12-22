@@ -79,12 +79,12 @@ cuda_CPPFLAGS = $(DEFAULT_INCLUDES) $(gi_CPPFLAGS) $(CPPFLAGS) $(AM_CPPFLAGS)
 # fuck you cuda.
 
 material.o: material.cu material.h
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) -fopenmp $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 	
 .cu.$(OBJEXT):
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS)  -fopenmp $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 
 .cu.lo:
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS)  -fopenmp $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 
 

@@ -99,7 +99,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
 										  float3 *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
 										  float3 *potential_sample_contribution) {
-	#pragma omp prallel for
+	#pragma omp parallel for 
 	for (int y = 0; y < h; ++y) {
 		for (int x = 0; x < w; ++x) {
 			// general setup, early out if the path intersection is invalid.
