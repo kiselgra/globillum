@@ -58,9 +58,10 @@ namespace gi {
 			lcg_random_state pool;
 			pool.N = N;
 			unsigned int *host = new unsigned int[N];
+			unsigned int seed;
 			#pragma omp parallel private(seed)
 			{
-				unsigned int seed = omp_get_thread_num();
+				seed = omp_get_thread_num();
 				//#pragma omp for schedule(dynamic, 32) private(seed)
 				#pragma omp for
 				for (int i = 0; i < N; ++i) {

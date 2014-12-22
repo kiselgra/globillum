@@ -5,6 +5,8 @@
 #include <librta/intersect.h>
 #include <libhyb/trav-util.h>
 
+#include <omp.h>
+
 using namespace std;
 using namespace rta;
 using namespace rta::cuda;
@@ -97,9 +99,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
 										  float3 *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
 										  float3 *potential_sample_contribution) {
-	for (int y = 0; y < h; ++y)
+	#pragma omp prallel for
+	for (int y = 0; y < h; ++y) {
 		for (int x = 0; x < w; ++x) {
-
 			// general setup, early out if the path intersection is invalid.
 			int2 gid = make_int2(x, y);
 			int id = gid.y*w+gid.x;
@@ -271,6 +273,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 			max_t[id] = -1;
 			throughput[id] = make_float3(0,0,0);
 		}
+	}
 }
 
 
