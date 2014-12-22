@@ -58,7 +58,7 @@ namespace local {
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
-		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
+		gi::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 

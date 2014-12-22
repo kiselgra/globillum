@@ -129,7 +129,7 @@ namespace k {
 			}
 
 			// compute next path segment by sampling the brdf
-			float3 random = next_random3f(uniform_random, id, pi);
+			float3 random = next_random3f(uniform_random, id);
 			float pd = diffuse.x+diffuse.y+diffuse.z;
 			float ps = specular.x+specular.y+specular.z;
 			if (pd + ps > 1) {

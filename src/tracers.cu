@@ -115,8 +115,7 @@ namespace rta {
 											float3 texel = mat.diffuse_texture->sample_nearest(T.x, T.y);
 											alpha *= (texel.x + texel.y + texel.z)*0.33333;
 										}
-										gi::cuda::random_sampler_path_info dummy;
-										float3 rnd = next_random3f(uniform_random_01, ray_y*w+ray_x, dummy);
+										float3 rnd = gi::next_random3f(uniform_random_01, ray_y*w+ray_x);
 										bool use = (rnd.z <= alpha);
 										if (use)
 											closest = is;

@@ -554,7 +554,6 @@ void actual_main() {
 			restart_compute = false;
 		}
 		while (algo->progressive() && algo->in_progress()) {
-			cout << "algo in progress." << endl;
 			algo->update();
 			if (quit_loop) break;
 		}

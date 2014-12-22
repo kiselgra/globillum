@@ -66,14 +66,14 @@ namespace local {
 			pi.curr_bounce = curr_bounce;
 			pi.max_paths = 1;
 			pi.max_bounces = samples;
-			rta::cuda::cgls::generate_arealight_sample(this->w, this->h, lights, nr_of_lights, overall_light_power,
-													   this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
-													   primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
-													   pi);
+			rta::cuda::generate_arealight_sample(this->w, this->h, lights, nr_of_lights, overall_light_power,
+												 this->crgs->gpu_origin, this->crgs->gpu_direction, this->crgs->gpu_maxt,
+												 primary_intersection, this->tri_ptr, uniform_random_numbers, potential_sample_contribution, 
+												 pi);
 		}
 		virtual void integrate_light_sample() {
-			rta::cuda::cgls::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
-													this->material_colors, output_color, curr_bounce-1);
+			rta::cuda::integrate_light_sample(this->w, this->h, this->gpu_last_intersection, potential_sample_contribution,
+											  this->material_colors, output_color, curr_bounce-1);
 		}
 		virtual void bounce() {
 			cout << "direct lighting sample " << curr_bounce << endl;
@@ -131,8 +131,8 @@ namespace local {
 		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
 			shadow_tracer->trace_progressively(false);
 			gpu_arealight_evaluator<B,T> *bouncer = dynamic_cast<gpu_arealight_evaluator<B, T>*>(set.bouncer);
-// 			float3 *colors = bouncer->output_color;
-			float3 *colors = bouncer->material_colors;
+			float3 *colors = bouncer->output_color;
+// 			float3 *colors = bouncer->material_colors;
 			if (scene.id >= 0)
 				cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
 			else
@@ -176,7 +176,13 @@ namespace local {
 		gi_algorithm::activate(orig_set);
 		set = *orig_set;
 		set.rt = set.rt->copy();
-		cpu_lights = gi::cuda::convert_and_upload_lights(nr_of_lights, overall_light_power);
+		nr_of_lights = gi::lights.size();
+		cpu_lights = new gi::light[gi::lights.size()];	//gi::cuda::convert_and_upload_lights(nr_of_lights, overall_light_power);
+		overall_light_power = 0;
+		for (int i = 0; i < gi::lights.size(); ++i) {
+			cpu_lights[i] = gi::lights[i];
+			overall_light_power += cpu_lights[i].power;
+		}
 		triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 		gi::cuda::mt_pool3f pool = gi::cuda::generate_mt_pool_on_gpu(w,h); 
@@ -197,13 +203,9 @@ namespace local {
 		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
 			shadow_tracer->trace_progressively(false);
 			hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
-			// float3 *colors = bouncer->output_color;
-			float3 *colors = bouncer->material_colors.data;
-			if (scene.id >= 0)
-				cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
-			else
-				gi::cuda::download_and_save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
-
+			float3 *colors = bouncer->output_color.data;
+// 			float3 *colors = bouncer->material_colors.data;
+			gi::save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
 		}
 	}
 
@@ -214,7 +216,11 @@ namespace local {
 		extract_pos_vec3f_of_matrix(&pos, lookat_matrix);
 		extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 		extract_up_vec3f_of_matrix(&up, lookat_matrix);
-		gi::cuda::update_lights(cpu_lights, nr_of_lights, overall_light_power);
+		if (nr_of_lights != gi::lights.size())
+			throw std::runtime_error("number of lights changed in " "hybrid_arealight_sampler::compute" 
+									 " this exception is just for consistency to the gpu version.");
+		for (int i = 0; i < gi::lights.size(); ++i)
+			cpu_lights[i] = gi::lights[i];
 		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
 		bouncer->overall_light_power = overall_light_power;
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
