@@ -14,9 +14,9 @@
 ;       :up    (list   0   0  1)
 ;       :dim   (list 100 100))
 
-;(light "sky"
-;       :type :sky
-;       ;:map "cgskies-0319-free.png"
-;       :map "CGSkies_0056_free.exr"
-;       :diameter 1000
-;       :scale 20)
+(light "sky"
+       :type :sky
+       ;:map "cgskies-0319-free.png"
+       :map "/soft/devtools/kai/share/render-data/images/skylight-morn.exr"
+       :diameter 1000
+       :scale 10)
