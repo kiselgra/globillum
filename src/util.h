@@ -16,6 +16,11 @@ namespace gi {
 	//! See \ref download_and_save_image.
 	extern std::string image_store_path;
 	
+	namespace output_format {
+		enum image_output_format { png = 1, exr = 2 };
+	}
+	extern unsigned int image_output_format;
+
 	void save_image(const std::string &basename, int seq, int w, int h, float3 *color);
 		
 	//! we don't use references as we expect this to be called for integral and floating point types, only.
