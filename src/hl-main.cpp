@@ -144,7 +144,7 @@ int parse_cmdline(int argc, char **argv)
 	cmdline.include_paths.push_back(".");
 
 	if (cmdline.filename == 0) {
-		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
+// 		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
 // 		exit(EXIT_FAILURE);
 	}
 	else {
@@ -529,10 +529,10 @@ void actual_main() {
 
 // 	gi_algorithm::select("gpu_cgls_lights");
 // 	gi_algorithm::select("gpu_area_lights");
-// 	gi_algorithm::select("hybrid_area_lights");
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
-	gi_algorithm::select("hybrid_pt");
+	gi_algorithm::select("hybrid_area_lights");
+// 	gi_algorithm::select("hybrid_pt");
 
 	scm_c_eval_string("(set! gi-initialization-done #t)");
 

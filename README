@@ -21,3 +21,33 @@ non-gui version:
 $ ./src/gi -c nogui.scm -I. -c sponza.lights.scm /soft/devtools/kai/share/render-data/models/sponza.noflag.obj -r 1280x720 -i /soft/devtools/kai/share/render-data/images/sponza/
 
 If it segfaults, have a look at the lights-file (sponza.lights.scm here) an check if you skylight texture can be found.
+
+
+
+Woinachde
+=========
+
+git
+---
+url: git@scm9:kiselgra/globillum
+branch: cpu-shading
+
+run
+---
+./src/gi -r 1280x720 -i /soft/devtools/kai/share/render-data/images/sponza/ -I. -c nogui.scm -c sponza.lights.scm -c sponza.scene.scm
+quit:
+	scheme@(guile-user)> ,q
+neues bild rechnen
+	scheme@(guile-user)> (recompute)
+light samples ändern
+	scheme@(guile-user)> (light-samples 23)
+bookmarked camera wählen
+	scheme@(guile-user)> (b "soft")
+
+
+code
+----
+- main file für cmdline anwendung ist hl-main.cpp
+- eintellen des algorithmus in hl-main.cpp:534
+- materialien und texs in mateirals.h, material-conversion.cpp, siehe hl-main.cpp:347 "cpu_materials", kann unabhängig von gpu_materials werden.
+- bounce-funktion in pt-hybrid.cpp
