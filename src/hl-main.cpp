@@ -63,6 +63,7 @@ static struct argp_option options[] =
 	{ "prefix", 'P', "path", 0, "Path prefix to store output images. Default: /tmp/"},
 	{ "merge-factor", MERGE, "x", 0, "Drawelement collapse threshold."},
 	{ "lazy", 'l', 0, 0, "Don't start computation right ahead."},
+	{ "output-format", 'F', "p, e", 0, "Save png files or exr files. Can be specified multiple times."},
 	{ 0 }
 };	
 
@@ -98,6 +99,7 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	if (arg)
 		sarg = arg;
 	sarg = replace_nl(sarg);
+	static bool output_format_init = true;
 
 	switch (key)
 	{
@@ -111,6 +113,13 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 				if (gi::image_store_path[gi::image_store_path.length()-1] != '/')
 					gi::image_store_path += "/";
 				break;
+	case 'F':   if (output_format_init) { output_format_init = false; gi::image_output_format = 0; }
+				if (sarg == "p")
+					gi::image_output_format |= gi::output_format::png;
+				else if (sarg == "e")
+					gi::image_output_format |= gi::output_format::exr;
+				else
+					cerr << "unknown image output format '" << sarg << "'" << endl;
 	case MERGE: cmdline.merge_factor = atof(arg); break;
 	
 	case ARGP_KEY_ARG:		// process arguments. 

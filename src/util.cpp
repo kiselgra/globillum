@@ -105,12 +105,12 @@ namespace gi {
 		}
 	}
 
-	unsigned int image_output_format = output_format::png | output_format::exr;
+	unsigned int image_output_format = output_format::png;
 
 	void save_image(const std::string &basename, int seq, int w, int h, float3 *data) {
 		ostringstream oss; oss << image_store_path << basename << "." << setw(4) << setfill('0') << right << seq;
 
-		if (image_output_format | output_format::png) {
+		if (image_output_format & output_format::png) {
 			png::image<png::rgb_pixel> image(w, h);
 			for (int y = 0; y < h; ++y) {
 				int y_out = h - y - 1;
@@ -123,7 +123,7 @@ namespace gi {
 
 			image.write(oss.str() + ".png");
 		}
-		if (image_output_format | output_format::exr) {
+		if (image_output_format & output_format::exr) {
 #if HAVE_LIBILMIMF == 1
 			Imf::RgbaOutputFile file((oss.str() + ".exr").c_str(), w, h, Imf::WRITE_RGBA);
 			Imf::Rgba *halfdata = new Imf::Rgba[w*h];
