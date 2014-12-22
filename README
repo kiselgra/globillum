@@ -45,9 +45,12 @@ bookmarked camera wählen
 	scheme@(guile-user)> (b "soft")
 
 
+wenn es die bilder schon gibt /tmp/pt-...png, dann erst mkdir /tmp/magdea ; gi ... -P /tmp/magdea
+
 code
 ----
 - main file für cmdline anwendung ist hl-main.cpp
 - eintellen des algorithmus in hl-main.cpp:534
 - materialien und texs in mateirals.h, material-conversion.cpp, siehe hl-main.cpp:347 "cpu_materials", kann unabhängig von gpu_materials werden.
 - bounce-funktion in pt-hybrid.cpp
+
