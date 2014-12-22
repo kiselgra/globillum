@@ -52,6 +52,13 @@ namespace gi {
 	};
 
 
+	template<typename T> void clear_array(T *arr, int w, int h, T val) {
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; ++x)
+				arr[y*w+x] = val;
+	}
+
+	void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int samples_already_accumulated);
 
 	namespace cuda {
 

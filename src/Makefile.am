@@ -10,6 +10,7 @@ libgi_la_SOURCES = 	\
 					cgls-lights.cu cgls-lights.h \
 					direct-lighting.cpp direct-lighting.h \
 					dofrays.cu dofrays.h \
+					hybrid-pt.cpp hybrid-pt.h \
 					lights.cpp lights.h \
 					material.cu material-conversion.cpp material.h \
 					gi_algorithm.cpp gi_algorithm.h \
