@@ -39,6 +39,13 @@ AC_PROG_LIBTOOL
 AC_CHECK_LIB([mcm], [main])
 AC_CHECK_LIB([glut], [main])
 
+#	-pthread -lIlmImf -lz -lImath -lHalf -lIex -lIlmThread 
+AC_CHECK_LIB([IlmImf], [main])
+AC_CHECK_LIB([Imath], [main])
+AC_CHECK_LIB([Half], [main])
+AC_CHECK_LIB([Iex], [main])
+AC_CHECK_LIB([IlmThread], [main])
+
 PKG_CHECK_MODULES(CGL, libcgl)
 AC_SUBST(CGL_CFLAGS)
 AC_SUBST(CGL_LDFLAGS)
