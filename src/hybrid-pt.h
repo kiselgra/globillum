@@ -40,6 +40,7 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 	float3 *host_light_sample_origins,    *host_path_sample_origins,    *host_path_differentials_origins;
 	float  *host_light_sample_maxt,       *host_path_sample_maxt;
 	/* --- */
+	bool verbose;
 
 	// maintain which tracer to use for the next bounce
 	tandem_tracer<box_t, tri_t> *tracers;
@@ -60,7 +61,7 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 	  lights(lights), nr_of_lights(nr_of_lights), w(w), h(h),
 	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), path_samples(path_samples), output_color(0), tracers(0),
 	  gpu_light_sample_origins(0), gpu_light_sample_directions(0), gpu_light_sample_maxt(0),
-	  gpu_path_sample_origins(0), gpu_path_sample_directions(0), gpu_path_sample_maxt(0)
+	  gpu_path_sample_origins(0), gpu_path_sample_directions(0), gpu_path_sample_maxt(0), verbose(false)
 	{
 		output_color = new float3[w*h];
 		path_accum_color = new float3[w*h];
@@ -131,7 +132,8 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 											 host_path_differentials_origins, host_path_differentials_directions,
 											 host_path_intersections, this->tri_ptr, this->materials, mt_numbers_path, throughput, path_accum_color,
 											 host_light_sample_directions, host_shadow_intersections, potential_sample_contribution);
-		gi::save_image("accum", curr_bounce, w, h, path_accum_color);
+		if (this->verbose)
+			gi::save_image("accum", curr_bounce, w, h, path_accum_color);
 	}
 	virtual void bounce() {
 		bool compute_light_sample = false;
@@ -145,7 +147,7 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 		else {
 			if (this->gpu_last_intersection == gpu_shadow_intersections) {
 				compute_path_segment = true;
-				std::cout << "shadow trace: " << tracers->any_hit_tracer->timings[path_len] << std::endl;
+				std::cout << " - (shadow trace: " << tracers->any_hit_tracer->timings[path_len] << ")" << std::endl;
 			}
 			else {
 				compute_light_sample = true;
@@ -157,9 +159,9 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 
 			// download data required to find an arealight sample
 			// i don't think we have to read the light positions, we'll just have to write them, dont't we?
-			checked_cuda(cudaMemcpy(host_light_sample_directions, gpu_light_sample_directions, this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
-			checked_cuda(cudaMemcpy(host_light_sample_origins,    gpu_light_sample_origins,    this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
-			checked_cuda(cudaMemcpy(host_light_sample_maxt,       gpu_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyDeviceToHost));
+// 			checked_cuda(cudaMemcpy(host_light_sample_directions, gpu_light_sample_directions, this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
+// 			checked_cuda(cudaMemcpy(host_light_sample_origins,    gpu_light_sample_origins,    this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
+// 			checked_cuda(cudaMemcpy(host_light_sample_maxt,       gpu_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_intersections, gpu_path_intersections,
 					   sizeof(rta::triangle_intersection<tri_t>)*this->w*this->h, cudaMemcpyDeviceToHost));
 
@@ -176,16 +178,18 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 		if (compute_path_segment) {
 			std::cout << " - computing new path sample" << std::endl;
 
-			// download data required to compute bounce and shading. todo: check what is really only read and written.
+			// download data required to compute bounce and shading.
 			checked_cuda(cudaMemcpy(host_light_sample_directions,        gpu_light_sample_directions, this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
-			checked_cuda(cudaMemcpy(host_light_sample_origins,           gpu_light_sample_origins,    this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
-			checked_cuda(cudaMemcpy(host_light_sample_maxt,              gpu_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyDeviceToHost));
+			// checked_cuda(cudaMemcpy(host_light_sample_origins,           gpu_light_sample_origins,    this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
+			// checked_cuda(cudaMemcpy(host_light_sample_maxt,              gpu_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_sample_directions,         gpu_path_sample_directions,  this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_sample_origins,            gpu_path_sample_origins,     this->w*this->h*3*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_sample_maxt,               gpu_path_sample_maxt,        this->w*this->h*1*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_differentials_directions,  this->crgs->differentials_direction, this->w*this->h*6*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_differentials_origins,     this->crgs->differentials_origin,    this->w*this->h*6*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_intersections, gpu_path_intersections,
+					   sizeof(rta::triangle_intersection<tri_t>)*this->w*this->h, cudaMemcpyDeviceToHost));
+			checked_cuda(cudaMemcpy(host_shadow_intersections, gpu_shadow_intersections,
 					   sizeof(rta::triangle_intersection<tri_t>)*this->w*this->h, cudaMemcpyDeviceToHost));
 
 			// compute actual bounce
@@ -194,9 +198,9 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 			tracers->select_closest_hit_tracer();
 		
 			// push data back to gpu
-			checked_cuda(cudaMemcpy(gpu_light_sample_directions,         host_light_sample_directions, this->w*this->h*3*sizeof(float), cudaMemcpyHostToDevice));
-			checked_cuda(cudaMemcpy(gpu_light_sample_origins,            host_light_sample_origins,    this->w*this->h*3*sizeof(float), cudaMemcpyHostToDevice));
-			checked_cuda(cudaMemcpy(gpu_light_sample_maxt,               host_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyHostToDevice));
+			// checked_cuda(cudaMemcpy(gpu_light_sample_directions,         host_light_sample_directions, this->w*this->h*3*sizeof(float), cudaMemcpyHostToDevice));
+			// checked_cuda(cudaMemcpy(gpu_light_sample_origins,            host_light_sample_origins,    this->w*this->h*3*sizeof(float), cudaMemcpyHostToDevice));
+			// checked_cuda(cudaMemcpy(gpu_light_sample_maxt,               host_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyHostToDevice));
 			checked_cuda(cudaMemcpy(gpu_path_sample_directions,          host_path_sample_directions,  this->w*this->h*3*sizeof(float), cudaMemcpyHostToDevice));
 			checked_cuda(cudaMemcpy(gpu_path_sample_origins,             host_path_sample_origins,     this->w*this->h*3*sizeof(float), cudaMemcpyHostToDevice));
 			checked_cuda(cudaMemcpy(gpu_path_sample_maxt,                host_path_sample_maxt,        this->w*this->h*1*sizeof(float), cudaMemcpyHostToDevice));

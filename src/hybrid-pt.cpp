@@ -61,9 +61,9 @@ void hybrid_pt::update() {
 		tracer->trace_progressively(false);
 		hybrid_pt_bouncer<B,T> *bouncer = dynamic_cast<hybrid_pt_bouncer<B, T>*>(set.bouncer);
 		float3 *colors = bouncer->output_color;
-// 		float3 *colors = bouncer->material_colors;
-// 		cuda::cgls::copy_cuda_image_to_texture(w, h, colors, 1.0f);
-		gi::save_image("pt", bouncer->curr_bounce, w, h, colors);
+		if (bouncer->path_len == 0) {
+			gi::save_image("pt", bouncer->curr_path, w, h, colors);
+		}
 	}
 }
 
@@ -84,6 +84,7 @@ void hybrid_pt::compute() {
 		}
 		hybrid_pt_bouncer<B,T> *bouncer = dynamic_cast<hybrid_pt_bouncer<B, T>*>(set.bouncer);
 		bouncer->overall_light_power = overall_light_power;
+		bouncer->verbose = verbose;
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 		bouncer->path_samples = vars["pt/passes"].int_val;
@@ -179,7 +180,6 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					float3 brdf = diffuse * float(M_1_PI)
 						+ (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|light_dir), 0.0f), shininess);
 					col_accum[id] = prev + brdf * curr;
-// 					printf("%04d %04d col acc %6.6f %6.6f %6.6f\n", x, y, col_accum[id].x, col_accum[id].y, col_accum[id].z);
 				}
 
 				// compute next path segment by sampling the brdf

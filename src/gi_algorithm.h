@@ -17,11 +17,12 @@ protected:
 	static std::vector<gi_algorithm*> algorithms;
 	bool activated;
 	std::string name;
+	bool verbose;
 
 public:
 	static texture_ref result;
 
-	gi_algorithm(const std::string &name) : activated(false), name(name) {
+	gi_algorithm(const std::string &name) : activated(false), name(name), verbose(false) {
 		for (auto *a : algorithms)
 			if (a->name == name)
 				throw std::logic_error(std::string("the algorithm ") + name + " is already registered.");
@@ -58,6 +59,7 @@ public:
 			l.push_back(algorithms[i]->name);
 		return l;
 	}
+	void debug(bool verb) { verbose = verb; }
 
 	virtual void path_samples(int n)  { std::cerr << "the algorithm '" << name << "' does not know about path samples." << std::endl; }
 	virtual void path_length(int n)   { std::cerr << "the algorithm '" << name << "' does not know about path length." << std::endl; }

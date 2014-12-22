@@ -404,6 +404,7 @@ static char* console_algo(console_ref ref, int argc, char **argv) {
 	}
 	if (found != "") {
 		gi_algorithm::select(found);
+		gi_algorithm::selected->debug(cmdline.verbose);
 		return strdup(found.c_str());
 	}
 	else return strdup("not found");
