@@ -17,6 +17,9 @@ using namespace gi::cuda;
 extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
 
+//define only one of these
+#define ALL_MATERIAL_LAMBERT 1 // if defined this will be grey lambert.
+#define ALL_MATERIAL_BLINNPHONG 0
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
@@ -106,10 +109,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 			int2 gid = make_int2(x, y);
 			int id = gid.y*w+gid.x;
 			triangle_intersection<rta::cuda::simple_triangle> is = ti[id];
-// 			col_accum[id] = make_float3(20,0,0);
-// 			continue;
 			if (is.valid()) {
-
 				// load hit triangle and compute hitpoint geometry
 				rta::cuda::simple_triangle tri = triangles[is.ref];
 				float2 TC;
@@ -144,8 +144,14 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				// load and evaluate material
 				material_t mat = mats[tri.material_index];
-				float3 diffuse = mat.diffuse_color,
-					   specular = mat.specular_color;
+				#if ALL_MATERIAL_LAMBERT
+				Material *lambertM = (Material*)new LambertianMaterial(&mat);
+				#elif ALL_MATERIAL_BLINNPHONG
+			 	Material *blinnM = (Material*) new BlinnMaterial(&mat, TC, upper_T, right_T);
+				#endif
+				// This has been moved to material.h
+				/*float3 diffuse = mat.diffuse_color;
+				float3 specular = mat.specular_color;
 				if (mat.diffuse_texture || mat.specular_texture) {
 					float diff_x = fabsf(TC.x - upper_T.x);
 					float diff_y = fabsf(TC.y - upper_T.y);
@@ -161,16 +167,15 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				if (sum > 1.0f) {
 					diffuse /= sum;
 					specular /= sum;
-				}
+				}*/
 
 				// add lighting to accumulation buffer
 				float3 org_dir = ray_dir[id];
 				normalize_vec3f(&org_dir);
-				float3 R = reflect(org_dir, N);
+				//float3 R = reflect(org_dir, N);
 				// attention: recycling of 'is'
 				is = shadow_ti[id];
 				float3 TP = throughput[id];
-				const float shininess = 100.0f;
 				if (!is.valid()) {
 					float3 prev = col_accum[id];
 					float3 weight = potential_sample_contribution[id];
@@ -179,21 +184,25 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					float3 light_dir = to_light[id];
 					normalize_vec3f(&light_dir);
 					// the whole geometric term is already computed in potential_sample_contribution.
-					float3 brdf = diffuse * float(M_1_PI)
-						+ (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|light_dir), 0.0f), shininess);
+					//moved to material evaluate function float3 brdf = diffuse * float(M_1_PI)	+ (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|light_dir), 0.0f), shininess);
+					float3 brdf = make_float3(0.f,0.f,0.f);
+					#if ALL_MATERIAL_LAMBERT
+					brdf = lambertM->evaluate(org_dir,light_dir,N);
+					#elif ALL_MATERIAL_BLINNPHONG
+					brdf = blinnM->evaluate(org_dir,light_dir,N);
+					#endif
 					col_accum[id] = prev + brdf * curr;
 				}
 
 				// compute next path segment by sampling the brdf
 				float3 random = next_random3f(uniform_random, id);
-				float pd = diffuse.x+diffuse.y+diffuse.z;
+				/*float pd = diffuse.x+diffuse.y+diffuse.z;
 				float ps = specular.x+specular.y+specular.z;
 				if (pd + ps > 1) {
 					pd /= pd+ps;
 					ps /= pd+ps;
 				}
-				bool diffuse_bounce = false,
-					 specular_bounce = false;
+				bool diffuse_bounce = false,specular_bounce = false;
 				float P_component;
 				if (random.z <= pd) {
 					diffuse_bounce = true;
@@ -202,18 +211,22 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				else if (random.z <= pd+ps) {
 					specular_bounce = true;
 					P_component = ps;
-				}
+				}*/
 
-				float3 T, B;
+				float3 T, B;				
 				make_tangent_frame(N, T, B);
 				normalize_vec3f(&T);
 				normalize_vec3f(&B);
 
 				float3 dir;
 				float3 use_color = make_float3(1,1,1);
-				float n;
-				float omega_z;
+				//float n;
+				//float omega_z;
 				bool reflection = false;
+				//do only diffuse for now
+				bool specular_bounce = false;
+				bool diffuse_bounce = true;
+				float pdf = 1.0f;
 				if (reflection) {
 					org_dir = transform_to_tangent_frame(org_dir, T, B, N);
 					dir = org_dir;
@@ -222,19 +235,41 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					// store reflection ray differentials. (todo: change to broadened cone)
 					ray_diff_dir[id] = reflect(upper_dir, N);
 					ray_diff_dir[w*h+id] = reflect(right_dir, N);
-				}
+				}else{
+					#if ALL_MATERIAL_LAMBERT
+					lambertM->sample(org_dir,dir,random,N,pdf);
+					#elif ALL_MATERIAL_BLINNPHONG
+					blinnM->sample(org_dir,dir,random,N,pdf);
+					#endif
+
+					dir = transform_from_tangent_frame(dir,T,B,N);
+					float3 brdf = make_float3(0.f,0.f,0.f);
+
+					#if ALL_MATERIAL_LAMBERT
+					brdf = lambertM->evaluate(org_dir,dir,N);
+					#elif ALL_MATERIAL_BLINNPHONG
+					brdf = blinnM->evaluate(org_dir,dir,N);
+					#endif
+
+					ray_diff_dir[w*h+id] = reflect(right_dir, N);
+					ray_diff_dir[id] = reflect(upper_dir, N);
+					TP *= brdf;
+					use_color = brdf;
+				}/*
 				else if (diffuse_bounce) {
-					n = 1.0f;
-					dir.z = powf(random.x, 1.0f/(n+1.0f));
-					dir.x = sqrtf(1.0f-dir.z*dir.z) * cosf(2.0f*float(M_PI)*random.y);
-					dir.y = sqrtf(1.0f-dir.z*dir.z) * sinf(2.0f*float(M_PI)*random.y);
-					omega_z = dir.z;
+					//n = 1.0f;
+					//dir.z = powf(random.x, 1.0f/(n+1.0f));
+					//dir.x = sqrtf(1.0f-dir.z*dir.z) * cosf(2.0f*float(M_PI)*random.y);
+					//dir.y = sqrtf(1.0f-dir.z*dir.z) * sinf(2.0f*float(M_PI)*random.y);
+					//omega_z = dir.z;
+					lambertM->sample(org_dir, dir, random, N, pdf);
 					dir = transform_from_tangent_frame(dir, T, B, N);
+					float3 brdf = lambertM->evaluate(org_dir,dir,N);
 					// store reflection ray differentials. (todo: change to broadened cone)
 					ray_diff_dir[id] = reflect(upper_dir, N);
 					ray_diff_dir[w*h+id] = reflect(right_dir, N);
 					use_color = diffuse;
-					float3 brdf = fabsf(dir|N) * diffuse * float(M_1_PI);// * fmaxf((N|-org_dir), 0.0f);
+					//float3 brdf = fabsf(dir|N) * diffuse * float(M_1_PI);// * fmaxf((N|-org_dir), 0.0f);
 					TP *= brdf;
 				}
 				else if (specular_bounce) {
@@ -252,16 +287,24 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					use_color = specular;
 					float3 brdf = fabsf(dir|N) * (shininess + 1)*specular * 0.5 * M_1_PI * pow(fmaxf((R|dir), 0.0f), shininess);
 					TP *= brdf;
-				}
+				}*/
+				#if ALL_MATERIAL_LAMBERT
+				delete lambertM;
+				#elif ALL_MATERIAL_BLINNPHONG
+				delete blinnM;
+				#endif
 				if (diffuse_bounce||specular_bounce) {
 					float len = length_of_vector(dir);
 					dir /= len;
 
-					P += 0.01*dir;
+					//P += 0.01*dir;
+					//direction of normal might be better 
+					P += 0.01f * N; // I hope N is normalized :-)
 					ray_orig[id] = P;
 					ray_dir[id]  = dir;
 					max_t[id]    = FLT_MAX;
-					TP *= (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+					//TP *= (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
+					TP *= (1.0f/pdf);
 					throughput[id] = TP;
 					// 				throughput[id] = make_float3(0,0,0);
 					continue;
@@ -277,5 +320,5 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 }
 
 
-/* vim: set foldmethod=marker: */
+/* vim: set foldmethod=i*/
 
