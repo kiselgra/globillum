@@ -1,5 +1,7 @@
 #include "hybrid-pt.h"
 
+#include "raygen.h"
+
 #include <librta/cuda-kernels.h>
 #include <librta/cuda-vec.h>
 #include <librta/intersect.h>
@@ -38,7 +40,10 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	
 	triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
 
-	set.rgen = crgs = new rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials>(w, h);
+// 	set.rgen = crgs = new rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials>(w, h);
+	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
+	update_mt_pool(jitter);
+	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
 	int bounces = 2;
 	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
@@ -67,6 +72,7 @@ void hybrid_pt::update() {
 		hybrid_pt_bouncer<B,T> *bouncer = dynamic_cast<hybrid_pt_bouncer<B, T>*>(set.bouncer);
 		float3 *colors = bouncer->output_color;
 		if (bouncer->path_len == 0) {
+			update_mt_pool(jitter);	// a path is completed, so we generate new random numbers for the primary ray generator.
 			gi::save_image("pt", bouncer->curr_path, w, h, colors);
 		}
 	}
@@ -80,7 +86,7 @@ void hybrid_pt::compute() {
 		extract_dir_vec3f_of_matrix(&dir, lookat_matrix);
 		extract_up_vec3f_of_matrix(&up, lookat_matrix);
 		if (nr_of_lights != gi::lights.size())
-			throw std::runtime_error("number of lights changed in " "hybrid_arealight_sampler::compute" 
+			throw std::runtime_error("number of lights changed in " "hybrid_pt::compute" 
 									 " this exception is just for consistency to the gpu version.");
 		overall_light_power = 0;
 		for (int i = 0; i < gi::lights.size(); ++i) {

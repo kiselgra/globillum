@@ -136,31 +136,47 @@ namespace local {
 		typedef rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> crgs_with_diffs;
 		gi::light *lights;
 		int nr_of_lights;
-		gi::cuda::mt_pool3f uniform_random_numbers;
+		gi::cuda::mt_pool3f uniform_random_numbers, jitter;
 		rta::image<float3, 1> mt_numbers;
 		rta::image<float3, 1> potential_sample_contribution; 
-		int curr_bounce;
-		int samples;
+		int curr_cam_sample;
+		int curr_light_sample;
+		int cam_samples, light_samples_per_cam_sample;
+		int image_nr;
 		rta::image<float3, 1> output_color;
 		float overall_light_power;
 		rta::image<rta::triangle_intersection<rta::cuda::simple_triangle>, 1> primary_intersection;
 		hybrid_arealight_evaluator(uint w, uint h, rta::cuda::material_t *materials, rta::cuda::simple_triangle *triangles, 
 								   crgs_with_diffs *crgs, gi::light *lights, int nr_of_lights,
-								   gi::cuda::mt_pool3f rnd, int samples)
+								   gi::cuda::mt_pool3f rnd, gi::cuda::mt_pool3f jitter, int cam_samples, int light_samples_per_cam_sample)
 		: cpu_material_evaluator<forward_traits>(w, h, materials, triangles, crgs),
-		  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), mt_numbers(w, h),
-		  potential_sample_contribution(w, h), samples(samples), output_color(w, h), primary_intersection(w, h) {
-			  curr_bounce = 0;
+		  lights(lights), nr_of_lights(nr_of_lights), uniform_random_numbers(rnd), jitter(jitter), mt_numbers(w, h),
+		  potential_sample_contribution(w, h), cam_samples(cam_samples), light_samples_per_cam_sample(light_samples_per_cam_sample), 
+		  output_color(w, h), primary_intersection(w, h) {
+			  curr_cam_sample = 0;
+			  curr_light_sample = 0;
 			  this->background = make_float3(1,1,1);
 			  checked_cuda(cudaMemcpy(mt_numbers.data, uniform_random_numbers.data, sizeof(float3)*this->w*this->h, cudaMemcpyDeviceToHost));
 		}
 		~hybrid_arealight_evaluator() {
 		}
-		virtual void new_pass() {
-			curr_bounce = 0;
+		virtual void reset_samples() {
+			curr_cam_sample = 0;
+			curr_light_sample = 0;
+			image_nr = 0;
 		}
 		virtual bool trace_further_bounces() {
-			return (curr_bounce < samples+1);
+			if (curr_light_sample <= light_samples_per_cam_sample)	// '<=' because the first trace is the camera sample.
+				return true;
+			if (curr_cam_sample < cam_samples) {
+				curr_light_sample = 0;
+				curr_cam_sample++;
+				rta::triangle_intersection<rta::cuda::simple_triangle> *tmp = primary_intersection.data;
+				primary_intersection.data = this->last_intersection.data;
+				this->last_intersection.data = tmp;
+				update_mt_pool(jitter);
+			}
+			return false;
 		}
 		virtual void setup_new_arealight_sample() {
 			rta::generate_arealight_sample(this->w, this->h, lights, nr_of_lights, overall_light_power,
@@ -169,13 +185,13 @@ namespace local {
 		}
 		virtual void integrate_light_sample() {
 			rta::integrate_light_sample(this->w, this->h, this->last_intersection.data, potential_sample_contribution.data,
-										this->material_colors.data, output_color.data, curr_bounce-1);
+										this->material_colors.data, output_color.data, curr_cam_sample * light_samples_per_cam_sample + curr_light_sample);
 		}
 		virtual void bounce() {
-			std::cout << "direct lighting sample " << curr_bounce << std::endl;
+			std::cout << "direct lighting sample " << curr_cam_sample * light_samples_per_cam_sample + curr_light_sample << " (c: " << curr_cam_sample << ", l: " << curr_light_sample << ")" << std::endl;
 			this->download_ray_data();
 			this->download_intersection_data();
-			if (curr_bounce == 0) {
+			if (curr_light_sample == 0) {
 				// this has to be done before switching the intersection data.
 				this->evaluate_material();
 				rta::triangle_intersection<rta::cuda::simple_triangle> *tmp = primary_intersection.data;
@@ -183,15 +199,15 @@ namespace local {
 				this->last_intersection.data = tmp;
 				setup_new_arealight_sample();
 			}
-			else if (curr_bounce > 0) {
+			else {
 				integrate_light_sample();
-				if (curr_bounce < samples)
-					setup_new_arealight_sample();
+				setup_new_arealight_sample();
 				update_mt_pool(uniform_random_numbers);
 				checked_cuda(cudaMemcpy(mt_numbers.data, uniform_random_numbers.data, sizeof(float3)*this->w*this->h, cudaMemcpyDeviceToHost));
+				++image_nr;
 			}
+			++curr_light_sample;
 			this->upload_ray_data();
-			++curr_bounce;
 		}
 		virtual std::string identification() {
 			return "cpu area light shader to be used with a gpu tracer (might work with cpu tracers, too).";
@@ -231,6 +247,7 @@ namespace local {
 		virtual void update();
 		virtual bool progressive() { return true; }
 		virtual void light_samples(int n);
+		virtual void path_samples(int n);
 	};
 
 }
