@@ -116,7 +116,7 @@ namespace local {
 		gpu_tracer->ray_generator(set.rgen);
 		tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer>(gpu_tracer);
 		tracers->append_tracer(gpu_tracer);
-// 		tracers->append_tracer(gpu_tracer);
+		tracers->append_tracer(gpu_tracer);
 
 		if (scene.id >= 0)
 			cuda::cgls::init_cuda_image_transfer(result);
@@ -161,7 +161,7 @@ namespace local {
 		shadow_tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer>(shadow_gpu_tracer);
 		shadow_tracers->copy_progressive_state(tracers);
 		shadow_tracers->append_tracer(shadow_gpu_tracer);
-// 		shadow_tracers->append_tracer(shadow_gpu_tracer);
+		shadow_tracers->append_tracer(shadow_gpu_tracer);
 	}
 
 	void gpu_arealight_sampler::light_samples(int n) {

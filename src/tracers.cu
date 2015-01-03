@@ -59,7 +59,7 @@ namespace rta {
 					float dist_left = FLT_MAX, dist_right = FLT_MAX;;
 					// triangle intersection
 					triangle_intersection<simple_triangle> closest = intersections[tid];
-					closest.t = FLT_MAX;
+					// closest.t = FLT_MAX; (we deliberately no longer do that, as this wreaks havoc with iterated traces).
 					float4 curr = nodes[0];
 
 					while (true) {
@@ -180,14 +180,8 @@ namespace rta {
 									 blockIdx.y * blockDim.y + threadIdx.y);
 				if (gid.x >= w || gid.y >= h) return;
 				int id = gid.y*w+gid.x;
-				if (is[id].valid()) {
-					if (gid.x == 600 && gid.y == 100)
-						printf("copying intersection t=%6.6f -> maxt=%6.6f\n", is[id].t, max_t[id]);
+				if (is[id].valid())
 					max_t[id] = is[id].t;
-				}
-				else
-					if (gid.x == 600 && gid.y == 100)
-						printf("not copying new maxt because intersection is bad. t=%6.6f  maxt=%6.6f\n", is[id].t, max_t[id]);
 			}
 		}
 		
@@ -196,7 +190,7 @@ namespace rta {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
-			std::cout << "copy_intersection_distance_to_max_t " << w << " " << h << " on " << is << " with mt: " << max_t << std::endl;
+// 			std::cout << "copy_intersection_distance_to_max_t " << w << " " << h << " on " << is << " with mt: " << max_t << std::endl;
 			k::copy_intersection_distance_to_max_t<<<blocks, threads>>>(w, h, is, max_t);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
