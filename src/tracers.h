@@ -79,13 +79,10 @@ namespace rta {
 		virtual float copy_intersection_distance_to_max_t() = 0;
 		virtual float trace_rays() {
 			float sum = 0;
-			std::cout << "| trace 0" << std::endl;
 			sum += first_tracer->trace_rays();
 			int n = other_tracers.size();
 			for (int i = 0; i < n; ++i) {
-				std::cout << "| copy " << i << std::endl;
 				sum += copy_intersection_distance_to_max_t();
-				std::cout << "| trace " << i+1 << std::endl;
 				sum += other_tracers[i]->trace_rays();
 			}
 		}
@@ -116,17 +113,11 @@ namespace rta {
 				return std::string("wrapper to have a single ray tracer that calls trace_rays() "
 								   "on a set of GPU tracers, copying t_max values inbetween.");
 			}
-// 			actually, not required as this is done in basic_raytracer.
-// 			virtual void prepare_trace() {
-// 				reset_intersections(this->first_tracer->gpu_bouncer->gpu_last_intersection, 
-// 									this->first_tracer->gpu_bouncer->w, this->first_tracer->gpu_bouncer->h);
-// 			}
 			float copy_intersection_distance_to_max_t() {
 				wall_time_timer wtt; wtt.start();
 				rta::cuda::gpu_ray_bouncer<forward_traits> *bouncer = this->first_tracer->gpu_bouncer;
 				rta::cuda::gpu_ray_generator *raygen = this->first_tracer->gpu_raygen;
 				rta::cuda::copy_intersection_distance_to_max_t(raygen->w, raygen->h, bouncer->gpu_last_intersection, raygen->gpu_maxt);
-// 				rta::cuda::reset_intersections(bouncer->gpu_last_intersection, raygen->w, raygen->h);
 				return wtt.look();
 			}
 			virtual rta::basic_raytracer<forward_traits>* copy() {

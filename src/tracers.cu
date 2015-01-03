@@ -190,7 +190,6 @@ namespace rta {
 			checked_cuda(cudaPeekAtLastError());
 			dim3 threads(16, 16);
 			dim3 blocks = block_configuration_2d(w, h, threads);
-// 			std::cout << "copy_intersection_distance_to_max_t " << w << " " << h << " on " << is << " with mt: " << max_t << std::endl;
 			k::copy_intersection_distance_to_max_t<<<blocks, threads>>>(w, h, is, max_t);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
