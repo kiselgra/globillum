@@ -174,7 +174,7 @@ namespace rta {
 			//! convert standard rta cpu tracer materials to a version suitable for gpu use.
 			material_t* convert_and_upload_materials(int &N);
 			//! we do it this way because we compute mipmaps on the gpu.
-			cuda::material_t* download_materials(cuda::material_t *gpumat, int N);
+			material_t* download_materials(material_t *gpumat, int N);
 			
 			
 			//! evaluate material using point sampling with bilinear interpolation.
