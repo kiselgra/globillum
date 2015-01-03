@@ -113,6 +113,10 @@ namespace rta {
 				return std::string("wrapper to have a single ray tracer that calls trace_rays() "
 								   "on a set of GPU tracers, copying t_max values inbetween.");
 			}
+			virtual void prepare_trace() {
+				reset_intersections(this->first_tracer->gpu_bouncer->gpu_last_intersection,
+									this->first_tracer->gpu_bouncer->w, this->first_tracer->gpu_bouncer->h);
+			}
 			float copy_intersection_distance_to_max_t() {
 				wall_time_timer wtt; wtt.start();
 				rta::cuda::gpu_ray_bouncer<forward_traits> *bouncer = this->first_tracer->gpu_bouncer;
