@@ -85,10 +85,13 @@ fi
 AC_SUBST([GUILE_DEF])
 AM_CONDITIONAL([CAN_USE_GUILE], [test "x$can_use_guile" = "xyes"])
 
+PKG_CHECK_MODULES(OXR, OpenEXR)
+AC_SUBST(OXR_CFLAGS)
+
 # Checks for libraries.
 PKG_CHECK_MODULES(RTA, rta)
-AC_SUBST(RTA_CFLAGS)
-AC_SUBST(RTA_LIBS)
+AC_SUBST([RTA_CFLAGS])
+AC_SUBST([RTA_LIBS])
 
 RTA_PLUGIN_DIR="$(pkg-config rta --variable=plugindir)"
 AC_SUBST([RTA_PLUGIN_DIR])

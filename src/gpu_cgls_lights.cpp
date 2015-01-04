@@ -6,7 +6,7 @@
 #include "rayvis.h"
 #include "util.h"
 #include "vars.h"
-#include "dofrays.h"
+#include "raygen.h"
 #include "tracers.h"
 #include "direct-lighting.h"
 
@@ -58,7 +58,7 @@ namespace local {
 		cuda::simple_triangle *triangles = set.basic_as<B, T>()->triangle_ptr();
 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 		set.bouncer = new gpu_cgls_light_evaluator<B, T>(w, h, gpu_materials, triangles, crgs, gpu_lights, nr_of_gpu_lights);
-		gi::cuda::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
+		gi::halton_pool2f pool = gi::cuda::generate_halton_pool_on_gpu(w*h);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 
@@ -123,32 +123,7 @@ namespace local {
 
 	static bool alphamaps = true;
 
-	/*! \brief An extension of \ref rta::cuda::cam_ray_generator_shirley that
-	 *  computes ray origins on the lens and adapts the directions so that all
-	 *  rays generated for a given pixel will converge on the focal plane.
-	*/
-	class lens_ray_generator : public rta::cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials> {
-	protected:
-		gi::cuda::mt_pool3f jitter;
-	public:
-		float focus_distance, aperture, eye_to_lens;
-		lens_ray_generator(uint res_x, uint res_y, 
-						   float focus_distance, float aperture, float eye_to_lens,
-						   gi::cuda::mt_pool3f jitter) 
-		: rta::cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(res_x, res_y),
-		  focus_distance(focus_distance), aperture(aperture), eye_to_lens(eye_to_lens),
-		  jitter(jitter) {
-		}
-		virtual void generate_rays() {
-			rta::cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>::generate_rays();
-			rta::cuda::setup_shirley_lens_rays(this->gpu_direction, this->gpu_origin, this->gpu_maxt, 
-											   fovy, aspect, this->w, this->h, (float3*)&dir, (float3*)&position, (float3*)&up, FLT_MAX,
-											   focus_distance, aperture, eye_to_lens, jitter);
-		}
-		virtual std::string identification() { return "cuda version of the ray generator according to shirley."; }
-		virtual void dont_forget_to_initialize_max_t() {}
-	};
-	
+
 	template<typename _box_t, typename _tri_t> struct gpu_cgls_light_evaluator_dof : public gpu_cgls_light_evaluator<forward_traits> {
 		declare_traits_types;
 		int w, h;
@@ -187,7 +162,7 @@ namespace local {
 		scm_c_eval_string("(if (defined? 'setup-lights) (setup-lights))");
 
 		set = *orig_set;
-		set.rgen = crgs = new lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
+		set.rgen = crgs = new rta::cuda::lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
 		if (!alphamaps) {
 			set.rt = set.rt->copy();
 		}
@@ -224,7 +199,7 @@ namespace local {
 		if (aperture != ::aperture || focus_distance != ::focus_distance) {
 			aperture = ::aperture;
 			focus_distance = ::focus_distance;
-			lens_ray_generator *rg = dynamic_cast<lens_ray_generator*>(crgs);
+			rta::cuda::lens_ray_generator *rg = dynamic_cast<rta::cuda::lens_ray_generator*>(crgs);
 			rg->aperture = aperture;
 			rg->focus_distance = focus_distance;
 		}

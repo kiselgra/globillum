@@ -34,8 +34,8 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 	int nr_of_lights;
 	enum random_number_generator_t { none, simple_halton, lcg, per_frame_mt };
 	random_number_generator_t rnd_type;
-	gi::cuda::halton_pool2f rnd_halton;
-	gi::cuda::lcg_random_state rnd_lcg;
+	gi::halton_pool2f rnd_halton;
+	gi::lcg_random_state rnd_lcg;
 	gi::cuda::mt_pool3f rnd_mt_light, rnd_mt_path;
 	uint w, h;
 	int curr_path;
@@ -86,11 +86,11 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 		checked_cuda(cudaFree(path_accum_color));
 		checked_cuda(cudaFree(shadow_intersections));
 	}
-	virtual void random_number_generator(gi::cuda::halton_pool2f rng) {
+	virtual void random_number_generator(gi::halton_pool2f rng) {
 		rnd_halton = rng;
 		rnd_type = simple_halton;
 	}
-	virtual void random_number_generator(gi::cuda::lcg_random_state rng) {
+	virtual void random_number_generator(gi::lcg_random_state rng) {
 		rnd_lcg = rng;
 		rnd_type = lcg;
 	}
@@ -123,20 +123,20 @@ template<typename _box_t, typename _tri_t> struct gpu_pt_bouncer : public rta::c
 		pi.max_paths = path_samples;
 		pi.max_bounces = max_path_len;
 		if (rnd_type == simple_halton)
-			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
-													   light_sample_origins, light_sample_directions, light_sample_maxt,
-													   path_intersections, this->tri_ptr, rnd_halton, potential_sample_contribution, 
-													   pi);
+			rta::cuda::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
+												 light_sample_origins, light_sample_directions, light_sample_maxt,
+												 path_intersections, this->tri_ptr, rnd_halton, potential_sample_contribution, 
+												 pi);
 		else if (rnd_type == lcg)
-			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
-													   light_sample_origins, light_sample_directions, light_sample_maxt,
-													   path_intersections, this->tri_ptr, rnd_lcg, potential_sample_contribution, 
-													   pi);
+			rta::cuda::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
+												 light_sample_origins, light_sample_directions, light_sample_maxt,
+												 path_intersections, this->tri_ptr, rnd_lcg, potential_sample_contribution, 
+												 pi);
 		else if (rnd_type == per_frame_mt)
-			rta::cuda::cgls::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
-													   light_sample_origins, light_sample_directions, light_sample_maxt,
-													   path_intersections, this->tri_ptr, rnd_mt_light, potential_sample_contribution, 
-													   pi);
+			rta::cuda::generate_rectlight_sample(this->w, this->h, lights, nr_of_lights, 
+												 light_sample_origins, light_sample_directions, light_sample_maxt,
+												 path_intersections, this->tri_ptr, rnd_mt_light, potential_sample_contribution, 
+												 pi);
 		else throw std::logic_error("unsupported random number generator in setup_new_arealight_sample!");
 	}
 	virtual void compute_path_contrib_and_bounce() {

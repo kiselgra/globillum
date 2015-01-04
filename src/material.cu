@@ -66,7 +66,6 @@ namespace rta {
 // 					out = tri.a;
 					out = make_float3(is.ref, is.ref, is.ref);
 					dst[gid.y*w+gid.y] = out;
-					return;
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
 					out = mat.diffuse_color;
@@ -110,7 +109,7 @@ namespace rta {
 						diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
 						float diff = fmaxf(diff_x, diff_y);
 						// access texture
-						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
+						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff);
 						out.x *= tex.x;
 						out.y *= tex.y;
 						out.z *= tex.z;
@@ -119,11 +118,12 @@ namespace rta {
 				dst[gid.y*w+gid.x] = out;
 			}
 
-			__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, 
-														float3 *dst, float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
-				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
-									 blockIdx.y * blockDim.y + threadIdx.y);
-				if (gid.x >= w || gid.y >= h) return;
+			__host__ __device__ __forceinline__
+			void pixel_evaluate_material_bilin_lod(int2 gid, 
+												   int w, int h, triangle_intersection<cuda::simple_triangle> *ti, 
+												   cuda::simple_triangle *triangles, cuda::material_t *mats, float3 *dst, 
+												   float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir, 
+												   float3 background) {
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
 				float3 out = background;
 				if (is.valid()) {
@@ -134,9 +134,7 @@ namespace rta {
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
 					out = mat.diffuse_color;
-// 					out = mat.specular_color;
 					if (mat.diffuse_texture) {
-// 					if (mat.specular_texture) {
 						float3 bc; 
 						is.barycentric_coord(&bc);
 						// tex coord
@@ -172,15 +170,30 @@ namespace rta {
 						diff_x = fmaxf(fabsf(T.x - other_T.x), diff_x);
 						diff_y = fmaxf(fabsf(T.y - other_T.y), diff_y);
 						float diff = fmaxf(diff_x, diff_y);
-						// access texture
+// 						diff = 0;
+// access texture
 // 						float3 tex = mat.specular_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
-						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff, gid, blockIdx, threadIdx);
+						float3 tex = mat.diffuse_texture->sample_bilin_lod(T.x, T.y, diff);
+// 						printf("mat %03d %d %d\n", tri.material_index, mat.diffuse_texture->w, mat.diffuse_texture->h);
 						out.x *= tex.x;
 						out.y *= tex.y;
 						out.z *= tex.z;
+// 						out.x = T.x;
+// 						out.y = T.y;
+// 						out.z = 0;
 					}
 				}
 				dst[gid.y*w+gid.x] = out;
+			}
+
+			__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, 
+														float3 *dst, float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
+				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
+									 blockIdx.y * blockDim.y + threadIdx.y);
+				if (gid.x >= w || gid.y >= h) return;
+				pixel_evaluate_material_bilin_lod(gid, 
+												  w, h, ti, triangles, mats, dst, ray_org, ray_dir, ray_diff_org, ray_diff_dir, 
+												  background);
 			}
 		}
 
@@ -261,4 +274,19 @@ namespace rta {
 		}
 
 	}
+		
+	void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
+						   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
+						   float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
+		#pragma omp parallel for
+		for (int y = 0; y < h; ++y) {
+			for (int x = 0; x < w; ++x) {
+				cuda::k::pixel_evaluate_material_bilin_lod(make_int2(x, y), 
+														   w, h, ti, triangles, mats, dst, 
+														   (float3*)ray_org, (float3*)ray_dir, 
+														   (float3*)ray_diff_org, (float3*)ray_diff_dir, background);
+			}
+		}
+	}
+
 }

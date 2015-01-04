@@ -7,6 +7,13 @@
 
 #include <png++/png.hpp>
 
+#include "config.h"
+
+#if HAVE_LIBILMIMF == 1
+#include <ImfRgba.h>
+#include <ImfRgbaFile.h>
+#endif
+
 using namespace std;
 
 namespace gi {
@@ -58,9 +65,10 @@ namespace gi {
 			lcg_random_state pool;
 			pool.N = N;
 			unsigned int *host = new unsigned int[N];
+			unsigned int seed;
 			#pragma omp parallel private(seed)
 			{
-				unsigned int seed = omp_get_thread_num();
+				seed = omp_get_thread_num();
 				//#pragma omp for schedule(dynamic, 32) private(seed)
 				#pragma omp for
 				for (int i = 0; i < N; ++i) {
@@ -77,6 +85,8 @@ namespace gi {
 			float3 *data = new float3[w*h];
 			checked_cuda(cudaMemcpy(data, color, w*h*sizeof(float3), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaDeviceSynchronize());
+			save_image(basename, seq, w, h, data);
+			/*
 			ostringstream oss; oss << image_store_path << basename << "." << setw(4) << setfill('0') << right << seq;
 
 			png::image<png::rgb_pixel> image(w, h);
@@ -90,8 +100,55 @@ namespace gi {
 			}
 
 			image.write(oss.str() + ".png");
+			*/
+			delete [] data;
 		}
 	}
+
+	unsigned int image_output_format = output_format::png;
+
+	void save_image(const std::string &basename, int seq, int w, int h, float3 *data) {
+		ostringstream oss; oss << image_store_path << basename << "." << setw(4) << setfill('0') << right << seq;
+
+		if (image_output_format & output_format::png) {
+			png::image<png::rgb_pixel> image(w, h);
+			for (int y = 0; y < h; ++y) {
+				int y_out = h - y - 1;
+				for (int x = 0; x < w; ++x) {
+					float3 *pixel = data+y*w+x;
+					image.set_pixel(w-x-1, y_out, png::rgb_pixel(clamp(int(255*pixel->x),0,255), 
+																 clamp(int(255*pixel->y),0,255), clamp(int(255*pixel->z),0,255))); 
+				}
+			}
+
+			image.write(oss.str() + ".png");
+		}
+		if (image_output_format & output_format::exr) {
+#if HAVE_LIBILMIMF == 1
+			Imf::RgbaOutputFile file((oss.str() + ".exr").c_str(), w, h, Imf::WRITE_RGBA);
+			Imf::Rgba *halfdata = new Imf::Rgba[w*h];
+			#pragma omp parallel for
+			for (int y = 0; y < h; ++y) {
+				int y_out = h - y - 1;
+				for (int x = 0; x < w; ++x) {
+					float3 *pixel = data+y*w+x;
+					Imf::Rgba *half = halfdata+y_out*w+(w-x-1);
+					half->r = pixel->x;
+					half->g = pixel->y;
+					half->b = pixel->z;
+					half->a = 1;
+				}
+			}
+			file.setFrameBuffer(halfdata, 1, w);
+			file.writePixels(h);
+			delete [] halfdata;
+#else
+			cerr << "Error! Exr format not compiled in." << endl;
+#endif
+		}
+	}
+
+
 }
 
 

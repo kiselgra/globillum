@@ -22,8 +22,8 @@ void gpu_pt::activate(rt_set *orig_set) {
 	set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 	int bounces = 4;
 	set.bouncer = pt = new gpu_pt_bouncer<B, T>(w, h, gpu_materials, triangles, crgs, gpu_rect_lights, nr_of_gpu_rect_lights, bounces, vars["pt/passes"].int_val);
-	gi::cuda::halton_pool2f halton_pool;
-	gi::cuda::lcg_random_state lcg_pool;
+	gi::halton_pool2f halton_pool;
+	gi::lcg_random_state lcg_pool;
 	if (rng_t == gpu_pt_bouncer<B, T>::simple_halton)
 		pt->random_number_generator(gi::cuda::generate_halton_pool_on_gpu(w*h));
 	else if (rng_t == gpu_pt_bouncer<B, T>::lcg)
@@ -43,7 +43,7 @@ void gpu_pt::activate(rt_set *orig_set) {
 	tracer->select_closest_hit_tracer();
 	pt->register_tracers(tracer);
 
-	cuda::cgls::init_cuda_image_transfer(result);
+	rta::cuda::cgls::init_cuda_image_transfer(result);
 }
 
 void gpu_pt::update() {

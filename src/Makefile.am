@@ -10,11 +10,13 @@ libgi_la_SOURCES = 	\
 					cgls-lights.cu cgls-lights.h \
 					direct-lighting.cpp direct-lighting.h \
 					dofrays.cu dofrays.h \
+					hybrid-pt.cpp hybrid-pt.h \
 					lights.cpp lights.h \
 					material.cu material-conversion.cpp material.h \
 					gi_algorithm.cpp gi_algorithm.h \
 					gpu_cgls_lights.cpp gpu_cgls_lights.h \
 					gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
+					raygen.cu raygen.h \
 					rayvis.cu rayvis.h \
 					subd.cpp subd.h \
 					tracers.cu tracers.h \
@@ -38,18 +40,21 @@ gi_SOURCES = 	hl-main.cpp
 
 AM_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$(cglsdata)\" \
 				@GUILE_DEF@ $(GUILE_CFLAGS) $(CGLS_CFLAGS) $(CGL_CFLAGS) \
-				$(RTA_CFLAGS)
+				$(RTA_CFLAGS) $(OXR_CFLAGS)
 
 libgi_la_CPPFLAGS =  $(AM_CPPFLAGS)
-libgi_la_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
+libgi_la_CXXFLAGS =  $(AM_CXXFLAGS) -fopenmp
+libgi_la_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR) -fopenmp
 libgi_la_LIBADD   = $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
 
 gi_gui_CPPFLAGS = $(AM_CPPFLAGS)
-gi_gui_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
+gi_gui_CXXFLAGS = $(AM_CXXFLAGS) -fopenmp
+gi_gui_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR) -fopenmp
 gi_gui_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
 
 gi_CPPFLAGS = $(AM_CPPFLAGS)
-gi_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR)
+gi_CXXFLAGS = $(AM_CXXFLAGS) -fopenmp
+gi_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR) -fopenmp
 gi_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
 
 SUFFIXES: .x
@@ -76,12 +81,12 @@ cuda_CPPFLAGS = $(DEFAULT_INCLUDES) $(gi_CPPFLAGS) $(CPPFLAGS) $(AM_CPPFLAGS)
 # fuck you cuda.
 
 material.o: material.cu material.h
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) -fopenmp $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 	
 .cu.$(OBJEXT):
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS)  -fopenmp $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 
 .cu.lo:
-	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS) $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
+	$(LIBTOOL) --tag=CXX --mode=compile $(top_srcdir)/nvcc-wrapper $(CXXFLAGS)  -fopenmp $(cuda_CPPFLAGS) -gencode arch=compute_@compute_cap@,code=compute_@compute_cap@ -D COMP_CAP=@compute_cap@ -c -o $@ $< -v  -lineinfo  -use_fast_math
 
 

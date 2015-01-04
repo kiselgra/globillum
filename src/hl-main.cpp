@@ -11,6 +11,7 @@
 #include "gi_algorithm.h"
 #include "gpu_cgls_lights.h"
 #include "gpu-pt.h"
+#include "hybrid-pt.h"
 
 #include "subd.h"
 
@@ -64,6 +65,7 @@ static struct argp_option options[] =
 	{ "prefix", 'P', "path", 0, "Path prefix to store output images. Default: /tmp/"},
 	{ "merge-factor", MERGE, "x", 0, "Drawelement collapse threshold."},
 	{ "lazy", 'l', 0, 0, "Don't start computation right ahead."},
+	{ "output-format", 'F', "p, e", 0, "Save png files or exr files. Can be specified multiple times."},
 	{ 0 }
 };	
 
@@ -99,6 +101,7 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 	if (arg)
 		sarg = arg;
 	sarg = replace_nl(sarg);
+	static bool output_format_init = true;
 
 	switch (key)
 	{
@@ -112,6 +115,13 @@ static error_t parse_options(int key, char *arg, argp_state *state)
 				if (gi::image_store_path[gi::image_store_path.length()-1] != '/')
 					gi::image_store_path += "/";
 				break;
+	case 'F':   if (output_format_init) { output_format_init = false; gi::image_output_format = 0; }
+				if (sarg == "p")
+					gi::image_output_format |= gi::output_format::png;
+				else if (sarg == "e")
+					gi::image_output_format |= gi::output_format::exr;
+				else
+					cerr << "unknown image output format '" << sarg << "'" << endl;
 	case MERGE: cmdline.merge_factor = atof(arg); break;
 	
 	case ARGP_KEY_ARG:		// process arguments. 
@@ -145,7 +155,7 @@ int parse_cmdline(int argc, char **argv)
 	cmdline.include_paths.push_back(".");
 
 	if (cmdline.filename == 0) {
-		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
+// 		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
 // 		exit(EXIT_FAILURE);
 	}
 	else {
@@ -181,7 +191,9 @@ scene_ref the_scene = { -1 };
 static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
+int material_count = 0;
 rta::cuda::material_t *gpu_materials = 0;
+rta::cuda::material_t *cpu_materials = 0;
 
 //! this is a direct copy of rta code.
 /*
@@ -246,9 +258,8 @@ rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_lis
 	return ftl;
 }*/
 
-void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_triangle_list<rta::simple_triangle> &ftl) {
-		cerr << "blubblub" << endl;
-	obj_default::ObjFileLoader loader(filename, "1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1");
+void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_triangle_list<rta::simple_triangle> &ftl, const char *trafo) {
+	obj_default::ObjFileLoader loader(filename, trafo); //"1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1";
 
 	int triangles = 0;
 	for (auto &group : loader.groups)
@@ -265,10 +276,14 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 
 	rta::prepend_image_path(dirname((char*)filename.c_str()));
 
-// 	bool anyway = false;
-	bool anyway = true;
-	if (offset == 0 || anyway) {
-		cerr << "FIRST" << endl;
+	if (offset == 0) {
+		// for the first obj loaded, create a fallback material for all objects that have no material
+		vec3f d = {1,0,0};
+		vec3f s = {1,0,0};
+		rta::material_t *mat = new rta::material_t("gi/fallback", d);
+		mat->specular_color = s;
+		rta::register_material(mat);
+	}
 
 	int run = 0;
 	for (auto &group : loader.groups) {
@@ -293,6 +308,9 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 				mid = rta::register_material(mat);
 			}
 		}
+		else
+			mid = rta::material("gi/fallback");
+		
 		for (int i = 0; i < t; ++i)	{
 			int pos = offset + run + i;
 			ftl.triangle[pos].a = vertex(0, i);
@@ -314,22 +332,6 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 			ftl.triangle[pos].material_index = mid;
 		}
 		run += t;
-	}
-
-	}
-	else {
-		cout << "OTHER" << endl;
-		for (int i = offset; i < ftl.triangles; ++i) {
-			ftl.triangle[i].a = vec3f(i,0,0);
-			ftl.triangle[i].b = vec3f(i+1,0,0);
-			ftl.triangle[i].c = vec3f(i,1,0);
-			ftl.triangle[i].na = vec3f(0,1,0);
-			ftl.triangle[i].nb = vec3f(0,1,0);
-			ftl.triangle[i].nc = vec3f(0,1,0);
-			ftl.triangle[i].ta = vec2f(0,0);
-			ftl.triangle[i].tb = vec2f(0,0);
-			ftl.triangle[i].tc = vec2f(0,0);
-		}
 	}
 
 	rta::pop_image_path_front();
@@ -371,7 +373,8 @@ void setup_rta(std::string plugin) {
 // 	add_objfile_to_flat_tri_list(cmdline.filename, *ftl);
 // 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials();
+	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
+	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
 
 	/*
 
@@ -432,6 +435,7 @@ static char* console_algo(console_ref ref, int argc, char **argv) {
 	}
 	if (found != "") {
 		gi_algorithm::select(found);
+		gi_algorithm::selected->debug(cmdline.verbose);
 		return strdup(found.c_str());
 	}
 	else return strdup("not found");
@@ -547,15 +551,19 @@ void actual_main() {
 	setup_rta("bbvh-cuda");
 
 	new local::gpu_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
+	new local::hybrid_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
 	new local::gpu_cgls_lights(cmdline.res.x, cmdline.res.y, the_scene);
 // 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, 45.f, .5f, 5.f);
 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, focus_distance, aperture, 5.f);
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
+	new hybrid_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_area_lights");
+// 	gi_algorithm::select("gpu_area_lights");
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
+	gi_algorithm::select("hybrid_area_lights");
+// 	gi_algorithm::select("hybrid_pt");
 
 	scm_c_eval_string("(set! gi-initialization-done #t)");
 
@@ -581,7 +589,6 @@ void actual_main() {
 			restart_compute = false;
 		}
 		while (algo->progressive() && algo->in_progress()) {
-			cout << "algo in progress." << endl;
 			algo->update();
 			if (quit_loop) break;
 		}
@@ -692,15 +699,16 @@ extern "C" {
 		return SCM_BOOL_T;
 	}
 
-	SCM_DEFINE(s_add_model, "add-model%", 4, 0, 0, (SCM filename, SCM type, SCM is_base, SCM subd_disp), "internal function to load a model.") {
+	SCM_DEFINE(s_add_model, "add-model%", 5, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo, SCM subd_disp), "internal function to load a model.") {
 		char *file = scm_to_locale_string(filename);
 		char *d_file = scm_to_locale_string(subd_disp);
 		int typecode = scm_to_int(type);
 		bool base = scm_is_true(is_base);
 		if (base)
 			cmdline.filename = file;
+		char *trf = scm_to_locale_string(trafo);
 		if (typecode == 0) {
-			add_objfile_to_flat_tri_list(file, *ftl);
+			add_objfile_to_flat_tri_list(file, *ftl, trf);
 			return SCM_BOOL_T;
 		}
 		if (typecode == 1) {
@@ -708,6 +716,7 @@ extern "C" {
 			return SCM_BOOL_T;
 		}
 		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
+		free(trf);
 		return SCM_BOOL_F;
 	}
 

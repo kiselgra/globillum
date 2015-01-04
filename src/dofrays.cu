@@ -47,11 +47,10 @@ namespace rta {
 					printf("pos %6.6f %6.6f %6.6f\n", pos.x, pos.y, pos.z);
 					printf("pos %6.6f %6.6f %6.6f\n", pos_on_focal_plane.x, pos_on_focal_plane.y, pos_on_focal_plane.z);
 				}
-				gi::cuda::random_sampler_path_info dummy;
 				float2 jitter;
 				int i;
 				do {
-					float3 random = next_random3f(uniform_random_01, id+17*i, dummy);
+					float3 random = gi::next_random3f(uniform_random_01, id+17*i);
 					jitter = make_float2(random.x-0.5f, random.y-0.5f);
 				} while (jitter.x*jitter.x + jitter.y*jitter.y > 1.0f);
 

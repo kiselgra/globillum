@@ -12,6 +12,20 @@ using namespace std;
 using namespace rta;
 
 namespace gi {
+
+	// host version
+	void combine_color_samples(float3 *accum, uint w, uint h, float3 *sample, int samples_already_accumulated) {
+		for (int y = 0; y < h; y++)
+			for (int x = 0; x < w; ++x) {
+				int id = y*w+x;
+				float3 sofar = accum[id];
+// 				printf("%04d %04d adding sample %6.6f %6.6f %6.6f\n", x, y, sample[id].x, sample[id].y, sample[id].z);
+				accum[id] = (float(samples_already_accumulated) * sofar + sample[id]) / (samples_already_accumulated + 1);
+			}
+	}
+
+
+
 	namespace cuda {
 
 		// 
@@ -36,6 +50,7 @@ namespace gi {
 				data[id] = (float(samples_already_accumulated) * sofar + sample[id]) / (samples_already_accumulated + 1);
 			}
 		}
+
 
 		void reset_gpu_buffer(float3 *data, uint w, uint h, float3 val) {
 			checked_cuda(cudaPeekAtLastError());

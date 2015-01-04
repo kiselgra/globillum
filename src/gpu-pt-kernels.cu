@@ -97,9 +97,9 @@ namespace k {
 				diff_y = fmaxf(fabsf(TC.y - right_T.y), diff_y);
 				float diff = fmaxf(diff_x, diff_y);
 				if (mat.diffuse_texture)
-					diffuse *= mat.diffuse_texture->sample_bilin_lod(TC.x, TC.y, diff, gid, blockIdx, threadIdx);
+					diffuse *= mat.diffuse_texture->sample_bilin_lod(TC.x, TC.y, diff);
 				if (mat.specular_texture)
-					specular *= mat.specular_texture->sample_bilin_lod(TC.x, TC.y, diff, gid, blockIdx, threadIdx);
+					specular *= mat.specular_texture->sample_bilin_lod(TC.x, TC.y, diff);
 			}
 			float sum = diffuse.x+diffuse.y+diffuse.z+specular.x+specular.y+specular.z;;
 			if (sum > 1.0f) {
@@ -129,7 +129,7 @@ namespace k {
 			}
 
 			// compute next path segment by sampling the brdf
-			float3 random = next_random3f(uniform_random, id, pi);
+			float3 random = next_random3f(uniform_random, id);
 			float pd = diffuse.x+diffuse.y+diffuse.z;
 			float ps = specular.x+specular.y+specular.z;
 			if (pd + ps > 1) {

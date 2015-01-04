@@ -51,6 +51,7 @@ namespace gi {
 				throw std::runtime_error("number of lights changed in " "update_rectangular_area_lights");
 			checked_cuda(cudaMemcpy(data, &use_lights[0], sizeof(light)*n, cudaMemcpyHostToDevice));
 		}
+		
 
 	}
 
