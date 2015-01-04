@@ -170,7 +170,7 @@ namespace rta {
 				}
 				
 				triangle_intersection<cuda::simple_triangle> is = ti[id];
-				if (is.valid()) {
+				if (is.valid() && (is.ref & 0x80000000) == 0) {
 					float3 bc; 
 					float3 P, N;
 					cuda::simple_triangle tri = triangles[is.ref];

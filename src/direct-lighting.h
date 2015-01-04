@@ -55,13 +55,14 @@ namespace local {
 		gi::light *gpu_lights;
 		int nr_of_gpu_lights;
 		rta::raytracer *shadow_tracer;
+		rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer> *subd_tracer;
 		float overall_light_power;
 		rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
 		rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
 	public:
 		gpu_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "gpu_area_lights")
 			: gi_algorithm(name), w(w), h(h),
-			  crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0), tracers(0) {
+			  crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0), tracers(0), subd_tracer(0) {
 		}
 
 		void evaluate_material();

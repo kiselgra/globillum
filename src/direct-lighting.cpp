@@ -124,8 +124,12 @@ namespace local {
 		gpu_tracer->ray_bouncer(set.bouncer);
 		gpu_tracer->ray_generator(set.rgen);
 		tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer>(gpu_tracer);
-		tracers->append_tracer(gpu_tracer);
-		tracers->append_tracer(gpu_tracer);
+		subd_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer>*>(original_subd_set->rt);
+		subd_tracer->ray_generator(set.rgen);
+		subd_tracer->ray_bouncer(set.bouncer);
+		cout << "SUBD TR " << subd_tracer << endl;
+		tracers->append_tracer(subd_tracer);
+// 		tracers->append_tracer(gpu_tracer);
 
 		if (scene.id >= 0)
 			cuda::cgls::init_cuda_image_transfer(result);
@@ -161,17 +165,21 @@ namespace local {
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 		tracers->trace_progressively(true);
+		
 		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 		rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer> 
 			*shadow_gpu_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>*>(shadow_tracer);
 		
+		rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>
+			*subd_shadow_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>*>(subd_tracer->matching_any_hit_tracer());
+
 		float3 *colors = bouncer->material_colors;
 		gi::cuda::download_and_save_image("arealightsampler", 0, w, h, colors);
 
 		shadow_tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer>(shadow_gpu_tracer);
 		shadow_tracers->copy_progressive_state(tracers);
-		shadow_tracers->append_tracer(shadow_gpu_tracer);
-		shadow_tracers->append_tracer(shadow_gpu_tracer);
+		shadow_tracers->append_tracer(subd_shadow_tracer);
+// 		shadow_tracers->append_tracer(shadow_gpu_tracer);
 	}
 
 	void gpu_arealight_sampler::light_samples(int n) {

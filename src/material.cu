@@ -131,6 +131,16 @@ namespace rta {
 // 						printf("x (%03d %03d) t %6.6f T %d\n", gid.x, gid.y, is.t, is.ref);
 // 						return;
 // 					}
+					if (is.ref & 0xFF000000) {
+						dst[gid.y*w+gid.x] = make_float3(0,1,0);
+						return;
+					}
+// 					else {
+					if (gid.x == 650 && gid.y == 300) {
+						printf("(650 300) ref = %u %x\n", is.ref, is.ref);
+						dst[gid.y*w+gid.x] = make_float3(1,0,0);
+						return;
+					}
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
 					out = mat.diffuse_color;
@@ -223,7 +233,6 @@ namespace rta {
 			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_org, (float3*)ray_dir, (float3*)ray_diff_org, (float3*)ray_diff_dir, background);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
-			exit(1);
 		}
 
 		
