@@ -247,6 +247,7 @@ rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_lis
 }*/
 
 void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_triangle_list<rta::simple_triangle> &ftl) {
+		cerr << "blubblub" << endl;
 	obj_default::ObjFileLoader loader(filename, "1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1");
 
 	int triangles = 0;
@@ -263,6 +264,11 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 	cout << "ftl with " << ftl.triangles << " tris now" << endl;
 
 	rta::prepend_image_path(dirname((char*)filename.c_str()));
+
+// 	bool anyway = false;
+	bool anyway = true;
+	if (offset == 0 || anyway) {
+		cerr << "FIRST" << endl;
 
 	int run = 0;
 	for (auto &group : loader.groups) {
@@ -288,25 +294,42 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 			}
 		}
 		for (int i = 0; i < t; ++i)	{
-			ftl.triangle[offset + run + i].a = vertex(0, i);
-			ftl.triangle[offset + run + i].b = vertex(1, i);
-			ftl.triangle[offset + run + i].c = vertex(2, i);
-			ftl.triangle[offset + run + i].na = normal(0, i);
-			ftl.triangle[offset + run + i].nb = normal(1, i);
-			ftl.triangle[offset + run + i].nc = normal(2, i);
+			int pos = offset + run + i;
+			ftl.triangle[pos].a = vertex(0, i);
+			ftl.triangle[pos].b = vertex(1, i);
+			ftl.triangle[pos].c = vertex(2, i);
+			ftl.triangle[pos].na = normal(0, i);
+			ftl.triangle[pos].nb = normal(1, i);
+			ftl.triangle[pos].nc = normal(2, i);
 			if (mid >= 0 && rta::material(mid)->diffuse_texture) {
-				ftl.triangle[offset + run + i].ta = texcoord(0, i);
-				ftl.triangle[offset + run + i].tb = texcoord(1, i);
-				ftl.triangle[offset + run + i].tc = texcoord(2, i);
+				ftl.triangle[pos].ta = texcoord(0, i);
+				ftl.triangle[pos].tb = texcoord(1, i);
+				ftl.triangle[pos].tc = texcoord(2, i);
 			}
 			else {
-				ftl.triangle[offset + run + i].ta = {0,0};
-				ftl.triangle[offset + run + i].tb = {0,0};
-				ftl.triangle[offset + run + i].tc = {0,0};
+				ftl.triangle[pos].ta = {0,0};
+				ftl.triangle[pos].tb = {0,0};
+				ftl.triangle[pos].tc = {0,0};
 			}
-			ftl.triangle[offset + run + i].material_index = mid;
+			ftl.triangle[pos].material_index = mid;
 		}
 		run += t;
+	}
+
+	}
+	else {
+		cout << "OTHER" << endl;
+		for (int i = offset; i < ftl.triangles; ++i) {
+			ftl.triangle[i].a = vec3f(i,0,0);
+			ftl.triangle[i].b = vec3f(i+1,0,0);
+			ftl.triangle[i].c = vec3f(i,1,0);
+			ftl.triangle[i].na = vec3f(0,1,0);
+			ftl.triangle[i].nb = vec3f(0,1,0);
+			ftl.triangle[i].nc = vec3f(0,1,0);
+			ftl.triangle[i].ta = vec2f(0,0);
+			ftl.triangle[i].tb = vec2f(0,0);
+			ftl.triangle[i].tc = vec2f(0,0);
+		}
 	}
 
 	rta::pop_image_path_front();
@@ -331,7 +354,8 @@ void setup_rta(std::string plugin) {
 	if (plugin == "bbvh-cuda") {
 		args.push_back("-A");
 		args.push_back("-b");
-		args.push_back("bsah");
+// 		args.push_back("bsah");
+		args.push_back("median");
 		args.push_back("-t");
 		args.push_back("cis");
 		args.push_back("-l");

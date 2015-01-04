@@ -61,6 +61,12 @@ namespace rta {
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
 				float3 out = background;
 				if (is.valid()) {
+// 					printf("(%03d %03d) t %6.6f T %d\n", is.t, is.ref);
+// 					return;
+// 					out = tri.a;
+					out = make_float3(is.ref, is.ref, is.ref);
+					dst[gid.y*w+gid.y] = out;
+					return;
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
 					out = mat.diffuse_color;
@@ -121,6 +127,10 @@ namespace rta {
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
 				float3 out = background;
 				if (is.valid()) {
+// 					if (is.ref > 331718) {
+// 						printf("x (%03d %03d) t %6.6f T %d\n", gid.x, gid.y, is.t, is.ref);
+// 						return;
+// 					}
 					cuda::simple_triangle tri = triangles[is.ref];
 					material_t mat = mats[tri.material_index];
 					out = mat.diffuse_color;
@@ -200,6 +210,7 @@ namespace rta {
 			k::evaluate_material_bilin_lod<<<blocks, threads>>>(w, h, ti, triangles, mats, dst, (float3*)ray_org, (float3*)ray_dir, (float3*)ray_diff_org, (float3*)ray_diff_dir, background);
 			checked_cuda(cudaPeekAtLastError());
 			checked_cuda(cudaDeviceSynchronize());
+			exit(1);
 		}
 
 		
