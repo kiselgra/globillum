@@ -209,7 +209,7 @@ namespace rta {
 					#ifdef USE_SKYLIGHT_SAMPLING
 						float outPdf = 1.0f;
 						float3 L = sl.sample(rnd.x, rnd.y, outPdf, dir);
-						//dir = make_tangential(dir,N);
+						dir = make_tangential(dir,N);
 						float a = 1.0f/(outPdf);	
 						contribution = sl.scale * L * a * fabs(dir|N);
 					#else
