@@ -1,13 +1,16 @@
 #include "hybrid-pt.h"
 
 #include "raygen.h"
+#include "simpleMaterial.h"
+#include "principledMaterial.h"
 
 #include <librta/cuda-kernels.h>
 #include <librta/cuda-vec.h>
 #include <librta/intersect.h>
 #include <libhyb/trav-util.h>
-#include "simpleMaterial.h"
-#include "principledMaterial.h"
+
+#include <subdiv/osdi.h>
+
 #include <omp.h>
 
 using namespace std;
@@ -19,6 +22,7 @@ using namespace gi::cuda;
 
 extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
+extern std::vector<OSDI::Model*> subd_models;
 
 //define only one of these
 #define ALL_MATERIAL_LAMBERT 1 // if defined this will be grey lambert.
@@ -53,12 +57,38 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	update_mt_pool(pl);
 	update_mt_pool(pp);
 	pt->random_number_generator(pl, pp);
-	
-	set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
-	set.basic_rt<B, T>()->ray_generator(set.rgen);
+
+
+	// setup iterated tracers
+	rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer> 
+		*gpu_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer>*>(set.rt);
+	gpu_tracer->ray_bouncer(set.bouncer);
+	gpu_tracer->ray_generator(set.rgen);
+	tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer>(gpu_tracer);
+
 	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
-	tracer = new tandem_tracer<B, T>(dynamic_cast<basic_raytracer<B,T>*>(set.rt), 
-									 dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer));
+	rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer> 
+		*shadow_gpu_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>*>(shadow_tracer);
+	shadow_tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer>(shadow_gpu_tracer);
+
+	if (original_subd_set) {
+		// subd closest hit
+		rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer>
+			*subd_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer>*>(original_subd_set->rt);
+		subd_tracer->ray_generator(set.rgen);
+		subd_tracer->ray_bouncer(set.bouncer);
+		tracers->append_tracer(subd_tracer);
+		// subd any hit
+		rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>
+			*subd_shadow_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>*>(subd_tracer->matching_any_hit_tracer());
+		shadow_tracers->append_tracer(subd_shadow_tracer);
+	}
+
+// 	old tracer setup:
+// 	tracer = new tandem_tracer<B, T>(dynamic_cast<basic_raytracer<B,T>*>(set.rt), 
+// 									 dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer));
+	tracer = new tandem_tracer<B, T>(dynamic_cast<basic_raytracer<B,T>*>(tracers), 
+									 dynamic_cast<basic_raytracer<B,T>*>(shadow_tracers));
 	tracer->select_closest_hit_tracer();
 	pt->register_tracers(tracer);
 }
@@ -117,24 +147,46 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 			int id = gid.y*w+gid.x;
 			triangle_intersection<rta::cuda::simple_triangle> is = ti[id];
 			if (is.valid()) {
-				// load hit triangle and compute hitpoint geometry
-				rta::cuda::simple_triangle tri = triangles[is.ref];
 				float2 TC;
 				float3 bc, P, N;
-				is.barycentric_coord(&bc);
-				barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
-				barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
-				barycentric_interpolation(&TC, &bc, &tri.ta, &tri.tb, &tri.tc);
-				normalize_vec3f(&N);
-
+				material_t mat;
+				// check if we hit a triangle or a subd patch
+				if ((is.ref & 0xff000000) == 0) {
+					// load hit triangle and compute hitpoint geometry
+					// we load the material, too, as it is stored in the triangle
+					rta::cuda::simple_triangle tri = triangles[is.ref];
+					mat = mats[tri.material_index];
+					is.barycentric_coord(&bc);
+					barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
+					barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
+					barycentric_interpolation(&TC, &bc, &tri.ta, &tri.tb, &tri.tc);
+					normalize_vec3f(&N);
+				}
+				else {
+					// evaluate subd patch to get position and normal
+					unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
+					unsigned int ptexID = 0x00ffffff & is.ref;
+					bool WITH_DISPLACEMENT = true;
+					if (WITH_DISPLACEMENT)
+						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
+					else
+						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N);
+					// evaluate color and store it in the material as diffuse component
+					subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);
+				}
+				
 				// eval ray differentials (stored below)
 				float3 upper_org = ray_diff_org[id],
 					   upper_dir = ray_diff_dir[id],
 					   right_org = ray_diff_org[w*h+id],
 					   right_dir = ray_diff_dir[w*h+id];
-				triangle_intersection<rta::cuda::simple_triangle> other_is;
 				float3 upper_P, right_P;
 				float2 upper_T, right_T;
+				/* temporarily disabled ray differentials.
+				 * we could just declare the triangle with the material above and load it in the triangle-branch.
+				 * in the subd-brach we could get the tangents from the osdi lib and generate some triangle from it.
+				 * the following call is actually just a plane intersection.
+				triangle_intersection<rta::cuda::simple_triangle> other_is;
 				// - upper ray
 				intersect_tri_opt_nocheck(tri, (vec3f*)&upper_org, (vec3f*)&upper_dir, other_is);
 				other_is.barycentric_coord(&bc);
@@ -148,9 +200,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// - store origins
 				ray_diff_org[id] = upper_P;
 				ray_diff_org[w*h+id] = right_P;
+				 */
 
 				// load and evaluate material
-				material_t mat = mats[tri.material_index];
 				#if ALL_MATERIAL_LAMBERT
 				Material *lambertM = (Material*)new LambertianMaterial(&mat, TC, upper_T, right_T);
 				#elif ALL_MATERIAL_BLINNPHONG

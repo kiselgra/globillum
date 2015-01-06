@@ -22,9 +22,9 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	vector<string> args;
 
 	args.push_back("-n");
-	args.push_back("3");
+	args.push_back("1");
 	args.push_back("-q");
-	args.push_back("3");
+	args.push_back("1");
 	args.push_back("--node");
 	args.push_back("test");
 	for (int i = 0; i < subd_files.size(); ++i) {

@@ -1,6 +1,10 @@
 #pragma once
+
 #include "principledParameters.h"
 #include "materialBase.h"
+
+#include <libhyb/trav-util.h>
+
 namespace rta{
 
 namespace Principled{

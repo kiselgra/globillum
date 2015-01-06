@@ -165,7 +165,7 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 // 			checked_cuda(cudaMemcpy(host_light_sample_maxt,       gpu_light_sample_maxt,       this->w*this->h*1*sizeof(float), cudaMemcpyDeviceToHost));
 			checked_cuda(cudaMemcpy(host_path_intersections, gpu_path_intersections,
 					   sizeof(rta::triangle_intersection<tri_t>)*this->w*this->h, cudaMemcpyDeviceToHost));
-
+			
 			// compute area light sample on cpu.
 			setup_new_arealight_sample();
 			this->gpu_last_intersection = gpu_shadow_intersections;
@@ -252,10 +252,12 @@ protected:
 	rta::cuda::simple_triangle *triangles;
 	float overall_light_power;
 	gi::cuda::mt_pool3f jitter; 
+	rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
+	rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
 public:
 	hybrid_pt(int w, int h, scene_ref scene, const std::string &name = "hybrid_pt")
 		: gi_algorithm(name), w(w), h(h),
-		  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0) {
+		  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0), tracers(0), shadow_tracers(0) {
 	}
 	virtual ~hybrid_pt() {
 		set.basic_as<B, T>()->free_canonical_triangles(triangles);
