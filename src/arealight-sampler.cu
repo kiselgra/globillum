@@ -11,6 +11,8 @@
 #include <cuda_gl_interop.h>
 
 
+#define USE_SKYLIGHT_SAMPLING
+
 using namespace std;
 using namespace rta;
 using namespace gi;
@@ -212,21 +214,28 @@ namespace rta {
 						contribution = lights[light].rectlight.col * factor;
 					}
 					else if (lights[light].type == gi::light::sky) {
-						float sq = sqrtf(1-rnd.x*rnd.x);
-						dir.x = sq * cosf(2.0f*float(M_PI)*rnd.y);
-						dir.y = sq * sinf(2.0f*float(M_PI)*rnd.y);
-						dir.z = rnd.x;
-						dir = make_tangential(dir, N);
 						len = FLT_MAX;
 						sky_light &sl = lights[light].skylight;
+					#ifdef USE_SKYLIGHT_SAMPLING
+						float outPdf = 1.0f;
+						float3 L = sl.sample(rnd.x, rnd.y, outPdf, dir);
+						dir = make_tangential(dir,N);
+						float a = 1.0f/(outPdf);	
+						contribution = sl.scale * L * a * fabs(dir|N);
+					#else
+						float sq = sqrtf(1-rnd.x*rnd.x);
+                                                dir.x = sq * cosf(2.0f*float(M_PI)*rnd.y);
+                                                dir.y = sq * sinf(2.0f*float(M_PI)*rnd.y);
+                                                dir.z = rnd.x;
+                                                dir = make_tangential(dir, N);
 						float theta = acosf(dir.y);
 						float phi = atan2f(dir.z, dir.x);
-// 						float theta = acosf(dir.z);
-// 						float phi = atan2f(dir.y, dir.x);
 						if (phi < 0) phi += 2.0f*float(M_PI);
 						float s = phi/(2.0f*float(M_PI));
 						float t = theta/float(M_PI);
 						contribution = sl.scale * sl.data[int(t*sl.h) * sl.w + int(s*sl.w)] * (dir|N);
+					#endif						
+
 					}
 					
 					P += 0.01*dir;
@@ -253,7 +262,7 @@ namespace rta {
 						float s = phi/(2.0f*float(M_PI));
 						float t = theta/float(M_PI);
 						sky_light &sl = lights[i].skylight;
-						Le = sl.data[int(t*sl.h) * sl.w + int(s*sl.w)];
+						Le = sl.scale * sl.data[int(t*sl.h) * sl.w + int(s*sl.w)];
 					}
 					potential_sample_contribution[id] = Le;
 				}

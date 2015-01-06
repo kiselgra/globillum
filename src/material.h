@@ -8,6 +8,11 @@
 #include <assert.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
+#include <string.h>
+#include <iostream>
+#include <fstream>
+#include "materialBase.h"
+#include "principledParameters.h"
 
 namespace rta {
 	namespace cuda {
@@ -139,9 +144,9 @@ namespace rta {
 				texture_data *diffuse_texture;
 				texture_data *specular_texture;
 				texture_data *alpha_texture;
-
+				PrincipledBRDFParameters *parameters;	
 				material_t() 
-				: diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), alpha(1), diffuse_texture(0), specular_texture(0), alpha_texture(0) {
+				: diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), alpha(1), diffuse_texture(0), specular_texture(0), alpha_texture(0) ,parameters(0){
 				}
 				float3 diffuseColor(const float2 &TC, const float2 &upper_T, const float2 &right_T)const{
 					float3 diffuse = diffuse_color;
@@ -198,138 +203,8 @@ namespace rta {
 							   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
 						   float3 *ray_diff_org, float3 *ray_diff_dir, float3 background);
 
-
-		inline float3 cosineSampleHemisphere(float u, float v, const float3 &N){
-			float cosTheta  = sqrt(u);
-			float phi = 2.0f * M_PI * v;
-			float sinTheta = sqrt(1.0f-u);
-			float3 retVec;
-			retVec.x = sinTheta * cos(phi);
-			retVec.y = sinTheta * sin(phi);
-			retVec.z = cosTheta;
-			return retVec;
-		}
-		inline float cos2sin(const float f) { return sqrt(std::max(0.f,1.f-f*f)); }
-		inline float3 powerCosineSampleHemisphere(float u, float v, const float3 &N, float exp){
-			float phi = float(2.0f * M_PI) * u;
-			float cosTheta = powf(v,1.0f/(exp+1.f));
-			float sinTheta = cos2sin(cosTheta);
-			float3 retVec;
-			retVec.x = cos(phi) * sinTheta;
-			retVec.y = sin(phi) * sinTheta;
-			retVec.z = cosTheta;
-			return retVec;
-		}		
-		inline float3 reflectR (const float3 &v, const float3 &n){
-  			return v - 2.f * (v|n) * n;
-		}
-			
-		inline float clamp01(float a){ return (a<0.f? 0.0f : a );}//(a>1.f? 1.0f : a));}	
-		enum BRDF_TYPE{
-			SPECULAR, DIFFUSE, TRANSMISSIVE
-		};
-//		namespace gi{
-			class Material{
-				public:
-				Material(){}
-				// all input in world space.
-				virtual float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{					
-					return float3();
-				}
-				//sample direction based on material's brdf
-				// returns :
-				// wi : sampled direction in Tangent space
-				// pdfOut : corresponding pdf to sampled direction
-				// float3 : brdf value (no return value because we cannot switch to tangent space)
-				virtual void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut){
-					wi.x = 0.0f;
-					wi.y = 0.0f;
-					wi.z = 0.0f;
-					pdfOut = pdf(wo,wi,N);
-				}
-				
-				//all input in world space.
-				virtual float pdf(const float3 &wo, const float3 &wi, const float3 &N) const {
-					return 1.0f;
-                		}
-				};
-
-			class BlinnMaterial : public Material {
-			public:
-				BlinnMaterial(const rta::cuda::material_t* mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat),_shininess(40.0f){
-					_specular = _mat->specularColor(T,upperT,rightT);
-					_diffuse = _mat->diffuseColor(T,upperT,rightT);
-					_type = DIFFUSE;
-				}
-
-			  float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-				if(_type == SPECULAR){  
-				//specular case
-					float3 R = reflectR(wi,N);
-			 		float3 brdf = _diffuse * float(M_1_PI) + (_shininess + 1)*_specular * 0.5 * M_1_PI * pow(clamp01(R|wo), _shininess);
-                        	}else{
-				//diffuse case
-					return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
-				}        
-			}
-                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) {
-				//TODO: change this to be dependent on shininess? or something that makes more sense!
-				if(sampleXYZ.z < 0.0f){ 
-					_type = SPECULAR;
-					wi = powerCosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y, N, _shininess);
-					float dotWN = wi.z;
-					pdfOut =  ( dotWN < 0.0f ? 0.0f : (_shininess+1.0f)*powf(dotWN,_shininess)*float(1.0f/(2.0f*M_PI)) );
-				}else{
-					_type = DIFFUSE;
-					wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
-					pdfOut = clamp01(wi.z) * (1.0f/M_PI);
-				}
-                           }
-                        float pdf(const float3 &wo, const float3 &wi, const float3 &N) const {
-                        	if(_type == SPECULAR){
-					float dotWN = (wi|N);
-					return ( dotWN < 0.0f ? 0.0f : (_shininess+1.0f)*powf(dotWN,_shininess)*float(1.0f/(2.0f*M_PI)) );
-				}
-				return clamp01(wi|N)*(1.0f/M_PI);      
-			}
-			protected:
-			const rta::cuda::material_t* _mat;
-			float3 _diffuse;
-			float3 _specular;
-			float _shininess;
-			BRDF_TYPE _type;
-             };
-	
-
-		
-
-		class LambertianMaterial : public Material{
-			public:
-			LambertianMaterial(const rta::cuda::material_t *mat):Material(),_mat(mat){
-				R.x = 0.8f; R.y = 0.8f; R.z = 0.8f; 
-			}
-			// evaluates brdf based on in/out directions wi/wo in world space
-			float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-                       		return R * (1.0f/M_PI) * clamp01(wi|N);
-                        }
-			//returns sampled direction wi in Tangent  space.
-                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) { 
-				wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
-                             	pdfOut = clamp01(wi.z) * (1.0f/M_PI);
-                        }
-			//computes pdf based on wi/wo in world space
-                        float pdf(const float3 &wo, const float3 &wi, const float3 &N) const {
-				return clamp01(wi|N) * (1.0f/M_PI);               
-                        }
-			private:
-			float3 R;
-			const rta::cuda::material_t *_mat;
-		};
-
-		//class BlinnMaterial : public Material{}
-			
-		
-//		}
+/*
+	*/		
 }
 
 #endif

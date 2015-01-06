@@ -6,7 +6,8 @@
 #include <librta/cuda-vec.h>
 #include <librta/intersect.h>
 #include <libhyb/trav-util.h>
-
+#include "simpleMaterial.h"
+#include "principledMaterial.h"
 #include <omp.h>
 
 using namespace std;
@@ -151,10 +152,11 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// load and evaluate material
 				material_t mat = mats[tri.material_index];
 				#if ALL_MATERIAL_LAMBERT
-				Material *lambertM = (Material*)new LambertianMaterial(&mat);
+				Material *lambertM = (Material*)new LambertianMaterial(&mat, TC, upper_T, right_T);
 				#elif ALL_MATERIAL_BLINNPHONG
 			 	Material *blinnM = (Material*) new BlinnMaterial(&mat, TC, upper_T, right_T);
 				#endif
+				//Material *principledM = (Material*) new PrincipledMaterial(&mat, TC, upper_T, right_T);
 				// This has been moved to material.h
 				/*float3 diffuse = mat.diffuse_color;
 				float3 specular = mat.specular_color;
