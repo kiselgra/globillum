@@ -11,7 +11,6 @@
 #include <cuda_gl_interop.h>
 
 
-#define USE_SKYLIGHT_SAMPLING
 
 using namespace std;
 using namespace rta;
@@ -216,13 +215,6 @@ namespace rta {
 					else if (lights[light].type == gi::light::sky) {
 						len = FLT_MAX;
 						sky_light &sl = lights[light].skylight;
-					#ifdef USE_SKYLIGHT_SAMPLING
-						float outPdf = 1.0f;
-						float3 L = sl.sample(rnd.x, rnd.y, outPdf, dir);
-						dir = make_tangential(dir,N);
-						float a = 1.0f/(outPdf);	
-						contribution = sl.scale * L * a * fabs(dir|N);
-					#else
 						float sq = sqrtf(1-rnd.x*rnd.x);
                                                 dir.x = sq * cosf(2.0f*float(M_PI)*rnd.y);
                                                 dir.y = sq * sinf(2.0f*float(M_PI)*rnd.y);
@@ -234,8 +226,6 @@ namespace rta {
 						float s = phi/(2.0f*float(M_PI));
 						float t = theta/float(M_PI);
 						contribution = sl.scale * sl.data[int(t*sl.h) * sl.w + int(s*sl.w)] * (dir|N);
-					#endif						
-
 					}
 					
 					P += 0.01*dir;

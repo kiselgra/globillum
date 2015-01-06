@@ -42,6 +42,10 @@ struct PrincipledBRDFParameters{
                 opacity = other.opacity;
                 transmiss = other.transmiss;
 }
+
+	PrincipledBRDFParameters(const std::string s){
+	 	readFrom(s);
+	}
 inline void print(){
                 std::cerr<<"METALLIC:"<<metallic<<"\n";
                 std::cerr<<"subsurface:"<<subsurface<<"\n";
@@ -81,7 +85,7 @@ inline void print(){
                                 in >> subsurface;
                                 continue;
                         }
-                        if(!strcmp(identifier.c_str(),"specular1")){
+                        if(!strcmp(identifier.c_str(),"specular")){
                                 in >> specular;
                                 continue;
                         }
@@ -89,7 +93,7 @@ inline void print(){
                                 in >> roughness;
                                 continue;
                         }
-                        if(!strcmp(identifier.c_str(),"specularTint")){
+                        if(!strcmp(identifier.c_str(),"tintSpecular")){
                                 in >> specularTint;
                                 continue;
                         }

@@ -148,8 +148,14 @@ namespace rta {
 				material_t() 
 				: diffuse_color(make_float3(0,0,0)), specular_color(make_float3(0,0,0)), alpha(1), diffuse_texture(0), specular_texture(0), alpha_texture(0) ,parameters(0){
 				}
+				bool isPrincipledMaterial() const{
+					if(parameters) return true;
+					return false;
+				}
 				float3 diffuseColor(const float2 &TC, const float2 &upper_T, const float2 &right_T)const{
 					float3 diffuse = diffuse_color;
+					if(parameters)
+						diffuse = parameters->color;
 					if (diffuse_texture ) {
                                         float diff_x = fabsf(TC.x - upper_T.x);
                                         float diff_y = fabsf(TC.y - upper_T.y);

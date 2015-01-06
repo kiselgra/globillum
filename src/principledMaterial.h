@@ -137,27 +137,102 @@ inline float3 normalize (const float3 &a){
 		float3 Tx,Ty; // TODO : Correct TX,TY!
   		return sampleGTR2Aniso(u,v, ax, ay, N,Tx, Ty, wo, brdfParams.metallic,brdfType,ior); 
 	}
+
+	inline float GTR1(float NdotH, float a)
+	{
+		if (a >= 1) return 1/float(M_PI);
+		float a2 = a*a;
+		float t = 1 + (a2-1)*NdotH*NdotH;
+		return (a2-1) / (float(M_PI)*log(a2)*t);
+	}
+
+
+	inline float3 mix(const float3 &x, const float3 &y, float s) {
+		return (1.0f-s)*x + s*y;
+	}
+
+	inline float mix(float x, float y, float s) {
+		return (1.0f-s)*x + s*y;
+	}
+
+
+	inline float3 mon2lin(const float3 &p) 
+	{
+		float3 a = make_float3(pow(p.x, 2.2f), pow(p.y, 2.2f), pow(p.z, 2.2f));
+		return a;
+	}
+
+	float3 evaluatePrincipledBRDF_specular(const float3 &wo, const float3 &N, const float3 &wi, const float3 &R,const PrincipledBRDFParameters& brdfParams){
+		//float3 &N = dg.Ns;
+		const float3& V = wo;
+		const float3& L = wi;
+
+		float NdotL = dot(N,L);
+		float NdotV = dot(N,V);
+		if (NdotL < 0 || NdotV < 0){
+			return make_float3(0.0f,0.0f,0.0f);
+		}
+		
+		float3 H = normalize(L+V);
+		float NdotH = dot(N,H);
+		float LdotH = dot(L,H);
+
+		float3 baseColor = make_float3(R.x,R.y,R.z);
+		float3 Cdlin = mon2lin(baseColor);
+		float Cdlum = .3*Cdlin.x + .6*Cdlin.y + .1*Cdlin.z; // luminance approx.
+
+		float3 whiteColor = make_float3(1.f,1.f,1.f);
+		float3 Ctint = Cdlum > 0 ? Cdlin/Cdlum : whiteColor; // normalize lum. to isolate hue+sat
+		float3 Cspec0 = mix(brdfParams.specular*.08*mix(whiteColor, Ctint, brdfParams.specularTint), Cdlin, brdfParams.metallic);
+
+		float FH = SchlickFresnel(LdotH);
+
+		//// specular
+		float3 Fs = mix(Cspec0, whiteColor, FH);
+
+		// clearcoat (ior = 1.5 -> F0 = 0.04)
+		float cg = 0.0f;
+		if(brdfParams.clearcoat > 0.0f){
+			float Dr = GTR1(NdotH, mix(.1,.001,brdfParams.clearcoatGloss));
+			float Fr = mix(0.04f, 1.0f, FH);
+			float Gr = smithG_GGX(NdotL, 0.25f) * smithG_GGX(NdotV, 0.25f);
+			cg = 0.25f*brdfParams.clearcoat*Gr*Fr*Dr;
+		}
+
+		float3 specColor = Fs;// Gs * Fs *Ds;
+		float3 clearcoatColor = make_float3(cg,cg,cg);
+
+		float3 sumColor = (specColor + clearcoatColor);
+		return make_float3(sumColor.x,sumColor.y,sumColor.z)*(NdotL)*brdfParams.metallic;
+		}
 }
 class PrincipledMaterial : public Material{
                         public:
                         PrincipledMaterial(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat){
                                 _type = DIFFUSE;
                                 _diffuse = _mat->diffuseColor(T,upperT,rightT);
-                                float sumDS = _diffuse.x + _diffuse.y + _diffuse.z;
+                                /*float sumDS = _diffuse.x + _diffuse.y + _diffuse.z;
                                 if(sumDS > 1.f){
                                         _diffuse /= sumDS;
-                                }
+                                }*/
                         }
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-                                return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
+				if(_type == SPECULAR_REFLECTION || _type == SPECULAR_TRANSMISSION){
+				//	std::cerr<<"evaluate principled: "<<_diffuse.x<<","<<_diffuse.y<<","<<_diffuse.z<<"\n";
+					return Principled::evaluatePrincipledBRDF_specular(wo, N, wi, _diffuse, (*_mat->parameters));				
+				}
+                                //return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
                         }
                         //returns sampled direction wi in Tangent  space.
                         void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) {
-                        //        wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
-                        //        pdfOut = clamp01(wi.z) * (1.0f/M_PI);
-				float _ior = 1.0f;
+				/*wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
+				pdfOut = clamp01(wi|N) * (1.0f/M_PI);
+				return;*/
+	
+				float _ior = 0.f;
 				Principled::Sample3f sam = Principled::samplePrincipledSpecular(sampleXYZ.x, sampleXYZ.y, (*_mat->parameters), N, wo, _type, _ior);
+				pdfOut = sam.pdf * _mat->parameters->metallic;
 				wi = sam.value;
                         }
                         //computes pdf based on wi/wo in world space

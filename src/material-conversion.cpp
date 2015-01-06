@@ -57,7 +57,22 @@ namespace rta {
 			T=0;
 			for (int i = 0; i < coll.size(); ++i) {
 				rta::material_t *src = coll[i];
+				
+				std::string materialPath ("materials/");
+				std::string pbrdfEnding (".pbrdf");		
+				std::string defaultMaterial = materialPath + src->name + pbrdfEnding;
+				//a bit hacky. if there is a material in ./materials/ with the current material filename + .pbrdf ending
+				//we use the parameters defined in the file and use the principled BRDF material evaluation for that object.
+				std::ifstream in(defaultMaterial.c_str());
+				bool useDefaultMaterial = (!in.is_open());
+				
 				cuda::material_t *m = &materials[i];
+				if(useDefaultMaterial) m->parameters = 0;
+				else{ 
+					cout << "Found pbrdf material -> " << defaultMaterial << endl;
+					in.close(); 
+					m->parameters = new PrincipledBRDFParameters(defaultMaterial);
+				}
 				m->diffuse_color.x = src->diffuse_color.x;
 				m->diffuse_color.y = src->diffuse_color.y;
 				m->diffuse_color.z = src->diffuse_color.z;
