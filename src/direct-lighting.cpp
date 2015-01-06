@@ -190,7 +190,7 @@ namespace local {
 
 
 	// 
-	// gpu area light sampler (the `bouncer')
+	// gpu/cpu area light sampler (the `bouncer')
 	// 
 
 	void hybrid_arealight_sampler::activate(rta::rt_set *orig_set) {
@@ -198,6 +198,8 @@ namespace local {
 		gi_algorithm::activate(orig_set);
 		set = *orig_set;
 		set.rt = set.rt->copy();
+		rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer> 
+			*gpu_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer>*>(set.rt);
 		nr_of_lights = gi::lights.size();
 		cpu_lights = new gi::light[gi::lights.size()];	//gi::cuda::convert_and_upload_lights(nr_of_lights, overall_light_power);
 		overall_light_power = 0;
@@ -214,8 +216,15 @@ namespace local {
 		update_mt_pool(pool);
 		
 		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, jitter, 32, 2);
-		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
-		set.basic_rt<B, T>()->ray_generator(set.rgen);
+		gpu_tracer->ray_bouncer(set.bouncer);
+		gpu_tracer->ray_generator(set.rgen);
+
+		tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer>(gpu_tracer);
+		subd_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer>*>(original_subd_set->rt);
+		subd_tracer->ray_generator(set.rgen);
+		subd_tracer->ray_bouncer(set.bouncer);
+		cout << "SUBD TR " << subd_tracer << endl;
+		tracers->append_tracer(subd_tracer);
 
 		if (scene.id >= 0)
 			cuda::cgls::init_cuda_image_transfer(result);
@@ -229,17 +238,18 @@ namespace local {
 	}
 
 	void hybrid_arealight_sampler::update() {
-		if (shadow_tracer)  {
+		if (shadow_tracers)  {
 			hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
-			if (shadow_tracer->progressive_trace_running()) {
-				shadow_tracer->trace_progressively(false);
+			if (shadow_tracers->progressive_trace_running()) {
+				shadow_tracers->trace_progressively(false);
 				float3 *colors = bouncer->output_color.data;
 				gi::save_image("arealightsampler", bouncer->image_nr, w, h, colors);
 			}
 			else {
 				if (bouncer->curr_cam_sample < bouncer->cam_samples) {
-					set.rt->trace_progressively(true);
-					dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer)->copy_progressive_state(set.basic_rt<B,T>());
+// 					set.rt->trace_progressively(true);
+					tracers->trace_progressively(true);
+					dynamic_cast<basic_raytracer<B,T>*>(shadow_tracers)->copy_progressive_state(tracers);
 					float3 *colors = bouncer->material_colors.data;
 					// gi::save_image("arealightsampler", bouncer->curr_cam_sample * bouncer->light_samples_per_cam_sample + bouncer->curr_light_sample, w, h, colors);
 				}
@@ -264,12 +274,22 @@ namespace local {
 		bouncer->overall_light_power = overall_light_power;
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
-		set.rt->trace_progressively(true);
+// 		set.rt->trace_progressively(true);
+		tracers->trace_progressively(true);
 
 		float3 *colors = bouncer->material_colors.data;
 		gi::save_image("arealightsampler", 0, w, h, colors);
 
 		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
+		rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer> 
+			*shadow_gpu_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>*>(shadow_tracer);
+		
+		rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>
+			*subd_shadow_tracer = dynamic_cast<rta::cuda::gpu_raytracer<B, T, rta::any_hit_tracer>*>(subd_tracer->matching_any_hit_tracer());
+
+		shadow_tracers = new rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer>(shadow_gpu_tracer);
+		shadow_tracers->copy_progressive_state(tracers);
+		shadow_tracers->append_tracer(subd_shadow_tracer);
 	}
 
 	void hybrid_arealight_sampler::light_samples(int n) {

@@ -9,6 +9,7 @@ using namespace std;
 
 static vector<string> subd_files;
 static vector<string> disp_files;
+vector<OSDI::Model*> subd_models;
 
 void add_subd_model(const std::string &filename, const std::string &displacement) {
 	cout << "add sub model " << filename << endl;
@@ -21,9 +22,9 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	vector<string> args;
 
 	args.push_back("-n");
-	args.push_back("1");
+	args.push_back("3");
 	args.push_back("-q");
-	args.push_back("1");
+	args.push_back("3");
 	args.push_back("--node");
 	args.push_back("test");
 	for (int i = 0; i < subd_files.size(); ++i) {
@@ -37,6 +38,8 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	rta::basic_flat_triangle_list<rta::simple_triangle> fake;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(fake, w, h));
 
+	subd_models = dynamic_cast<rta::model_holder*>(set->bouncer)->models;
+	
 	return set;
 }
 

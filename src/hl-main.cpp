@@ -559,10 +559,10 @@ void actual_main() {
 	new hybrid_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_area_lights");
+// 	gi_algorithm::select("gpu_area_lights");
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
-// 	gi_algorithm::select("hybrid_area_lights");
+	gi_algorithm::select("hybrid_area_lights");
 // 	gi_algorithm::select("hybrid_pt");
 
 	scm_c_eval_string("(set! gi-initialization-done #t)");

@@ -232,10 +232,13 @@ namespace local {
 		rta::raytracer *shadow_tracer;
 		float overall_light_power;
 		rta::cuda::simple_triangle *triangles;
+		rta::cuda::iterated_gpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
+		rta::cuda::iterated_gpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
+		rta::cuda::gpu_raytracer<B, T, rta::closest_hit_tracer> *subd_tracer;
 	public:
 		hybrid_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "hybrid_area_lights")
 			: gi_algorithm(name), w(w), h(h),  /*TMP*/ hitpoints(w,h), normals(w,h),
-			  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0), overall_light_power(0), triangles(0) {
+			  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0), overall_light_power(0), triangles(0), subd_tracer(0) {
 		}
 		virtual ~hybrid_arealight_sampler() {
 			set.basic_as<B, T>()->free_canonical_triangles(triangles);

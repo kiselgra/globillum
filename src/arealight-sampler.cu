@@ -10,6 +10,7 @@
 
 #include <cuda_gl_interop.h>
 
+
 using namespace std;
 using namespace rta;
 using namespace gi;
@@ -152,7 +153,6 @@ namespace rta {
 				}
 			}
 			
-#define debug (gid.x == 600 && gid.y == 100)
 			template<typename rng_t> __host__ __device__ __forceinline__
 			void pixel_generate_arealight_sample(int2 gid, 
 												 int w, int h, gi::light *lights, int nr_of_lights, float overall_power,
@@ -170,13 +170,24 @@ namespace rta {
 				}
 				
 				triangle_intersection<cuda::simple_triangle> is = ti[id];
-				if (is.valid() && (is.ref & 0x80000000) == 0) {
+				if (is.valid()) {
 					float3 bc; 
 					float3 P, N;
-					cuda::simple_triangle tri = triangles[is.ref];
-					is.barycentric_coord(&bc);
-					barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
-					barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
+					if ((is.ref & 0xff000000) == 0) {
+						cuda::simple_triangle tri = triangles[is.ref];
+						is.barycentric_coord(&bc);
+						barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
+						barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
+					}
+					else {
+// 						unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
+// 						unsigned int ptexID = 0x00ffffff & is.ref;
+// 						bool WITH_DISPLACEMENT = true;
+// 						if (WITH_DISPLACEMENT)
+// 							models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
+// 						else
+// 							models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N);
+					}
 
 					float3 contribution = make_float3(0.0f,0.0f,0.0f);
 					float3 dir;
@@ -319,22 +330,7 @@ namespace rta {
 		}
 			
 			
-		void generate_arealight_sample(int w, int h, gi::light *lights, int nr_of_lights, float overall_power,
-									   float3 *ray_orig, float3 *ray_dir, float *max_t,
-									   triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles,
-									   float3 *uniform01, float3 *potential_sample_contribution) {
-			#pragma omp prallel for schedule(dynamic, 1)
-			for (int y = 0; y < h; ++y) {
-				for (int x = 0; x < w; ++x) {
-					cuda::k::pixel_generate_arealight_sample(make_int2(x, y),
-															 w, h, lights, nr_of_lights, overall_power, ray_orig, ray_dir, max_t, 
-															 ti, triangles, uniform01, potential_sample_contribution);
-				}
-			}
-		}
-
-
-
+	
 		// 
 		// Add light samples to direct lighting accumulation buffer
 		//

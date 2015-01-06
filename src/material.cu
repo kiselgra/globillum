@@ -127,18 +127,8 @@ namespace rta {
 				triangle_intersection<cuda::simple_triangle> is = ti[gid.y*w+gid.x];
 				float3 out = background;
 				if (is.valid()) {
-// 					if (is.ref > 331718) {
-// 						printf("x (%03d %03d) t %6.6f T %d\n", gid.x, gid.y, is.t, is.ref);
-// 						return;
-// 					}
 					if (is.ref & 0xFF000000) {
 						dst[gid.y*w+gid.x] = make_float3(0,1,0);
-						return;
-					}
-// 					else {
-					if (gid.x == 650 && gid.y == 300) {
-						printf("(650 300) ref = %u %x\n", is.ref, is.ref);
-						dst[gid.y*w+gid.x] = make_float3(1,0,0);
 						return;
 					}
 					cuda::simple_triangle tri = triangles[is.ref];
@@ -196,6 +186,7 @@ namespace rta {
 				dst[gid.y*w+gid.x] = out;
 			}
 
+		
 			__global__ void evaluate_material_bilin_lod(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, cuda::material_t *mats, 
 														float3 *dst, float3 *ray_org, float3 *ray_dir, float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
 				int2 gid = make_int2(blockIdx.x * blockDim.x + threadIdx.x,
@@ -284,18 +275,5 @@ namespace rta {
 
 	}
 		
-	void evaluate_material(int w, int h, triangle_intersection<cuda::simple_triangle> *ti, cuda::simple_triangle *triangles, 
-						   cuda::material_t *mats, float3 *dst, float3 *ray_org, float3 *ray_dir, 
-						   float3 *ray_diff_org, float3 *ray_diff_dir, float3 background) {
-		#pragma omp parallel for
-		for (int y = 0; y < h; ++y) {
-			for (int x = 0; x < w; ++x) {
-				cuda::k::pixel_evaluate_material_bilin_lod(make_int2(x, y), 
-														   w, h, ti, triangles, mats, dst, 
-														   (float3*)ray_org, (float3*)ray_dir, 
-														   (float3*)ray_diff_org, (float3*)ray_diff_dir, background);
-			}
-		}
-	}
 
 }

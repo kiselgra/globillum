@@ -6,13 +6,13 @@ BUILT_SOURCES = cmdline.x lights.x hl-main.x
 
 # libconfigfiles_la_SOURCES = grammar.yy  lexer.ll  parser.h  token.h lexer.h config_creator.h configfile.h configfile.cpp
 libgi_la_SOURCES = 	\
-					arealight-sampler.cu arealight-sampler.h \
+					arealight-sampler.cu arealight-sampler-cpu.cpp arealight-sampler.h \
 					cgls-lights.cu cgls-lights.h \
 					direct-lighting.cpp direct-lighting.h \
 					dofrays.cu dofrays.h \
 					hybrid-pt.cpp hybrid-pt.h \
 					lights.cpp lights.h \
-					material.cu material-conversion.cpp material.h \
+					material.cu material-cpu.cpp material-conversion.cpp material.h \
 					gi_algorithm.cpp gi_algorithm.h \
 					gpu_cgls_lights.cpp gpu_cgls_lights.h \
 					gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
