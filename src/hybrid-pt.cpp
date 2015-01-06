@@ -39,7 +39,7 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
 
 	set.rgen = crgs = new rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials>(w, h);
-	int bounces = 2;
+	int bounces = 3;
 	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
 	gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
@@ -145,7 +145,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// load and evaluate material
 				material_t mat = mats[tri.material_index];
 				#if ALL_MATERIAL_LAMBERT
-				Material *lambertM = (Material*)new LambertianMaterial(&mat);
+				Material *lambertM = (Material*)new LambertianMaterial(&mat, TC, upper_T, right_T);
 				#elif ALL_MATERIAL_BLINNPHONG
 			 	Material *blinnM = (Material*) new BlinnMaterial(&mat, TC, upper_T, right_T);
 				#endif

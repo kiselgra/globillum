@@ -252,6 +252,11 @@ namespace rta {
 				virtual float pdf(const float3 &wo, const float3 &wi, const float3 &N) const {
 					return 1.0f;
                 		}
+				bool isDiffuse() const { return (_type == DIFFUSE);}
+				bool isSpecular() const {return (_type == SPECULAR);}
+				protected:
+					BRDF_TYPE _type;
+					float3 _diffuse;
 				};
 
 			class BlinnMaterial : public Material {
@@ -259,6 +264,11 @@ namespace rta {
 				BlinnMaterial(const rta::cuda::material_t* mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat),_shininess(40.0f){
 					_specular = _mat->specularColor(T,upperT,rightT);
 					_diffuse = _mat->diffuseColor(T,upperT,rightT);
+					float sumDS = _diffuse.x + _diffuse.y + _diffuse.z + _specular.x + _specular.y + _specular.z;
+					if(sumDS > 1.f){
+						_diffuse /= sumDS;
+						_specular /= sumDS;
+					}
 					_type = DIFFUSE;
 				}
 
@@ -273,18 +283,25 @@ namespace rta {
 				}        
 			}
                         void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) {
-				//TODO: change this to be dependent on shininess? or something that makes more sense!
-				if(sampleXYZ.z < 0.0f){ 
+				float pd = _diffuse.x + _diffuse.y + _diffuse.z;
+				float ps = _specular.x + _specular.y + _specular.z;
+				float sumPds = pd + ps;
+				if (sumPds < 1.f){
+					pd /= sumPds;
+					ps /= sumPds;
+				}
+				if(sampleXYZ.z < pd){
+ 					_type = DIFFUSE;
+                                        wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
+                                        pdfOut = pd * clamp01(wi.z) * (1.0f/M_PI);
+				}
+				else { 
 					_type = SPECULAR;
 					wi = powerCosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y, N, _shininess);
 					float dotWN = wi.z;
-					pdfOut =  ( dotWN < 0.0f ? 0.0f : (_shininess+1.0f)*powf(dotWN,_shininess)*float(1.0f/(2.0f*M_PI)) );
-				}else{
-					_type = DIFFUSE;
-					wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
-					pdfOut = clamp01(wi.z) * (1.0f/M_PI);
+					pdfOut =  ( dotWN < 0.0f ? 0.0f : ps*(_shininess+1.0f)*powf(dotWN,_shininess)*float(1.0f/(2.0f*M_PI)) );
 				}
-                           }
+	                    }
                         float pdf(const float3 &wo, const float3 &wi, const float3 &N) const {
                         	if(_type == SPECULAR){
 					float dotWN = (wi|N);
@@ -294,10 +311,8 @@ namespace rta {
 			}
 			protected:
 			const rta::cuda::material_t* _mat;
-			float3 _diffuse;
 			float3 _specular;
 			float _shininess;
-			BRDF_TYPE _type;
              };
 	
 
@@ -305,12 +320,17 @@ namespace rta {
 
 		class LambertianMaterial : public Material{
 			public:
-			LambertianMaterial(const rta::cuda::material_t *mat):Material(),_mat(mat){
-				R.x = 0.8f; R.y = 0.8f; R.z = 0.8f; 
+			LambertianMaterial(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat){
+                                _type = DIFFUSE;
+				_diffuse = _mat->diffuseColor(T,upperT,rightT);
+                                float sumDS = _diffuse.x + _diffuse.y + _diffuse.z;
+                                if(sumDS > 1.f){
+                                	_diffuse /= sumDS;
+                     		}
 			}
 			// evaluates brdf based on in/out directions wi/wo in world space
 			float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-                       		return R * (1.0f/M_PI) * clamp01(wi|N);
+                       		return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
                         }
 			//returns sampled direction wi in Tangent  space.
                         void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) { 
@@ -322,14 +342,30 @@ namespace rta {
 				return clamp01(wi|N) * (1.0f/M_PI);               
                         }
 			private:
-			float3 R;
 			const rta::cuda::material_t *_mat;
 		};
 
-		//class BlinnMaterial : public Material{}
-			
-		
-//		}
+/*		struct PrincipledParameters{
+		float metallic ;
+		float subsurface;
+		float specular ;
+		float roughness;
+		float specularTint;
+		float anisotropic;
+		float sheen;
+		float sheenTint;
+		float clearcoat;
+		float clearcoatGloss;
+		float opacity;
+		float transmiss;
+		float etaInside;
+		float3 color;
+		float3 tangent;
+		};
+		class PrincipledMaterial : public Material{
+
+		}
+	*/		
 }
 
 #endif
