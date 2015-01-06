@@ -93,6 +93,11 @@ namespace rta {
 		virtual bool supports_max_t() {
 			return true;
 		}
+		virtual void ray_generator(rta::ray_generator *rg) {
+			first_tracer->ray_generator(rg);
+			for (auto *o : other_tracers)
+				o->ray_generator(rg);
+		}
 	};
 
 	namespace cuda {
@@ -114,8 +119,7 @@ namespace rta {
 								   "on a set of GPU tracers, copying t_max values inbetween.");
 			}
 			virtual void prepare_trace() {
-				reset_intersections(this->first_tracer->gpu_bouncer->gpu_last_intersection,
-									this->first_tracer->gpu_bouncer->w, this->first_tracer->gpu_bouncer->h);
+				this->first_tracer->prepare_trace();
 			}
 			float copy_intersection_distance_to_max_t() {
 				wall_time_timer wtt; wtt.start();
