@@ -5,7 +5,7 @@
 #include "rayvis.h"
 #include "util.h"
 #include "vars.h"
-#include "dofrays.h"
+#include "raygen.h"
 #include "tracers.h"
 
 #include <libhyb/trav-util.h>
@@ -184,10 +184,14 @@ namespace local {
 			overall_light_power += cpu_lights[i].power;
 		}
 		triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
-		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
+		gi::cuda::mt_pool3f jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
+		update_mt_pool(jitter);
+		set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
+// 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 		gi::cuda::mt_pool3f pool = gi::cuda::generate_mt_pool_on_gpu(w,h); 
+		update_mt_pool(pool);
 		
-		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, 32);
+		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, jitter, 32, 2);
 		set.basic_rt<B, T>()->ray_bouncer(set.bouncer);
 		set.basic_rt<B, T>()->ray_generator(set.rgen);
 
@@ -196,16 +200,28 @@ namespace local {
 	}
 
 	bool hybrid_arealight_sampler::in_progress() {
-		return (shadow_tracer && shadow_tracer->progressive_trace_running());
+		bool cam_sample_running = (shadow_tracer && shadow_tracer->progressive_trace_running());
+		if (cam_sample_running) return true;
+		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
+		return (bouncer->curr_cam_sample < bouncer->cam_samples);
 	}
 
 	void hybrid_arealight_sampler::update() {
-		if (shadow_tracer && shadow_tracer->progressive_trace_running()) {
-			shadow_tracer->trace_progressively(false);
+		if (shadow_tracer)  {
 			hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
-			float3 *colors = bouncer->output_color.data;
-// 			float3 *colors = bouncer->material_colors.data;
-			gi::save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
+			if (shadow_tracer->progressive_trace_running()) {
+				shadow_tracer->trace_progressively(false);
+				float3 *colors = bouncer->output_color.data;
+				gi::save_image("arealightsampler", bouncer->image_nr, w, h, colors);
+			}
+			else {
+				if (bouncer->curr_cam_sample < bouncer->cam_samples) {
+					set.rt->trace_progressively(true);
+					dynamic_cast<basic_raytracer<B,T>*>(shadow_tracer)->copy_progressive_state(set.basic_rt<B,T>());
+					float3 *colors = bouncer->material_colors.data;
+					// gi::save_image("arealightsampler", bouncer->curr_cam_sample * bouncer->light_samples_per_cam_sample + bouncer->curr_light_sample, w, h, colors);
+				}
+			}
 		}
 	}
 
@@ -222,21 +238,28 @@ namespace local {
 		for (int i = 0; i < gi::lights.size(); ++i)
 			cpu_lights[i] = gi::lights[i];
 		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
+		bouncer->reset_samples();
 		bouncer->overall_light_power = overall_light_power;
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
 		set.rt->trace_progressively(true);
 
 		float3 *colors = bouncer->material_colors.data;
-		gi::save_image("arealightsampler", bouncer->curr_bounce, w, h, colors);
+		gi::save_image("arealightsampler", 0, w, h, colors);
 
 		shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 	}
 
 	void hybrid_arealight_sampler::light_samples(int n) {
-		cout << name << " is accumulating " << n << " direct lighting samples, now." << endl;
+		cout << name << " is accumulating " << n << " direct lighting samples per camera sample, now." << endl;
 		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
-		bouncer->samples = n;
+		bouncer->light_samples_per_cam_sample = n;
+	}
+
+	void hybrid_arealight_sampler::path_samples(int n) {
+		cout << name << " is accumulating " << n << " direct lighting camera samples, now." << endl;
+		hybrid_arealight_evaluator<B,T> *bouncer = dynamic_cast<hybrid_arealight_evaluator<B, T>*>(set.bouncer);
+		bouncer->cam_samples = n;
 	}
 
 

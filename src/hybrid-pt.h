@@ -250,6 +250,7 @@ protected:
 	rta::raytracer *shadow_tracer;
 	rta::cuda::simple_triangle *triangles;
 	float overall_light_power;
+	gi::cuda::mt_pool3f jitter; 
 public:
 	hybrid_pt(int w, int h, scene_ref scene, const std::string &name = "hybrid_pt")
 		: gi_algorithm(name), w(w), h(h),

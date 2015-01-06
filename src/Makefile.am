@@ -16,6 +16,7 @@ libgi_la_SOURCES = 	\
 					gi_algorithm.cpp gi_algorithm.h \
 					gpu_cgls_lights.cpp gpu_cgls_lights.h \
 					gpu-pt.cpp gpu-pt.h gpu-pt-kernels.cu gpu-pt-kernels.h \
+					raygen.cu raygen.h \
 					rayvis.cu rayvis.h \
 					tracers.cu tracers.h \
 					util.cpp util-kernels.cu util.h
@@ -38,7 +39,7 @@ gi_SOURCES = 	hl-main.cpp
 
 AM_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$(cglsdata)\" \
 				@GUILE_DEF@ $(GUILE_CFLAGS) $(CGLS_CFLAGS) $(CGL_CFLAGS) \
-				$(RTA_CFLAGS)
+				$(RTA_CFLAGS) $(OXR_CFLAGS)
 
 libgi_la_CPPFLAGS =  $(AM_CPPFLAGS)
 libgi_la_CXXFLAGS =  $(AM_CXXFLAGS) -fopenmp

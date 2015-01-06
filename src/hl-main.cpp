@@ -256,8 +256,8 @@ rta::basic_flat_triangle_list<rta::simple_triangle> load_objfile_to_flat_tri_lis
 	return ftl;
 }*/
 
-void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_triangle_list<rta::simple_triangle> &ftl) {
-	obj_default::ObjFileLoader loader(filename, "1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1");
+void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_triangle_list<rta::simple_triangle> &ftl, const char *trafo) {
+	obj_default::ObjFileLoader loader(filename, trafo); //"1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1";
 
 	int triangles = 0;
 	for (auto &group : loader.groups)
@@ -273,6 +273,15 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 	cout << "ftl with " << ftl.triangles << " tris now" << endl;
 
 	rta::prepend_image_path(dirname((char*)filename.c_str()));
+
+	if (offset == 0) {
+		// for the first obj loaded, create a fallback material for all objects that have no material
+		vec3f d = {1,0,0};
+		vec3f s = {1,0,0};
+		rta::material_t *mat = new rta::material_t("gi/fallback", d);
+		mat->specular_color = s;
+		rta::register_material(mat);
+	}
 
 	int run = 0;
 	for (auto &group : loader.groups) {
@@ -297,6 +306,8 @@ void add_objfile_to_flat_tri_list(const std::string &filename, rta::basic_flat_t
 				mid = rta::register_material(mat);
 			}
 		}
+		else
+			mid = rta::material("gi/fallback");
 		for (int i = 0; i < t; ++i)	{
 			ftl.triangle[offset + run + i].a = vertex(0, i);
 			ftl.triangle[offset + run + i].b = vertex(1, i);
@@ -677,17 +688,19 @@ extern "C" {
 		return SCM_BOOL_T;
 	}
 
-	SCM_DEFINE(s_add_model, "add-model%", 3, 0, 0, (SCM filename, SCM type, SCM is_base), "internal function to load a model.") {
+	SCM_DEFINE(s_add_model, "add-model%", 4, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo), "internal function to load a model.") {
 		char *file = scm_to_locale_string(filename);
 		int typecode = scm_to_int(type);
 		bool base = scm_is_true(is_base);
 		if (base)
 			cmdline.filename = file;
+		char *trf = scm_to_locale_string(trafo);
 		if (typecode == 0) {
-			add_objfile_to_flat_tri_list(file, *ftl);
+			add_objfile_to_flat_tri_list(file, *ftl, trf);
 			return SCM_BOOL_T;
 		}
 		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
+		free(trf);
 		return SCM_BOOL_F;
 	}
 
