@@ -13,18 +13,17 @@
 
 namespace rta{
 
-inline float3 cosineSampleHemisphere(float u, float v, const float3 &N){
-                        float cosTheta  = sqrt(u);
+inline float3 cosineSampleHemisphere(float u, float v){
+                        float r  = sqrt(u);
                         float phi = 2.0f * M_PI * v;
-                        float sinTheta = sqrt(1.0f-u);
                         float3 retVec;
-                        retVec.x = sinTheta * cos(phi);
-                        retVec.y = sinTheta * sin(phi);
-                        retVec.z = cosTheta;
+                        retVec.x = r * cos(phi);
+                        retVec.y = r * sin(phi);
+                        retVec.z = sqrt(std::max(0.f,1.f-u));
                         return retVec;
                 }
                 inline float cos2sin(const float f) { return sqrt(std::max(0.f,1.f-f*f)); }
-                inline float3 powerCosineSampleHemisphere(float u, float v, const float3 &N, float exp){
+                inline float3 powerCosineSampleHemisphere(float u, float v, float exp){
                         float phi = float(2.0f * M_PI) * u;
                         float cosTheta = powf(v,1.0f/(exp+1.f));
                         float sinTheta = cos2sin(cosTheta);
@@ -57,11 +56,11 @@ class Material{
                                 // wi : sampled direction in Tangent space
                                 // pdfOut : corresponding pdf to sampled direction
                                 // float3 : brdf value (no return value because we cannot switch to tangent space)
-                                virtual void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut){
+                                virtual void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut){
                                         wi.x = 0.0f;
                                         wi.y = 0.0f;
                                         wi.z = 0.0f;
-                                        pdfOut = pdf(wo,wi,N);
+                                        pdfOut = 1.f;//pdf(wo,wi,N);
                                 }
 
                                 //all input in world space.

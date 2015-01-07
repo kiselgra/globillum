@@ -25,7 +25,7 @@ namespace rta{
                                         return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
                                 }
                         }
- void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) {
+ void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
                                 float pd = _diffuse.x + _diffuse.y + _diffuse.z;
                                 float ps = _specular.x + _specular.y + _specular.z;
                                 float sumPds = pd + ps;
@@ -35,12 +35,12 @@ namespace rta{
                                 }
                                 if(sampleXYZ.z < pd){
                                         _type = DIFFUSE;
-                                        wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
+                                        wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y);
                                         pdfOut = pd * clamp01(wi.z) * (1.0f/M_PI);
                                 }
                                 else {
                                         _type = SPECULAR;
-                                        wi = powerCosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y, N, _shininess);
+                                        wi = powerCosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y, _shininess);
                                         float dotWN = wi.z;
                                         pdfOut =  ( dotWN < 0.0f ? 0.0f : ps*(_shininess+1.0f)*powf(dotWN,_shininess)*float(1.0f/(2.0f*M_PI)) );
                                 }
@@ -75,8 +75,8 @@ class LambertianMaterial : public Material{
                                 return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
                         }
                         //returns sampled direction wi in Tangent  space.
-                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, const float3 &N, float &pdfOut) {
-                                wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
+                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
+                                wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y);
                                 pdfOut = clamp01(wi.z) * (1.0f/M_PI);
                         }
                         //computes pdf based on wi/wo in world space
