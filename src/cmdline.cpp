@@ -101,20 +101,22 @@ int parse_cmdline(int argc, char **argv)
 	int ret = argp_parse(&parser, argc, argv, /*ARGP_NO_EXIT*/0, 0, 0);
 
     if (cmdline.configs.size() == 0)
-		cmdline.configs.push_back("default.c.scm");
-	cmdline.include_paths.push_back(DATADIR);
-	if (cmdline.filename == 0) {
-		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
-		exit(EXIT_FAILURE);
-	}
+		cmdline.configs.push_back("gui.scm");
+	cmdline.include_paths.push_back(".");
+// 	if (cmdline.filename == 0) {
+// 		fprintf(stderr, "ERROR: no model or scene file specified. exiting...\n");
+// 		exit(EXIT_FAILURE);
+// 	}
 
-	int dot = string(cmdline.filename).find_last_of(".");
-	if (string(cmdline.filename).substr(dot) == ".obj")
-		cmdline.objfile = true;
-	else if (string(cmdline.filename).substr(dot) == ".bobj")
-		cmdline.objfile = true;
-	else
-		cmdline.scenefile = true;
+	if (cmdline.filename) {
+		int dot = string(cmdline.filename).find_last_of(".");
+		if (string(cmdline.filename).substr(dot) == ".obj")
+			cmdline.objfile = true;
+		else if (string(cmdline.filename).substr(dot) == ".bobj")
+			cmdline.objfile = true;
+		else
+			cmdline.scenefile = true;
+	}
 	return ret;
 }
 	
@@ -134,20 +136,7 @@ extern "C" {
 		char *w = scm_to_locale_string(scm_symbol_to_string(what));
 		string s = w;
 		free(w);
-		if (s == "model") {
-			if (cmdline.objfile)
-				return scm_from_locale_string(cmdline.filename);
-			scm_throw(scm_from_locale_symbol("cmdline-error"), 
-			          scm_list_2(what, 
-			                    scm_from_locale_string("the program was invoked with a scene file, not a model file.")));
-		}
-		else if (s == "scene") {
-			return scm_from_locale_string(cmdline.filename);
-		}
-		else if (s == "filetype") {
-			return scm_string_to_symbol(scm_from_locale_string((cmdline.objfile ? string("obj") : string("scene")).c_str()));
-		}
-		else if (s == "merge-factor") {
+		if (s == "merge-factor") {
 			return scm_from_double(cmdline.merge_factor);
 		}
 

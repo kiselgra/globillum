@@ -2,7 +2,7 @@ noinst_LTLIBRARIES = libgi.la
 
 bin_PROGRAMS = gi-gui gi
 
-BUILT_SOURCES = cmdline.x lights.x hl-main.x
+BUILT_SOURCES = cmdline.x lights.x hl-main.x main.x
 
 # libconfigfiles_la_SOURCES = grammar.yy  lexer.ll  parser.h  token.h lexer.h config_creator.h configfile.h configfile.cpp
 libgi_la_SOURCES = 	\
@@ -42,27 +42,34 @@ AM_CPPFLAGS = -D PACKAGE=\"$(PACKAGE)\" -D VERSION=\"$(VERSION)\" -D DATADIR=\"$
 				@GUILE_DEF@ $(GUILE_CFLAGS) $(CGLS_CFLAGS) $(CGL_CFLAGS) \
 				$(RTA_CFLAGS) $(OXR_CFLAGS)
 
-libgi_la_CPPFLAGS =  $(AM_CPPFLAGS)
-libgi_la_CXXFLAGS =  $(AM_CXXFLAGS) -fopenmp
+statically_linked_plugins = $(RTA_PLUGIN_DIR)/bbvh-cuda.a
+if have_osdi
+statically_linked_plugins += $(RTA_PLUGIN_DIR)/subdiv.a
+endif
+
+libgi_la_CPPFLAGS = $(AM_CPPFLAGS)
+libgi_la_CXXFLAGS = $(AM_CXXFLAGS) -fopenmp
 libgi_la_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR) -fopenmp
-libgi_la_LIBADD   = $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
+libgi_la_LIBADD   = $(statically_linked_plugins)
 
 gi_gui_CPPFLAGS = $(AM_CPPFLAGS)
 gi_gui_CXXFLAGS = $(AM_CXXFLAGS) -fopenmp
 gi_gui_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR) -fopenmp
-gi_gui_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
+gi_gui_LDADD    = libgi.la $(statically_linked_plugins)
 
 gi_CPPFLAGS = $(AM_CPPFLAGS)
 gi_CXXFLAGS = $(AM_CXXFLAGS) -fopenmp
 gi_LDFLAGS  = $(GUILE_LDFLAGS) $(CGLS_LIBS) $(CGL_LIBS) $(RTA_LIBS) -Wl,-rpath,$(RTA_PLUGIN_DIR) -fopenmp
-gi_LDADD    = libgi.la $(RTA_PLUGIN_DIR)/bbvh-cuda.a $(RTA_PLUGIN_DIR)/subdiv.a
+gi_LDADD    = libgi.la $(statically_linked_plugins)
 
 SUFFIXES: .x
 cmdline.x: cmdline.cpp
 lights.x: lights.cpp
 hl-main.x: hl-main.cpp
+main.x: main.cpp
 
 if CAN_USE_GUILE
+#snarf_opts = @GUILE_DEF@ $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) $(gi_CPPFLAGS)
 snarf_opts = @GUILE_DEF@ $(AM_CPPFLAGS) $(CPPFLAGS) $(gi_CPPFLAGS)
 .c.x:
 	guile-snarf $< $(snarf_opts) > $@

@@ -3,20 +3,36 @@
 #include <libhyb/rta-cgls-connection.h>
 
 #include <iostream>
+#include <sstream>
 #include <vector>
+#include <libguile.h>
 
 using namespace std;
 
+#if HAVE_LIBOSDINTERFACE == 1
+vector<OSDI::Model*> subd_models;
+#endif
+
 static vector<string> subd_files;
 static vector<string> disp_files;
-vector<OSDI::Model*> subd_models;
+static vector<string> proxy_files;
 
-void add_subd_model(const std::string &filename, const std::string &displacement) {
+void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy) {
 	cout << "add sub model " << filename << endl;
 	subd_files.push_back(filename);
 	disp_files.push_back(displacement);
+	if (proxy != "") proxy_files.push_back(proxy);
+}
+	
+void load_subd_proxies() {
+	for (string m : proxy_files) {
+		ostringstream oss;
+		oss << "(load-obj \"" << m << "\")";
+		scm_c_eval_string(oss.str().c_str());
+	}
 }
 
+#if HAVE_LIBOSDINTERFACE == 1
 rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	if (subd_files.size() == 0) return 0;
 	vector<string> args;
@@ -42,6 +58,7 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	
 	return set;
 }
+#endif
 
 
 /* vim: set foldmethod=marker: */

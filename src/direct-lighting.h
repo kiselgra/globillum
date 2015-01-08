@@ -62,7 +62,7 @@ namespace local {
 	public:
 		gpu_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "gpu_area_lights")
 			: gi_algorithm(name), w(w), h(h),
-			  crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0), tracers(0), subd_tracer(0) {
+			  crgs(0), scene(scene), gpu_lights(0), shadow_tracer(0), overall_light_power(0), tracers(0), subd_tracer(0), shadow_tracers(0) {
 		}
 
 		void evaluate_material();
@@ -238,7 +238,7 @@ namespace local {
 	public:
 		hybrid_arealight_sampler(int w, int h, scene_ref scene, const std::string &name = "hybrid_area_lights")
 			: gi_algorithm(name), w(w), h(h),  /*TMP*/ hitpoints(w,h), normals(w,h),
-			  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0), overall_light_power(0), triangles(0), subd_tracer(0) {
+			  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0), overall_light_power(0), triangles(0), subd_tracer(0), shadow_tracers(0) {
 		}
 		virtual ~hybrid_arealight_sampler() {
 			set.basic_as<B, T>()->free_canonical_triangles(triangles);

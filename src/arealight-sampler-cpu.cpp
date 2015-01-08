@@ -1,9 +1,12 @@
+#include "config.h"
 #include "arealight-sampler.h"
 
 #include "util.h"
 
 #include <libhyb/trav-util.h>
+#if HAVE_LIBOSDINTERFACE == 1
 #include <subdiv/osdi.h>
+#endif
 
 #include <vector>
 #include <iostream>
@@ -12,7 +15,9 @@ using namespace std;
 using namespace rta;
 using namespace gi;
 #define USE_SKY_SAMPLING
+#if HAVE_LIBOSDINTERFACE == 1
 extern vector<OSDI::Model*> subd_models;
+#endif
 
 namespace rta {
 	template<typename rng_t>
@@ -42,6 +47,7 @@ namespace rta {
 				barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
 			}
 			else {
+#if HAVE_LIBOSDINTERFACE == 1
 				unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 				unsigned int ptexID = 0x00ffffff & is.ref;
 				bool WITH_DISPLACEMENT = true;
@@ -49,6 +55,7 @@ namespace rta {
 					subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
 				else
 					subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N);
+#endif
 			}			
 
 			float3 contribution = make_float3(0.0f,0.0f,0.0f);

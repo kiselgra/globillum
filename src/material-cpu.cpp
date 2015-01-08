@@ -1,9 +1,12 @@
+#include "config.h"
 #include "material.h"
 
 #include <librta/intersect.h>
 
+#if HAVE_LIBOSDINTERFACE == 1
 #include <subdiv/osdi.h>
 extern std::vector<OSDI::Model*> subd_models;
+#endif
 
 using namespace std;
 using namespace rta;
@@ -19,12 +22,14 @@ namespace rta {
 		float3 out = background;
 		if (is.valid()) {
 			if (is.ref & 0xFF000000) {
+#if HAVE_LIBOSDINTERFACE == 1
 				float3 N, P;
 				unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 				unsigned int ptexID = 0x00ffffff & is.ref;
 				subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&out);
 // 				subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
 // 				out = N;
+#endif
 			}
 			else {
 				cuda::simple_triangle tri = triangles[is.ref];

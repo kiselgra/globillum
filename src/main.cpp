@@ -5,6 +5,8 @@
 #include <libcgls/console.h>
 #include <libcgl/wall-time.h>
 
+#ifndef SCM_MAGIC_SNARFER
+
 #include <librta/material.h>
 
 #include <libhyb/rta-cgls-connection.h>
@@ -19,6 +21,7 @@
 #include "material.h"
 #include "vars.h"
 #include "rayvis.h"
+#include "subd.h"
 
 #include <GL/freeglut.h>
 #include <string.h>
@@ -164,6 +167,13 @@ rta::cuda::material_t *cpu_materials = 0;
 void setup_rta(std::string plugin) {
 	bool use_cuda = true;
 	vector<string> args;
+
+#if HAVE_LIBOSDINTERFACE == 1
+	// load subd plugin
+	rta::rt_set *subd_set = generate_compressed_bvhs_and_tracer(rays_w, rays_h);
+	gi_algorithm::original_subd_set = subd_set;
+#endif
+		
 	if (plugin == "default/choice")
 		if (use_cuda) 
 			plugin = "bbvh-cuda";
@@ -206,6 +216,9 @@ void setup_rta(std::string plugin) {
 	tex_params_t p = default_fbo_tex_params();
 	gi_algorithm::result = make_empty_texture("gi-res", cmdline.res.x, cmdline.res.y, GL_TEXTURE_2D, GL_RGBA32F, GL_FLOAT, GL_RGBA, &p);
 	gi_algorithm::original_rt_set = set;
+
+	// we load the subd proxies *after* the ftl has been built.
+	load_subd_proxies();
 }
 
 
@@ -236,10 +249,12 @@ void adjust_view(const vec3f *bb_min, const vec3f *bb_max, vec3f *cam_pos, float
 extern "C" {
 void register_scheme_functions_for_cmdline();
 void register_scheme_functions_for_light_setup();
+static void register_scheme_functions_for_main();
 }
 static void register_scheme_functions() {
 	register_scheme_functions_for_cmdline();
 	register_scheme_functions_for_light_setup();
+	register_scheme_functions_for_main();
 }
 #endif
 
@@ -411,7 +426,9 @@ void actual_main()
 
 	if (cmdline.configs.size() != 0) {
 		load_configfile("lights.scm");
-		for (int c = 0; c < cmdline.configs.size(); ++c)
+		load_configfile("scenes.scm");
+		scm_c_eval_string("(define gui #t)");
+			for (int c = 0; c < cmdline.configs.size(); ++c)
 			for (int p = 0; p < cmdline.configs.size(); ++p) {
 				char *config = 0;
 				int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
@@ -477,6 +494,10 @@ void actual_main()
 	add_vi_console_command(viconsole, "fod", console_focus_distance);
 	push_interaction_mode(console_interaction_mode(viconsole));
 
+	if (!cmdline.filename) {
+		cout << "FILENAME NOT SET YET" << endl;
+		exit(1);
+	}
 	char *base = basename((char*)cmdline.filename);
 	string expr = string("(select-bookmark \"") + base + "\" \"start\")";
 	SCM r = scm_c_eval_string(expr.c_str());
@@ -520,5 +541,45 @@ int main(int argc, char **argv)
 	startup_cgl("name", 4, 2, argc, argv, (int)cmdline.res.x, (int)cmdline.res.y, actual_main, guile_mode, false, 0);
 
 	return 0;
+}
+
+#endif
+
+SCM_DEFINE(s_add_model, "add-model%", 6, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo, SCM subd_disp, SCM subd_proxy), 
+		   "internal function to load a model.") {
+	char *file = scm_to_locale_string(filename);
+	char *d_file = scm_to_locale_string(subd_disp);
+	char *p_file = scm_to_locale_string(subd_proxy);
+	int typecode = scm_to_int(type);
+	bool base = scm_is_true(is_base);
+	if (base)
+		cmdline.filename = file;
+	char *trf = scm_to_locale_string(trafo);
+	if (typecode == 0) {
+		// add_objfile_to_flat_tri_list(file, *ftl, trf);
+		ostringstream oss;
+		if (base) oss << "(load-base-obj ";
+		else      oss << "(load-obj ";
+		oss << "\""  << file << "\")";
+		scm_c_eval_string(oss.str().c_str());
+		return SCM_BOOL_T;
+	}
+	if (typecode == 1) {
+		add_subd_model(file, d_file, p_file);
+#if HAVE_LIBOSDINTERFACE != 1
+		cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
+#endif
+		return SCM_BOOL_T;
+	}
+	cerr << "Error. Unknown model code (" << typecode << ")" << endl;
+	free(trf);
+	free(d_file);
+	free(p_file);
+	free(file);
+	return SCM_BOOL_F;
+}
+
+static void register_scheme_functions_for_main() {
+	#include "main.x"
 }
 

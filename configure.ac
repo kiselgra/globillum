@@ -97,6 +97,7 @@ RTA_PLUGIN_DIR="$(pkg-config rta --variable=plugindir)"
 AC_SUBST([RTA_PLUGIN_DIR])
 
 AC_CHECK_LIB([osdInterface], [main])
+AM_CONDITIONAL([have_osdi], [test "x$ac_cv_lib_osdInterface_main" == "xyes"])
 
 # Checks for header files.
 AC_HEADER_STDC

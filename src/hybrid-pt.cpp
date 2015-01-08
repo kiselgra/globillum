@@ -1,3 +1,4 @@
+#include "config.h"
 #include "hybrid-pt.h"
 
 #include "raygen.h"
@@ -8,7 +9,9 @@
 #include <librta/intersect.h>
 #include <libhyb/trav-util.h>
 
+#if HAVE_LIBOSDINTERFACE == 1
 #include <subdiv/osdi.h>
+#endif
 
 #include <omp.h>
 
@@ -21,8 +24,10 @@ using namespace gi::cuda;
 
 extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
-extern std::vector<OSDI::Model*> subd_models;
 extern int material_count;
+#if HAVE_LIBOSDINTERFACE == 1
+extern std::vector<OSDI::Model*> subd_models;
+#endif
 
 #define DEBUG_PBRDF 0
 
@@ -213,6 +218,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					normalize_vec3f(&Ty);
 				}
 				else {
+#if HAVE_LIBOSDINTERFACE == 1
 					// evaluate subd patch to get position and normal
 					unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 					unsigned int ptexID = 0x00ffffff & is.ref;
@@ -233,6 +239,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					//tri.ta = du;
 					//tri.tb = dv;
 					//tri.tc = normalize_vec3f(du+dv);
+#endif
 				}
 				
 				// eval ray differentials (stored below)

@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include "noscm.h"
+#include "config.h"
 
 #include "gi_algorithm.h"
 #include "gpu_cgls_lights.h"
@@ -344,8 +345,11 @@ void setup_rta(std::string plugin) {
 	vector<string> args;
 	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
 
+#if HAVE_LIBOSDINTERFACE == 1
 	// load subd plugin
 	rta::rt_set *subd_set = generate_compressed_bvhs_and_tracer(rays_w, rays_h);
+	gi_algorithm::original_subd_set = subd_set;
+#endif
 	
 	if (plugin == "default/choice")
 		if (use_cuda) 
@@ -405,7 +409,6 @@ void setup_rta(std::string plugin) {
 	}
 	
 	gi_algorithm::original_rt_set = set;
-	gi_algorithm::original_subd_set = subd_set;
 }
 
 //// guile/console hacks
@@ -699,7 +702,9 @@ extern "C" {
 		return SCM_BOOL_T;
 	}
 
-	SCM_DEFINE(s_add_model, "add-model%", 5, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo, SCM subd_disp), "internal function to load a model.") {
+	SCM_DEFINE(s_add_model, "add-model%", 6, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo, SCM subd_disp, SCM subd_proxy), 
+			   "internal function to load a model.") {
+		(void)subd_proxy;
 		char *file = scm_to_locale_string(filename);
 		char *d_file = scm_to_locale_string(subd_disp);
 		int typecode = scm_to_int(type);
@@ -712,8 +717,12 @@ extern "C" {
 			return SCM_BOOL_T;
 		}
 		if (typecode == 1) {
+#if HAVE_LIBOSDINTERFACE == 1
 			add_subd_model(file, d_file);
 			return SCM_BOOL_T;
+#else
+			cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
+#endif
 		}
 		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
 		free(trf);
