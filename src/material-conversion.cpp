@@ -51,13 +51,26 @@ namespace rta {
 					break;
 				}
 			}
+			//HACK: ADD DEFAULT PBRT MATERIAL: always last one!
+			coll.push_back(rta::material(0));
 			N = coll.size();
 			cuda::material_t *materials = new cuda::material_t[coll.size()];
 			data_size = 0;
 			T=0;
 			for (int i = 0; i < coll.size(); ++i) {
 				rta::material_t *src = coll[i];
-				
+				if(i ==coll.size()-1){
+					std::string materialPath("materials/default.pbrdf");
+					std::ifstream in(materialPath.c_str());		
+					cuda::material_t *m = &materials[i];
+					if(in.is_open()){
+						in.close();
+						m->parameters = new PrincipledBRDFParameters(materialPath);
+					}else{
+						m->parameters = 0;
+					}
+					continue; // equivalent with break, since this is the last material element.
+				}
 				std::string materialPath ("materials/");
 				std::string pbrdfEnding (".pbrdf");		
 				std::string defaultMaterial = materialPath + src->name + pbrdfEnding;
@@ -65,7 +78,6 @@ namespace rta {
 				//we use the parameters defined in the file and use the principled BRDF material evaluation for that object.
 				std::ifstream in(defaultMaterial.c_str());
 				bool useDefaultMaterial = (!in.is_open());
-				
 				cuda::material_t *m = &materials[i];
 				if(useDefaultMaterial) m->parameters = 0;
 				else{ 

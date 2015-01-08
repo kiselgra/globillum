@@ -23,10 +23,12 @@ using namespace gi::cuda;
 extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
 extern std::vector<OSDI::Model*> subd_models;
-
+extern int material_count;
 //define only one of these
 #define ALL_MATERIAL_LAMBERT 1 // if defined this will be grey lambert.
 #define ALL_MATERIAL_BLINNPHONG 0
+
+#define DEBUG_PBRDF 0
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
@@ -49,7 +51,7 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	update_mt_pool(jitter);
 	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
-	int bounces = 2;
+	int bounces = 5;
 	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
 	gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
@@ -133,12 +135,23 @@ void hybrid_pt::compute() {
 
 		tracer->trace_progressively(true);
 }
-	
+float3 evaluateSkyLight(gi::light *L, float3 &dir){
+	float3 *skylightData = L->skylight.data;
+	float theta = acosf(dir.y);
+	float phi = atan2f(dir.z, dir.x);
+	if (phi < 0) phi += 2.0f*float(M_PI);
+	float s = phi/(2.0f*float(M_PI));
+	float t = theta/float(M_PI);
+	int idx = int(t*L->skylight.h) * L->skylight.w + int(s*L->skylight.w);
+	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) std::cerr<<"Error:Evaluate skylight: index "<<idx<<" and "<<dir.x<<","<<dir.y<<","<<dir.z<<"\n";//computed from "<<phi<<" and "<<theta<<" to "<<s<<","<<t<<"\n";
+ 	return skylightData[idx];
+
+}	
 void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t, float3 *ray_diff_org, float3 *ray_diff_dir,
 										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
 										  float3 *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
-										  float3 *potential_sample_contribution) {
+										  float3 *potential_sample_contribution, gi::light *skylight) {
 	#pragma omp parallel for 
 	for (int y = 0; y < h; ++y) {
 		for (int x = 0; x < w; ++x) {
@@ -158,6 +171,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					// we load the material, too, as it is stored in the triangle
 					tri = triangles[is.ref];
 					mat = mats[tri.material_index];
+#if DEBUG_PBRDF
+					mat = mats[material_count-1];
+#endif
 					is.barycentric_coord(&bc);
 					barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 					barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
@@ -185,16 +201,16 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 					unsigned int ptexID = 0x00ffffff & is.ref;
 					bool WITH_DISPLACEMENT = true;
-					//TODO:tangents are only written IF no displacement? Why?
+					//!TODO:tangents are only written IF no displacement? Why?
 					if (WITH_DISPLACEMENT)
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
 					else
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
-					//TODO: REALLY SLOW -> Get rid of this bottleneck! 
+					//!TODO: REALLY SLOW -> Get rid of this bottleneck! 
 					//subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);
-					// TODO: USE THE ACTUAL PTEX COLOR!
-					mat.diffuse_color = make_float3(0.0f,0.1f,0.8f);
+					//!TODO: USE THE ACTUAL PTEX COLOR!
+					mat = mats[material_count-1];
 					//!TODO : CHECKME: build dummy triangle
 					//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
 					tri.a = P; tri.b = P+Tx; tri.c = P+Ty;
@@ -231,7 +247,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				// load and evaluate material
 				Material *principledM = 0;
-				if(mat.isPrincipledMaterial()) principledM = (Material*) new PrincipledMaterial(&mat,TC,upper_T,right_T,Tx,Ty);
+				if(mat.isPrincipledMaterial()) {
+				principledM = (Material*) new PrincipledMaterial(&mat,TC,upper_T,right_T,Tx,Ty);
+}
 				#if ALL_MATERIAL_LAMBERT
 				Material *lambertM = (Material*)new LambertianMaterial(&mat, TC, upper_T, right_T);
 				#elif ALL_MATERIAL_BLINNPHONG
@@ -240,9 +258,10 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				// add lighting to accumulation buffer
 				float3 org_dir = ray_dir[id];
-				
 				normalize_vec3f(&org_dir);
-				if((org_dir|N) > 0) org_dir = -1.0f*org_dir;
+				if((org_dir|N) > 0) {
+					org_dir = -1.0f*org_dir;
+				}
 			
 				//invert org dir to be consistent
 				float3 inv_org_dir = -1.0f*org_dir;
@@ -346,6 +365,16 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				}
 			}
 			// fall through for absorption and invalid intersection
+			float3 accSkylight = make_float3(0.f,0.f,0.f);
+			float3 orgDir = ray_dir[id];
+			if (max_t[id] == -1){}
+			else{
+				normalize_vec3f(&orgDir);
+			//	if(orgDir.x == orgDir.x)
+				accSkylight = evaluateSkyLight(skylight,orgDir);
+			}
+			
+			col_accum[id] += accSkylight;
 			ray_dir[id]  = make_float3(0,0,0);
 			ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 			max_t[id] = -1;

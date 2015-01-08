@@ -3,6 +3,7 @@
 
 #include "gpu-pt.h"
 #include "tracers.h"	// for tandem_tracer
+#include "lights.h"	// for tandem_tracer
 
 void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t, float3 *ray_diff_org, float3 *ray_diff_dir,
 										  rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
@@ -42,6 +43,7 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 	float  *host_light_sample_maxt,       *host_path_sample_maxt;
 	/* --- */
 	bool verbose;
+	gi::light *skylight;
 
 	// maintain which tracer to use for the next bounce
 	rta::tandem_tracer<box_t, tri_t> *tracers;
@@ -62,7 +64,8 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 	  lights(lights), nr_of_lights(nr_of_lights), w(w), h(h),
 	  curr_bounce(0), path_len(0), max_path_len(max_path_len), curr_path(0), path_samples(path_samples), output_color(0), tracers(0),
 	  gpu_light_sample_origins(0), gpu_light_sample_directions(0), gpu_light_sample_maxt(0),
-	  gpu_path_sample_origins(0), gpu_path_sample_directions(0), gpu_path_sample_maxt(0), verbose(false)
+	  gpu_path_sample_origins(0), gpu_path_sample_directions(0), gpu_path_sample_maxt(0), verbose(false),
+	  skylight(0)
 	{
 		output_color = new float3[w*h];
 		path_accum_color = new float3[w*h];
@@ -87,6 +90,12 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 		host_path_differentials_origins = new float3[2*w*h];
 		mt_numbers_light = new float3[w*h];
 		mt_numbers_path  = new float3[w*h];
+		for (gi::light &l : gi::lights) {
+			if (l.type == gi::light::sky) {
+				skylight = &l;
+				break;
+			}
+		}
 	}
 	~hybrid_pt_bouncer() {
 		delete [] output_color;
@@ -132,7 +141,8 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 		compute_path_contribution_and_bounce(this->w, this->h, host_path_sample_origins, host_path_sample_directions, host_path_sample_maxt,
 											 host_path_differentials_origins, host_path_differentials_directions,
 											 host_path_intersections, this->tri_ptr, this->materials, mt_numbers_path, throughput, path_accum_color,
-											 host_light_sample_directions, host_shadow_intersections, potential_sample_contribution);
+											 host_light_sample_directions, host_shadow_intersections, potential_sample_contribution,
+											 skylight);
 		if (this->verbose)
 			gi::save_image("accum", curr_bounce, w, h, path_accum_color);
 	}
