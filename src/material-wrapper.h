@@ -21,6 +21,11 @@ struct materialBRDF{
 		#endif
 		PrincipledMaterial principled;
 
+	void init(bool isPrincipled, const rta::cuda::material_t *mat, const float2 &TC, const float2 &upper_T, const float2 &right_T, const float3 &Tx, const float3 &Ty){
+		isSimple = (!isPrincipled);
+		if(isSimple) simple.init(mat,TC,upper_T,right_T);
+		else principled.init(mat, TC, upper_T, right_T, Tx, Ty);
+	}
 	void sample(const float3 &inv_org_dir_ts, float3 &dir, const float3 &random, float &pdf){
 		if(isSimple) simple.sample(inv_org_dir_ts, dir, random, pdf);
 		else principled.sample(inv_org_dir_ts, dir, random, pdf);

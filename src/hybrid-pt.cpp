@@ -140,7 +140,7 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
 	float s = phi/(2.0f*float(M_PI));
 	float t = theta/float(M_PI);
 	int idx = int(t*L->skylight.h) * L->skylight.w + int(s*L->skylight.w);
-	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) std::cerr<<"Error:Evaluate skylight: index "<<idx<<" and "<<dir.x<<","<<dir.y<<","<<dir.z<<"\n";//computed from "<<phi<<" and "<<theta<<" to "<<s<<","<<t<<"\n";
+	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) {return make_float3(0.f,0.f,0.f);} //std::cerr<<"Error:Evaluate skylight: index "<<idx<<" and "<<dir.x<<","<<dir.y<<","<<dir.z<<"\n";//computed from "<<phi<<" and "<<theta<<" to "<<s<<","<<t<<"\n";
  	return skylightData[idx];
 
 }	
@@ -262,10 +262,10 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_diff_org[w*h+id] = right_P;
 
 				// load and evaluate material
-				if(mat.isPrincipledMaterial()) {
-					currentMaterial.isSimple = false;
-					currentMaterial.principled.init(&mat, TC, upper_T, right_T, Tx, Ty);
-				}
+//				if(mat.isPrincipledMaterial()) {
+//					currentMaterial.isSimple = false;
+					currentMaterial.init(mat.isPrincipledMaterial(),&mat, TC, upper_T, right_T, Tx, Ty);
+//				}
 				float3 org_dir = ray_dir[id];
 
 				// add lighting to accumulation buffer
