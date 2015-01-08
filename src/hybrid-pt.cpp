@@ -147,6 +147,24 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
  	return skylightData[idx];
 
 }	
+
+void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight){
+	float3 accSkylight = make_float3(0.f,0.f,0.f);
+	float3 orgDir = ray_dir[id];
+	if (max_t[id] == -1){}
+	else{
+		normalize_vec3f(&orgDir);
+		accSkylight = evaluateSkyLight(skylight,orgDir);
+	}
+			
+	col_accum[id] += accSkylight;
+	ray_dir[id]  = make_float3(0,0,0);
+	ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
+	max_t[id] = -1;
+	throughput[id] = make_float3(0,0,0);
+
+
+}
 void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t, float3 *ray_diff_org, float3 *ray_diff_dir,
 										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
@@ -259,8 +277,10 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// add lighting to accumulation buffer
 				float3 org_dir = ray_dir[id];
 				normalize_vec3f(&org_dir);
+				//bakcfacing check
 				if((org_dir|N) > 0) {
-					org_dir = -1.0f*org_dir;
+					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
+					continue;
 				}
 			
 				//invert org dir to be consistent
@@ -364,21 +384,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					continue;
 				}
 			}
-			// fall through for absorption and invalid intersection
-			float3 accSkylight = make_float3(0.f,0.f,0.f);
-			float3 orgDir = ray_dir[id];
-			if (max_t[id] == -1){}
-			else{
-				normalize_vec3f(&orgDir);
-			//	if(orgDir.x == orgDir.x)
-				accSkylight = evaluateSkyLight(skylight,orgDir);
-			}
-			
-			col_accum[id] += accSkylight;
-			ray_dir[id]  = make_float3(0,0,0);
-			ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
-			max_t[id] = -1;
-			throughput[id] = make_float3(0,0,0);
+			handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
+			continue;
 		}
 	}
 }
