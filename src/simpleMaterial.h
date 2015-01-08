@@ -4,7 +4,24 @@
 namespace rta{
  class BlinnMaterial : public Material {
                         public:
+								BlinnMaterial():Material(),_mat(0), _shininess(40.f){
+									_specular = make_float3(0.f,0.f,0.f);
+									_diffuse = make_float3(0.f,0.f,0.f);
+									_type = DIFFUSE;
+								}
                                 BlinnMaterial(const rta::cuda::material_t* mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat),_shininess(40.0f){
+                                        _specular = _mat->specularColor(T,upperT,rightT);
+                                        _diffuse = _mat->diffuseColor(T,upperT,rightT);
+                                        float sumDS = _diffuse.x + _diffuse.y + _diffuse.z + _specular.x + _specular.y + _specular.z;
+                                        if(sumDS > 1.f){
+                                                _diffuse /= sumDS;
+                                                _specular /= sumDS;
+                                        }
+                                        _type = DIFFUSE;
+                                }
+void init (const rta::cuda::material_t* mat, const float2 &T, const float2 &upperT, const float2 &rightT){
+										_mat = mat;
+										_shininess = 40.f;
                                         _specular = _mat->specularColor(T,upperT,rightT);
                                         _diffuse = _mat->diffuseColor(T,upperT,rightT);
                                         float sumDS = _diffuse.x + _diffuse.y + _diffuse.z + _specular.x + _specular.y + _specular.z;
@@ -62,6 +79,7 @@ namespace rta{
 
 class LambertianMaterial : public Material{
                         public:
+						LambertianMaterial():Material(),_mat(0){ _type = DIFFUSE; _diffuse = make_float3(0.f,0.f,0.f);}
                         LambertianMaterial(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat){
                                 _type = DIFFUSE;
                                 _diffuse = _mat->diffuseColor(T,upperT,rightT);
@@ -70,6 +88,18 @@ class LambertianMaterial : public Material{
                                         _diffuse /= sumDS;
                                 }
                         }
+
+						void init(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT){
+							_mat = mat;
+							_type = DIFFUSE;
+							_diffuse = _mat->diffuseColor(T,upperT,rightT);
+							float sumDS = _diffuse.x + _diffuse.y + _diffuse.z;
+                            if(sumDS > 1.f){
+                                    _diffuse /= sumDS;
+                            }
+
+						}
+
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
                                 return _diffuse * (1.0f/M_PI) * clamp01(wi|N);

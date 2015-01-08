@@ -270,12 +270,22 @@ inline float3 normalize (const float3 &a){
 }
 class PrincipledMaterial : public Material{
                         public:
+
+						PrincipledMaterial():Material(),_mat(0){_type = DIFFUSE; _diffuse = make_float3(0.f,0.f,0.f); _Tx = make_float3(0.f,0.f,0.f); _Ty = make_float3(0.f,0.f,0.f);}
                         PrincipledMaterial(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT, const float3 &Tx, const float3 &Ty):Material(),_mat(mat){
                                 _type = DIFFUSE;
                                 _diffuse = _mat->diffuseColor(T,upperT,rightT);
 				_Tx = Tx;
 				_Ty = Ty;
                         }
+
+				void init(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT, const float3 &Tx, const float3 &Ty){
+					_mat = mat;
+					_type = DIFFUSE;
+					_diffuse = _mat->diffuseColor(T,upperT,rightT);
+					_Tx = Tx;
+					_Ty = Ty;
+				}
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
                                 //return _diffuse * (1.0f/M_PI) * clamp01(wi|N);

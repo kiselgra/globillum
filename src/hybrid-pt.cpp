@@ -1,8 +1,7 @@
 #include "hybrid-pt.h"
 
 #include "raygen.h"
-#include "simpleMaterial.h"
-#include "principledMaterial.h"
+#include "material-wrapper.h"
 
 #include <librta/cuda-kernels.h>
 #include <librta/cuda-vec.h>
@@ -24,11 +23,9 @@ extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
 extern std::vector<OSDI::Model*> subd_models;
 extern int material_count;
-//define only one of these
-#define ALL_MATERIAL_LAMBERT 1 // if defined this will be grey lambert.
-#define ALL_MATERIAL_BLINNPHONG 0
 
 #define DEBUG_PBRDF 0
+
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
@@ -172,6 +169,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 										  float3 *potential_sample_contribution, gi::light *skylight) {
 	#pragma omp parallel for 
 	for (int y = 0; y < h; ++y) {
+		materialBRDF currentMaterial;
 		for (int x = 0; x < w; ++x) {
 			// general setup, early out if the path intersection is invalid.
 			int2 gid = make_int2(x, y);
@@ -264,18 +262,13 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_diff_org[w*h+id] = right_P;
 
 				// load and evaluate material
-				Material *principledM = 0;
 				if(mat.isPrincipledMaterial()) {
-				principledM = (Material*) new PrincipledMaterial(&mat,TC,upper_T,right_T,Tx,Ty);
-}
-				#if ALL_MATERIAL_LAMBERT
-				Material *lambertM = (Material*)new LambertianMaterial(&mat, TC, upper_T, right_T);
-				#elif ALL_MATERIAL_BLINNPHONG
-			 	Material *blinnM = (Material*) new BlinnMaterial(&mat, TC, upper_T, right_T);
-				#endif
+					currentMaterial.isSimple = false;
+					currentMaterial.principled.init(&mat, TC, upper_T, right_T, Tx, Ty);
+				}
+				float3 org_dir = ray_dir[id];
 
 				// add lighting to accumulation buffer
-				float3 org_dir = ray_dir[id];
 				normalize_vec3f(&org_dir);
 				//bakcfacing check
 				if((org_dir|N) > 0) {
@@ -296,15 +289,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					float3 light_dir = to_light[id];
 					normalize_vec3f(&light_dir);
 					// the whole geometric term is already computed in potential_sample_contribution.
-					float3 brdf = make_float3(0.f,0.f,0.f);
-					if(principledM) brdf = principledM->evaluate(inv_org_dir,light_dir,N);
-					else{
-					#if ALL_MATERIAL_LAMBERT
-					brdf = lambertM->evaluate(inv_org_dir,light_dir,N);
-					#elif ALL_MATERIAL_BLINNPHONG
-					brdf = blinnM->evaluate(inv_org_dir,light_dir,N);
-					#endif
-					}		
+					float3 brdf = currentMaterial.evaluate(inv_org_dir,light_dir,N);
 					col_accum[id] = prev + brdf * curr;
 				}
 
@@ -317,11 +302,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				normalize_vec3f(&B);
 
 				float3 dir;
-				float3 use_color = make_float3(1,1,1);
 				bool reflection = false;
 				//do only diffuse for now
-				bool specular_bounce = false;
-				bool diffuse_bounce = true;
 				float pdf = 1.0f;
 				if (reflection) {
 					org_dir = transform_to_tangent_frame(org_dir, T, B, N);
@@ -333,56 +315,22 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					ray_diff_dir[w*h+id] = reflect(right_dir, N);
 				}else{
 					float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
-
-					if(principledM){
-					 	float3 test = make_float3(0.f,0.f,1.f);
-						principledM->sample(inv_org_dir_ts,dir,random,pdf);
-					}else{
-					//evaluate default material			
-					#if ALL_MATERIAL_LAMBERT
-					lambertM->sample(inv_org_dir_ts,dir,random,pdf);
-					#elif ALL_MATERIAL_BLINNPHONG
-					blinnM->sample(inv_org_dir_ts,dir,random,pdf);
-					#endif
-					}
+					currentMaterial.sample(inv_org_dir_ts, dir, random, pdf);
 					dir = transform_from_tangent_frame(dir,T,B,N);
-					float3 brdf = make_float3(0.f,0.f,0.f);
-					if(principledM){
-						brdf = principledM->evaluate(inv_org_dir,dir,N);
-					}else{
-					#if ALL_MATERIAL_LAMBERT
-					brdf = lambertM->evaluate(inv_org_dir,dir,N);
-					#elif ALL_MATERIAL_BLINNPHONG
-					brdf = blinnM->evaluate(inv_org_dir,dir,N);
-					#endif
-					}
-					ray_diff_dir[w*h+id] = reflect(right_dir, N);
+					float3 brdf = currentMaterial.evaluate(inv_org_dir,dir,N);
 					ray_diff_dir[id] = reflect(upper_dir, N);
 					TP *= brdf;
-					use_color = brdf;
 				}
-				#if ALL_MATERIAL_LAMBERT
-				delete lambertM;
-				#elif ALL_MATERIAL_BLINNPHONG
-				delete blinnM;
-				#endif
-				if(principledM) delete principledM; 
-				if (diffuse_bounce||specular_bounce) {
-					float len = length_of_vector(dir);
-					dir /= len;
-
-					//P += 0.01*dir;
-					//direction of normal might be better 
-					P += 0.01f * N; // I hope N is normalized :-)
-					ray_orig[id] = P;
-					ray_dir[id]  = dir;
-					max_t[id]    = FLT_MAX;
-					//TP *= (1.0f/P_component) * ((2.0f*float(M_PI))/((n+1.0f)*pow(omega_z,n)));
-					TP *= (1.0f/pdf);
-					throughput[id] = TP;
-					// 				throughput[id] = make_float3(0,0,0);
-					continue;
-				}
+				float len = length_of_vector(dir);
+				dir /= len;
+				//direction of normal might be better 
+				P += 0.01f * N; // I hope N is normalized :-)
+				ray_orig[id] = P;
+				ray_dir[id]  = dir;
+				max_t[id]    = FLT_MAX;
+				TP *= (1.0f/pdf);
+				throughput[id] = TP;
+				continue;
 			}
 			handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
 			continue;
