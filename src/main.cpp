@@ -167,6 +167,7 @@ rta::cuda::material_t *cpu_materials = 0;
 void setup_rta(std::string plugin) {
 	bool use_cuda = true;
 	vector<string> args;
+	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
 
 #if HAVE_LIBOSDINTERFACE == 1
 	// load subd plugin
@@ -194,7 +195,6 @@ void setup_rta(std::string plugin) {
 	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
 	ftl = &the_ftl;
-	int rays_w = cmdline.res.x, rays_h = cmdline.res.y;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
 	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
 
@@ -429,16 +429,16 @@ void actual_main()
 		load_configfile("scenes.scm");
 		scm_c_eval_string("(define gui #t)");
 			for (int c = 0; c < cmdline.configs.size(); ++c)
-			for (int p = 0; p < cmdline.configs.size(); ++p) {
-				char *config = 0;
-				int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
-				if (file_exists(config)) {
-					load_configfile(config);
+				for (int p = 0; p < cmdline.include_paths.size(); ++p) {
+					char *config = 0;
+					int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
+					if (file_exists(config)) {
+						load_configfile(config);
+						free(config);
+						break;
+					}
 					free(config);
-					break;
 				}
-				free(config);
-			}
 		scene_ref scene = { 0 };
 		the_scene = scene;
 		load_configfile("local.scm");

@@ -530,7 +530,7 @@ void actual_main() {
 	load_configfile("scenes.scm");
 	scm_c_eval_string("(define gui #f)");
 	for (int c = 0; c < cmdline.configs.size(); ++c)
-		for (int p = 0; p < cmdline.configs.size(); ++p) {
+		for (int p = 0; p < cmdline.include_paths.size(); ++p) {
 			char *config = 0;
 			int n = asprintf(&config, "%s/%s", cmdline.include_paths[p].c_str(), cmdline.configs[c].c_str());
 			if (file_exists(config)) {
@@ -707,6 +707,7 @@ extern "C" {
 		(void)subd_proxy;
 		char *file = scm_to_locale_string(filename);
 		char *d_file = scm_to_locale_string(subd_disp);
+		char *p_file = scm_to_locale_string(subd_proxy);
 		int typecode = scm_to_int(type);
 		bool base = scm_is_true(is_base);
 		if (base)
@@ -718,7 +719,7 @@ extern "C" {
 		}
 		if (typecode == 1) {
 #if HAVE_LIBOSDINTERFACE == 1
-			add_subd_model(file, d_file);
+			add_subd_model(file, d_file, p_file);
 			return SCM_BOOL_T;
 #else
 			cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
