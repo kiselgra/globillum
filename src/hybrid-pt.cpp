@@ -145,6 +145,7 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
 	float s = phi/(2.0f*float(M_PI));
 	float t = theta/float(M_PI);
 	int idx = int(t*L->skylight.h) * L->skylight.w + int(s*L->skylight.w);
+	//TODO: This should actually not happen :(
 	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) {return make_float3(0.f,0.f,0.f);} //std::cerr<<"Error:Evaluate skylight: index "<<idx<<" and "<<dir.x<<","<<dir.y<<","<<dir.z<<"\n";//computed from "<<phi<<" and "<<theta<<" to "<<s<<","<<t<<"\n";
  	return skylightData[idx];
 
@@ -159,7 +160,7 @@ void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float
 		accSkylight = evaluateSkyLight(skylight,orgDir);
 	}
 			
-	col_accum[id] += accSkylight;
+	col_accum[id] += throughput[id] * accSkylight;
 	ray_dir[id]  = make_float3(0,0,0);
 	ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 	max_t[id] = -1;
@@ -194,6 +195,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					mat = mats[tri.material_index];
 #if DEBUG_PBRDF
 					mat = mats[material_count-1];
+					mat.diffuse_color = mat.parameters->color;
 #endif
 					is.barycentric_coord(&bc);
 					barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
@@ -229,11 +231,14 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					else
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
-					//!TODO: REALLY SLOW -> Get rid of this bottleneck! 
-					//subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);
-					//!TODO: USE THE ACTUAL PTEX COLOR!
 					mat = mats[material_count-1];
-					//!TODO : CHECKME: build dummy triangle
+#if DEBUG_PBRDF
+					//if DEBUG_BRDF we just take a constant color (faster than using ptex lookup)
+					mat.diffuse_color = mat.parameters->color;
+#else	
+					//!slow but better with ram. 
+					subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);
+#endif
 					//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
 					tri.a = P; tri.b = P+Tx; tri.c = P+Ty;
 					//tri.ta = du;
@@ -269,16 +274,13 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_diff_org[w*h+id] = right_P;
 
 				// load and evaluate material
-//				if(mat.isPrincipledMaterial()) {
-//					currentMaterial.isSimple = false;
-					currentMaterial.init(mat.isPrincipledMaterial(),&mat, TC, upper_T, right_T, Tx, Ty);
-//				}
+				currentMaterial.init(mat.isPrincipledMaterial(),&mat, TC, upper_T, right_T, Tx, Ty);
 				float3 org_dir = ray_dir[id];
 
 				// add lighting to accumulation buffer
 				normalize_vec3f(&org_dir);
 				//bakcfacing check
-				if((org_dir|N) > 0) {
+				if((org_dir|N) > 0.0f) {
 					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
 					continue;
 				}
@@ -289,7 +291,6 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				is = shadow_ti[id];
 				float3 TP = throughput[id];
 				if (!is.valid()) {
-					float3 prev = col_accum[id];
 					float3 weight = potential_sample_contribution[id];
 					// attention: we need the throughput *before* the bounce
 					float3 curr = TP * weight;
@@ -297,7 +298,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					normalize_vec3f(&light_dir);
 					// the whole geometric term is already computed in potential_sample_contribution.
 					float3 brdf = currentMaterial.evaluate(inv_org_dir,light_dir,N);
-					col_accum[id] = prev + brdf * curr;
+					col_accum[id] +=  brdf *curr;
 				}
 
 				// compute next path segment by sampling the brdf
