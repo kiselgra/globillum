@@ -282,24 +282,19 @@ class PrincipledMaterial : public Material{
 				void init(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT, const float3 &Tx, const float3 &Ty){
 					_mat = mat;
 					_type = DIFFUSE;
-					_diffuse = _mat->diffuseColor(T,upperT,rightT);
+					_diffuse = _mat->diffuse_color;//_mat->diffuseColor(T,upperT,rightT);
 					_Tx = Tx;
 					_Ty = Ty;
 				}
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-                                //return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
 				if(_type == SPECULAR_REFLECTION || _type == SPECULAR_TRANSMISSION){
-				//	std::cerr<<"evaluate principled: "<<_diffuse.x<<","<<_diffuse.y<<","<<_diffuse.z<<"\n";
 					return Principled::evaluatePrincipledBRDF_specular(wo, N, wi, _diffuse, (*_mat->parameters));				
 				}
 				return Principled::evaluatePrincipledBRDF_diffuse(wo,N,wi,_diffuse,(*_mat->parameters));
                         }
                         //returns sampled direction wi in Tangent  space.
                         void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
-				//wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y,N);
-				//pdfOut = clamp01(wi|N) * (1.0f/M_PI);
-				//return;
 				if(sampleXYZ.z < _mat->parameters->metallic){
 					// do specular reflection to get metallic look
 					_type = SPECULAR;
@@ -313,9 +308,7 @@ class PrincipledMaterial : public Material{
 						wi = cosineSampleHemisphere(sampleXYZ.x, sampleXYZ.y);
 						_type = DIFFUSE;
 						pdfOut = clamp01(wi.z) / M_PI;
-//                                                std::cerr<<"SPECULAR:Warning: pdf is 0 causes division by 0.\n";
                                         }
-//					if(dot(wi,N) < 0) std::cerr<<"HERE:dot product < 0 :"<<dot(wi,N)<<"\n";
 
 				}else{
 					//do diffuse sampling
