@@ -53,7 +53,7 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	update_mt_pool(jitter);
 	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
-	int bounces = 5;
+	int bounces = 1;
 	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
 	gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
@@ -138,6 +138,7 @@ void hybrid_pt::compute() {
 		tracer->trace_progressively(true);
 }
 float3 evaluateSkyLight(gi::light *L, float3 &dir){
+	if (!L) return make_float3(0,0,0);	// FIXME: black or white?
 	float3 *skylightData = L->skylight.data;
 	float theta = acosf(dir.y);
 	float phi = atan2f(dir.z, dir.x);

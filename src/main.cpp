@@ -197,6 +197,7 @@ void setup_rta(std::string plugin) {
 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
 	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
+	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
 
 	if (!use_cuda) {
 // 		use_case = new example::simple_lighting_with_shadows<rta::simple_aabb, rta::simple_triangle>(set, rays_w, rays_h, the_scene);
@@ -519,8 +520,8 @@ void actual_main()
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
-	gi_algorithm::select("gpu_area_lights");
-// 	gi_algorithm::select("hybrid_area_lights");
+// 	gi_algorithm::select("gpu_area_lights");
+	gi_algorithm::select("hybrid_area_lights");
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 
