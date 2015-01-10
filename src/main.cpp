@@ -184,7 +184,8 @@ void setup_rta(std::string plugin) {
 	if (plugin == "bbvh-cuda") {
 		args.push_back("-A");
 		args.push_back("-b");
-		args.push_back("bsah");
+// 		args.push_back("bsah");
+		args.push_back("median");
 		args.push_back("-t");
 		args.push_back("cis");
 		args.push_back("-l");
