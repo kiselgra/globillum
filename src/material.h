@@ -183,7 +183,7 @@ namespace rta {
 			};
 
 			//! convert standard rta cpu tracer materials to a version suitable for gpu use.
-			material_t* convert_and_upload_materials(int &N);
+			material_t* convert_and_upload_materials(int &N, std::vector<std::string> &filenames);
 			//! we do it this way because we compute mipmaps on the gpu.
 			material_t* download_materials(material_t *gpumat, int N);
 			

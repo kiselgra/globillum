@@ -69,7 +69,7 @@ static struct argp_option options[] =
 	{ "output-format", 'F', "p, e", 0, "Save png files or exr files. Can be specified multiple times."},
 	{ 0 }
 };	
-
+std::vector<std::string> subdFilenames;
 string& replace_nl(string &s)
 {
 	for (int i = 0; i < s.length(); ++i)
@@ -193,6 +193,7 @@ static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
 int material_count = 0;
+int idx_subd_material = 0;
 rta::cuda::material_t *gpu_materials = 0;
 rta::cuda::material_t *cpu_materials = 0;
 
@@ -369,6 +370,15 @@ void setup_rta(std::string plugin) {
 	}
 
 	rta_connection = new rta::cgls::connection(plugin, args);
+
+	//go over all subd file paths and get their actual filename 
+	// this name will be used to identify wether we have a corresponding material filename .pbrdf
+	for(int i=0; i<subdFilenames.size(); i++){
+		int idx = subdFilenames[i].rfind('/');
+		if(idx != std::string::npos){
+			subdFilenames[i]  = subdFilenames[i].substr(idx+1, subdFilenames[i].size() - idx - 5);
+		}
+	}
 	/*
 	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
@@ -377,9 +387,9 @@ void setup_rta(std::string plugin) {
 // 	add_objfile_to_flat_tri_list(cmdline.filename, *ftl);
 // 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
+	gpu_materials = rta::cuda::convert_and_upload_materials(material_count,subdFilenames);
 	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
-
+	idx_subd_material = material_count - subdFilenames.size();
 	/*
 
 	if (!use_cuda) {
@@ -719,6 +729,7 @@ extern "C" {
 		}
 		if (typecode == 1) {
 #if HAVE_LIBOSDINTERFACE == 1
+			subdFilenames.push_back(file);
 			add_subd_model(file, d_file, p_file);
 			return SCM_BOOL_T;
 #else

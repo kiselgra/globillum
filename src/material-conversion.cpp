@@ -1,7 +1,6 @@
 #include "material.h"
 
 #include <librta/material.h>
-
 #include <string>
 #include <stdexcept>
 
@@ -41,7 +40,7 @@ namespace rta {
 			return gpu_tex;
 		}
 
-		cuda::material_t* convert_and_upload_materials(int &N) {
+		cuda::material_t* convert_and_upload_materials(int &N, std::vector<std::string> &subdFilenames) {
 			vector<rta::material_t*> coll;
 			for (int i = 0; ; ++i)  {
 				try {
@@ -53,11 +52,34 @@ namespace rta {
 			}
 			//HACK: ADD DEFAULT PBRT MATERIAL: always last one!
 			coll.push_back(rta::material(0));
-			N = coll.size();
+			N = coll.size() + subdFilenames.size();
+			int numObjMaterials = coll.size();
+			for(int i=0; i<subdFilenames.size(); i++) coll.push_back(rta::material(0));
 			cuda::material_t *materials = new cuda::material_t[coll.size()];
 			data_size = 0;
 			T=0;
-			for (int i = 0; i < coll.size(); ++i) {
+			int subdidx = 0;
+			for (int i = 0; i < N; ++i) {
+				if(i >= numObjMaterials){
+					//subdFilenames!
+					std::string materialPath("materials/");
+					std::string testFile = materialPath + subdFilenames[subdidx] + std::string(".pbrdf");
+					std::ifstream in(testFile.c_str());
+					cuda::material_t *m = &materials[i];
+
+					if(in.is_open()){
+						in.close();
+						m->parameters = new PrincipledBRDFParameters(testFile);
+					}else{
+						std::string materialPath("materials/default.pbrdf");
+						std::ifstream in(materialPath);
+						if(!in.is_open()) std::cerr<<"WARNING: Could not open PBRDF Material "<<materialPath<<"\n";
+						else in.close();
+						m->parameters = new PrincipledBRDFParameters(materialPath);
+					}
+					subdidx++;
+					continue;
+				}
 				rta::material_t *src = coll[i];
 				if(i ==coll.size()-1){
 					std::string materialPath("materials/default.pbrdf");

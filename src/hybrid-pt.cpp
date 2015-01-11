@@ -25,6 +25,7 @@ using namespace gi::cuda;
 extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
 extern int material_count;
+extern int idx_subd_material;
 #if HAVE_LIBOSDINTERFACE == 1
 extern std::vector<OSDI::Model*> subd_models;
 #endif
@@ -33,7 +34,7 @@ extern std::vector<OSDI::Model*> subd_models;
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
-	declare_variable<int>("pt/passes", 32);
+	declare_variable<int>("pt/passes", 128);
 	gi_algorithm::activate(orig_set);
 	set = *orig_set;
 	set.rt = set.rt->copy();
@@ -52,7 +53,7 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	update_mt_pool(jitter);
 	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
-	int bounces = 4;
+	int bounces = 6;
 	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
 	gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
@@ -227,8 +228,15 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					else
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
-					mat = mats[material_count-1];
+				
+					if(idx_subd_material+modelidx < material_count) {
+							mat = mats[idx_subd_material + modelidx];
+					}else{
+						std::cerr << "Warning: Could not open material at subd model idx " << modelidx <<". There are only " << material_count <<" materials present.\n";
+						mat = mats[material_count-1];
+					}
 					usePtexTexture = true;
+					 
 #if DEBUG_PBRDF_FOR_SUBD
 					//if DEBUG_BRDF we just take a constant color (faster than using ptex lookup)
 					mat.diffuse_color = mat.parameters->color;
