@@ -8,7 +8,8 @@
 void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t, float3 *ray_diff_org, float3 *ray_diff_dir,
 										  rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
-										  float3 *to_light, rta::triangle_intersection<rta::cuda::simple_triangle> *shadow_ti);
+										  float3 *to_light, rta::triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
+										  float3 *potential_sample_contribution, gi::light *skylight);
 										  
 
 template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta::cuda::gpu_ray_bouncer<forward_traits>,

@@ -100,6 +100,41 @@ namespace rta {
 		}
 	};
 
+	template<typename _box_t, typename _tri_t, typename sibling_t>
+	struct iterated_cpu_tracers : public iterated_tracers<forward_traits, rta::cpu_raytracer<forward_traits, sibling_t>> {
+		declare_traits_types;
+		typedef rta::cpu_raytracer<box_t, tri_t, sibling_t> tracer_t;
+		iterated_cpu_tracers(tracer_t *first) 
+		: iterated_tracers<forward_traits, rta::cpu_raytracer<forward_traits, sibling_t>>(first) {
+		}
+		virtual std::string identification() {
+			return std::string("wrapper to have a single ray tracer that calls trace_rays() "
+							   "on a set of CPU tracers, copying t_max values inbetween.");
+		}
+		virtual void prepare_trace() {
+			this->first_tracer->prepare_trace();
+		}
+		float copy_intersection_distance_to_max_t() {
+			wall_time_timer wtt; wtt.start();
+			rta::cpu_ray_bouncer<forward_traits> *bouncer = this->first_tracer->cpu_bouncer;
+			rta::ray_generator *raygen = this->first_tracer->raygen;
+			int w = raygen->raydata.w;
+			int h = raygen->raydata.h;
+			#pragma omp parallel
+			for (int y = 0; y < h; ++y)
+				for (int x = 0; x < w; ++x) {
+					raygen->ray_max_t.pixel(x,y) = bouncer->last_intersection.pixel(x,y).t;
+				}
+			return wtt.look();
+		}
+		virtual rta::basic_raytracer<forward_traits>* copy() {
+			iterated_cpu_tracers *it = new iterated_cpu_tracers(*this);
+			for (auto *rt : this->other_tracers)
+				it->append_tracer(dynamic_cast<tracer_t*>(rt->copy()));
+			return it;
+		}
+	};
+
 	namespace cuda {
 		
 		void copy_intersection_distance_to_max_t(int w, int h, 
@@ -129,7 +164,10 @@ namespace rta {
 				return wtt.look();
 			}
 			virtual rta::basic_raytracer<forward_traits>* copy() {
-				return new iterated_gpu_tracers(*this);
+				iterated_gpu_tracers *it = new iterated_gpu_tracers(*this);
+				for (auto *rt : this->other_tracers)
+					it->append_tracer(dynamic_cast<tracer_t*>(rt->copy()));
+				return it;
 			}
 		};
 
