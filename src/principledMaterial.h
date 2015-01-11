@@ -279,10 +279,16 @@ class PrincipledMaterial : public Material{
 				_Ty = Ty;
                         }
 
-				void init(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT, const float3 &Tx, const float3 &Ty){
+				void init(bool usePtexTexture, const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT, const float3 &Tx, const float3 &Ty){
 					_mat = mat;
 					_type = DIFFUSE;
-					_diffuse = _mat->diffuse_color;//_mat->diffuseColor(T,upperT,rightT);
+					if(usePtexTexture){
+						//color is already defined (it was set already in hybrid-pt.cpp where we have access to ptex
+						_diffuse = _mat->diffuse_color;
+					}else{
+						// we have to get correct texture lookup 
+						_diffuse = _mat->diffuseColor(T,upperT,rightT);
+					}
 					_Tx = Tx;
 					_Ty = Ty;
 				}

@@ -29,8 +29,7 @@ extern int material_count;
 extern std::vector<OSDI::Model*> subd_models;
 #endif
 
-#define DEBUG_PBRDF 0
-
+#define DEBUG_PBRDF_FOR_SUBD 1
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
@@ -53,7 +52,7 @@ void hybrid_pt::activate(rt_set *orig_set) {
 	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	update_mt_pool(jitter);
 	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
-	int bounces = 1;
+	int bounces = 4;
 	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
 	gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
@@ -138,7 +137,7 @@ void hybrid_pt::compute() {
 		tracer->trace_progressively(true);
 }
 float3 evaluateSkyLight(gi::light *L, float3 &dir){
-	if (!L) return make_float3(0,0,0);	// FIXME: black or white?
+	if (!L) return make_float3(0,0,0);	// FIXME: black or white? doesnt matter, but I would leave black
 	float3 *skylightData = L->skylight.data;
 	float theta = acosf(dir.y);
 	float phi = atan2f(dir.z, dir.x);
@@ -160,7 +159,6 @@ void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float
 		normalize_vec3f(&orgDir);
 		accSkylight = evaluateSkyLight(skylight,orgDir);
 	}
-			
 	col_accum[id] += throughput[id] * accSkylight;
 	ray_dir[id]  = make_float3(0,0,0);
 	ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -188,16 +186,13 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				material_t mat;
 				rta::cuda::simple_triangle tri;
 				float3 Tx, Ty;
+				bool usePtexTexture = false;
 				// check if we hit a triangle or a subd patch
 				if ((is.ref & 0xff000000) == 0) {
 					// load hit triangle and compute hitpoint geometry
 					// we load the material, too, as it is stored in the triangle
 					tri = triangles[is.ref];
 					mat = mats[tri.material_index];
-#if DEBUG_PBRDF
-					mat = mats[material_count-1];
-					mat.diffuse_color = mat.parameters->color;
-#endif
 					is.barycentric_coord(&bc);
 					barycentric_interpolation(&P, &bc, &tri.a, &tri.b, &tri.c);
 					barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
@@ -233,7 +228,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
 					mat = mats[material_count-1];
-#if DEBUG_PBRDF
+					usePtexTexture = true;
+#if DEBUG_PBRDF_FOR_SUBD
 					//if DEBUG_BRDF we just take a constant color (faster than using ptex lookup)
 					mat.diffuse_color = mat.parameters->color;
 #else	
@@ -242,6 +238,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 #endif
 					//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
 					tri.a = P; tri.b = P+Tx; tri.c = P+Ty;
+					normalize_vec3f(&N);
 					//tri.ta = du;
 					//tri.tb = dv;
 					//tri.tc = normalize_vec3f(du+dv);
@@ -275,7 +272,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_diff_org[w*h+id] = right_P;
 
 				// load and evaluate material
-				currentMaterial.init(mat.isPrincipledMaterial(),&mat, TC, upper_T, right_T, Tx, Ty);
+				currentMaterial.init(mat.isPrincipledMaterial(),usePtexTexture,&mat, TC, upper_T, right_T, Tx, Ty);
 				float3 org_dir = ray_dir[id];
 
 				// add lighting to accumulation buffer

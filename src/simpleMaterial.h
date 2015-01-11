@@ -83,21 +83,12 @@ class LambertianMaterial : public Material{
                         LambertianMaterial(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT):Material(),_mat(mat){
                                 _type = DIFFUSE;
                                 _diffuse = _mat->diffuseColor(T,upperT,rightT);
-                                float sumDS = _diffuse.x + _diffuse.y + _diffuse.z;
-                                if(sumDS > 1.f){
-                                        _diffuse /= sumDS;
-                                }
                         }
 
 						void init(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT){
 							_mat = mat;
 							_type = DIFFUSE;
-							_diffuse = _mat->diffuseColor(T,upperT,rightT);
-							float sumDS = _diffuse.x + _diffuse.y + _diffuse.z;
-                            if(sumDS > 1.f){
-                                    _diffuse /= sumDS;
-                            }
-
+							_diffuse = _mat->diffuseColor(T,upperT,rightT);//*mat->parameters->color;
 						}
 
                         // evaluates brdf based on in/out directions wi/wo in world space
