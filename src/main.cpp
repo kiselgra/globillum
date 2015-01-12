@@ -197,7 +197,9 @@ void setup_rta(std::string plugin) {
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials(material_count);
+
+	std::vector<std::string> dummyF(0);
+	gpu_materials = rta::cuda::convert_and_upload_materials(material_count,dummyF);
 	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
 
 	if (!use_cuda) {
