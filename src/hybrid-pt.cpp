@@ -35,7 +35,7 @@ extern std::vector<OSDI::Model*> subd_models;
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
-	declare_variable<int>("pt/passes", 4);
+	declare_variable<int>("pt/passes", 64);
 	gi_algorithm::activate(orig_set);
 	set = *orig_set;
 	set.rt = set.rt->copy();
@@ -148,7 +148,7 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
 	float t = theta/float(M_PI);
 	int idx = int(t*L->skylight.h) * L->skylight.w + int(s*L->skylight.w);
 	//TODO: This should actually not happen :(
-	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) {return make_float3(0.f,0.f,0.f);} //std::cerr<<"Error:Evaluate skylight: index "<<idx<<" and "<<dir.x<<","<<dir.y<<","<<dir.z<<"\n";//computed from "<<phi<<" and "<<theta<<" to "<<s<<","<<t<<"\n";
+	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) {return make_float3(0.f,0.f,0.f);}
  	return skylightData[idx];
 
 }	
@@ -227,11 +227,12 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 					unsigned int ptexID = 0x00ffffff & is.ref;
 					bool WITH_DISPLACEMENT = true;
+					float mipmapBias = 0.f;
 					//!TODO:tangents are only written IF no displacement? Why?
 					if (WITH_DISPLACEMENT)
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
 					else
-						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, (float*)&Tx, (float*)&Ty);
+						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, mipmapBias, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
 				
 					if(idx_subd_material+modelidx < material_count) {
@@ -349,6 +350,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/pdf);
+				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(1.f,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
 				throughput[id] = TP;
 				continue;
 			}

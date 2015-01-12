@@ -38,6 +38,9 @@ scene_ref the_scene;
 float times[samples];
 int valid_pos = 0, curr_pos = 0;
 
+extern int subd_tess_normal;
+extern int subd_tess_quant;
+
 framebuffer_ref gbuffer;
 picking_buffer_ref picking;
 
@@ -582,6 +585,13 @@ SCM_DEFINE(s_add_model, "add-model%", 6, 0, 0, (SCM filename, SCM type, SCM is_b
 	free(file);
 	return SCM_BOOL_F;
 }
+
+SCM_DEFINE(s_subd_tess, "subd-tess", 2, 0, 0, (SCM n, SCM q), "set subd tesselation parameters") {
+	subd_tess_normal = scm_to_int(n);
+	subd_tess_quant = scm_to_int(q);
+	return SCM_BOOL_T;
+}
+
 
 static void register_scheme_functions_for_main() {
 	#include "main.x"
