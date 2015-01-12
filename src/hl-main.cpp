@@ -189,6 +189,7 @@ scene_ref the_scene = { -1 };
 
 extern int subd_tess_normal;
 extern int subd_tess_quant;
+extern float subd_disp_scale;
 
 //// rta setup
 
@@ -744,6 +745,11 @@ extern "C" {
 	SCM_DEFINE(s_subd_tess, "subd-tess", 2, 0, 0, (SCM n, SCM q), "set subd tesselation parameters") {
 		subd_tess_normal = scm_to_int(n);
 		subd_tess_quant = scm_to_int(q);
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_disp_scale, "displacement-scale", 1, 0, 0, (SCM s), "set displacement scale factor (default: 1)") {
+		subd_disp_scale = scm_to_double(s);
 		return SCM_BOOL_T;
 	}
 

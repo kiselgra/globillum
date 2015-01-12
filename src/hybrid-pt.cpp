@@ -30,7 +30,7 @@ extern int idx_subd_material;
 extern std::vector<OSDI::Model*> subd_models;
 #endif
 
-#define DEBUG_PBRDF_FOR_SUBD 1 
+#define DEBUG_PBRDF_FOR_SUBD 1
 #define SKYLIGHT_OFF 0
 
 extern float aperture, focus_distance, eye_to_lens;

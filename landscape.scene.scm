@@ -45,7 +45,7 @@
 	     :type :subd :disp "/tmp/ram/trex/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
 (subd-tess 3 3)	; use normal subdiv for 3 levels, quantization for 5 levels.
-
+(displacement-scale 3)
 ;  (add-model (string-append home "/render-data/models/bunny-70k.obj") :type :obj :trafo '(1 0 0 500
 ;											  0 0 1   0
 ;											  0 1 0   0
