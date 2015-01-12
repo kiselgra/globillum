@@ -33,6 +33,8 @@ extern std::vector<OSDI::Model*> subd_models;
 #define DEBUG_PBRDF_FOR_SUBD 1 
 #define SKYLIGHT_OFF 0
 
+extern float aperture, focus_distance, eye_to_lens;
+
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
 	declare_variable<int>("pt/passes", 32);
@@ -53,9 +55,11 @@ void hybrid_pt::activate(rt_set *orig_set) {
 // 	set.rgen = crgs = new rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials>(w, h);
 	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	update_mt_pool(jitter);
-	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
-	int bounces = 6;
-	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
+// 	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
+	set.rgen = crgs = new rta::cuda::jittered_lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
+	int path_len = init_path_length;
+	int paths = init_path_samples;
+	set.bouncer = pt = new hybrid_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, path_len, paths);
 	
 	gi::cuda::mt_pool3f pl = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	gi::cuda::mt_pool3f pp = gi::cuda::generate_mt_pool_on_gpu(w,h); 

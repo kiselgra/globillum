@@ -67,5 +67,7 @@ public:
 	virtual void light_samples(int n) { std::cerr << "the algorithm '" << name << "' does not know about light samples." << std::endl; }
 };
 
+extern int init_path_samples, init_path_length, init_light_samples;
+
 #endif
 
