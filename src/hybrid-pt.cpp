@@ -30,11 +30,12 @@ extern int idx_subd_material;
 extern std::vector<OSDI::Model*> subd_models;
 #endif
 
-#define DEBUG_PBRDF_FOR_SUBD 1
+#define DEBUG_PBRDF_FOR_SUBD 1 
+#define SKYLIGHT_OFF 0
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
-	declare_variable<int>("pt/passes", 128);
+	declare_variable<int>("pt/passes", 4);
 	gi_algorithm::activate(orig_set);
 	set = *orig_set;
 	set.rt = set.rt->copy();
@@ -158,7 +159,11 @@ void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float
 	if (max_t[id] == -1){}
 	else{
 		normalize_vec3f(&orgDir);
+#if SKYLIGHT_OFF
+		accSkylight = make_float3(1.f,1.f,1.f);
+#else
 		accSkylight = evaluateSkyLight(skylight,orgDir);
+#endif
 	}
 	col_accum[id] += throughput[id] * accSkylight;
 	ray_dir[id]  = make_float3(0,0,0);
@@ -289,6 +294,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				if((org_dir|N) > 0.0f) {
 					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
 					continue;
+				//	N = -1.0f*N;
 				}
 			
 				//invert org dir to be consistent

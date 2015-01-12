@@ -11,6 +11,7 @@
 #include <string.h>
 #include <iostream>
 #include <fstream>
+#include <vector>
 #include "materialBase.h"
 #include "principledParameters.h"
 
