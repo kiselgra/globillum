@@ -34,8 +34,8 @@
 using namespace std;
 
 scene_ref the_scene;
-#define samples 128
-float times[samples];
+#define time_measurement_samples 128
+float times[time_measurement_samples];
 int valid_pos = 0, curr_pos = 0;
 
 extern int subd_tess_normal;
@@ -57,6 +57,7 @@ float exposure = 10;
 // used for dof implementations
 float aperture = .5;
 float focus_distance = 970.0f;
+float eye_to_lens = 5.0f;
 
 void display() {
 	
@@ -126,8 +127,8 @@ void display() {
 	wall_time_t end = wall_time_in_ms();
 
 	times[curr_pos] = end-start;
-	curr_pos = (curr_pos+1) % samples;
-	valid_pos = (valid_pos == samples ? samples : valid_pos+1);
+	curr_pos = (curr_pos+1) % time_measurement_samples;
+	valid_pos = (valid_pos == time_measurement_samples ? time_measurement_samples : valid_pos+1);
 
     check_for_gl_errors("end of display");
 
@@ -399,11 +400,12 @@ static char* console_aperture(console_ref ref, int argc, char **argv) {
 }
 
 
+string select_algo = "";
 
 void actual_main() 
 {
 	dump_gl_info();
-	for (int i = 0; i < samples; ++i)
+	for (int i = 0; i < time_measurement_samples; ++i)
 		times[i] = 0.0f;
 
 	register_display_function(display);
@@ -527,7 +529,10 @@ void actual_main()
 
 // 	gi_algorithm::select("gpu_cgls_lights");
 // 	gi_algorithm::select("gpu_area_lights");
-	gi_algorithm::select("hybrid_area_lights");
+	if (select_algo == "")
+		gi_algorithm::select("hybrid_area_lights");
+	else
+		gi_algorithm::select(select_algo);
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 
@@ -591,6 +596,52 @@ SCM_DEFINE(s_subd_tess, "subd-tess", 2, 0, 0, (SCM n, SCM q), "set subd tesselat
 	subd_tess_quant = scm_to_int(q);
 	return SCM_BOOL_T;
 }
+
+SCM_DEFINE(s_dof_config, "dof-config", 3, 0, 0, (SCM a, SCM d, SCM e), "dof parameters") {
+	aperture = scm_to_double(a);
+	focus_distance = scm_to_double(d);
+	eye_to_lens = scm_to_double(e);
+	return SCM_BOOL_T;
+}
+	
+SCM_DEFINE(s_light_samples, "light-samples", 1, 0, 0, (SCM samples), "change number of the current algorithm's light samples (whatever that might mean, might be area light samples for direct illum)") {
+	int s = scm_to_int(samples);
+	s = max(1, s);
+	if (gi_algorithm::selected)
+		gi_algorithm::selected->light_samples(s);
+	else
+		init_light_samples = s;
+	return SCM_BOOL_T;
+}
+
+SCM_DEFINE(s_path_samples, "path-samples", 1, 0, 0, (SCM samples), "change number of the current algorithm's path samples (whatever that might mean, might be multi sampling for pt)") {
+	int s = scm_to_int(samples);
+	s = max(1, s);
+	if (gi_algorithm::selected)
+		gi_algorithm::selected->path_samples(s);
+	else
+		init_path_samples = s;
+	return SCM_BOOL_T;
+}
+
+SCM_DEFINE(s_path_len, "path-length", 1, 0, 0, (SCM samples), "change number of the current algorithm's light samples (whatever that might mean)") {
+	int s = scm_to_int(samples);
+	s = max(1, s);
+	if (gi_algorithm::selected)
+		gi_algorithm::selected->path_length(s);
+	else
+		init_path_length = s;
+	return SCM_BOOL_T;
+}
+
+SCM_DEFINE(s_use_algo, "integrator", 1, 0, 0, (SCM name), "which algorithm to use") {
+	char *n = scm_to_locale_string(name);
+	select_algo = n;
+	free(n);
+	return SCM_BOOL_T;
+}
+
+
 
 
 static void register_scheme_functions_for_main() {

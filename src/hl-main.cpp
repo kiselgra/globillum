@@ -183,6 +183,7 @@ float exposure = 10;
 // used for dof implementations
 float aperture = .5;
 float focus_distance = 970.0f;
+float eye_to_lens = 5.f;
 
 scene_ref the_scene = { -1 };
 
@@ -519,7 +520,7 @@ static bool quit_loop = false;
 static bool restart_compute = true;
 static char *change_algo = 0;
 static struct termios termios;
-
+string select_algo = "";
 
 void actual_main() {
 	register_cgls_scheme_functions();
@@ -578,7 +579,10 @@ void actual_main() {
 // 	gi_algorithm::select("gpu_cgls_lights_dof");
 // 	gi_algorithm::select("gpu_pt");
 // 	gi_algorithm::select("hybrid_area_lights");
-	gi_algorithm::select("hybrid_pt");
+	if (select_algo == "")
+		gi_algorithm::select("hybrid_pt");
+	else
+		gi_algorithm::select(select_algo);
 
 	scm_c_eval_string("(set! gi-initialization-done #t)");
 
@@ -707,16 +711,53 @@ extern "C" {
 		return SCM_BOOL_T;
 	}
 
-	SCM_DEFINE(s_light_samples, "light-samples", 1, 0, 0, (SCM samples), "change number of the current algorithm's light samples (whatever that might mean)") {
+	SCM_DEFINE(s_light_samples, "light-samples", 1, 0, 0, (SCM samples), "change number of the current algorithm's light samples (whatever that might mean, might be area light samples for direct illum)") {
 		int s = scm_to_int(samples);
 		s = max(1, s);
-		gi_algorithm::selected->light_samples(s);
+		if (gi_algorithm::selected)
+			gi_algorithm::selected->light_samples(s);
+		else
+			init_light_samples = s;
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_path_samples, "path-samples", 1, 0, 0, (SCM samples), "change number of the current algorithm's path samples (whatever that might mean, might be multi sampling for pt)") {
+		int s = scm_to_int(samples);
+		s = max(1, s);
+		if (gi_algorithm::selected)
+			gi_algorithm::selected->path_samples(s);
+		else
+			init_path_samples = s;
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_path_len, "path-length", 1, 0, 0, (SCM samples), "change number of the current algorithm's light samples (whatever that might mean)") {
+		int s = scm_to_int(samples);
+		s = max(1, s);
+		if (gi_algorithm::selected)
+			gi_algorithm::selected->path_length(s);
+		else
+			init_path_length = s;
 		return SCM_BOOL_T;
 	}
 
 	SCM_DEFINE(s_subd_tess, "subd-tess", 2, 0, 0, (SCM n, SCM q), "set subd tesselation parameters") {
 		subd_tess_normal = scm_to_int(n);
 		subd_tess_quant = scm_to_int(q);
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_dof_config, "dof-config", 3, 0, 0, (SCM a, SCM d, SCM e), "dof parameters") {
+		aperture = scm_to_double(a);
+		focus_distance = scm_to_double(d);
+		eye_to_lens = scm_to_double(e);
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_use_algo, "integrator", 1, 0, 0, (SCM name), "which algorithm to use") {
+		char *n = scm_to_locale_string(name);
+		select_algo = n;
+		free(n);
 		return SCM_BOOL_T;
 	}
 
