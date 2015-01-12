@@ -35,7 +35,7 @@ extern std::vector<OSDI::Model*> subd_models;
 
 void hybrid_pt::activate(rt_set *orig_set) {
 	if (activated) return;
-	declare_variable<int>("pt/passes", 64);
+	declare_variable<int>("pt/passes", 32);
 	gi_algorithm::activate(orig_set);
 	set = *orig_set;
 	set.rt = set.rt->copy();
@@ -153,17 +153,19 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
 
 }	
 
-void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight){
-	float3 accSkylight = make_float3(0.f,0.f,0.f);
+void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight, bool isValid){
+	float3 accSkylight = make_float3(1.f,0.f,1.f);
 	float3 orgDir = ray_dir[id];
 	if (max_t[id] == -1){}
 	else{
 		normalize_vec3f(&orgDir);
-#if SKYLIGHT_OFF
-		accSkylight = make_float3(1.f,1.f,1.f);
-#else
-		accSkylight = evaluateSkyLight(skylight,orgDir);
-#endif
+//#if SKYLIGHT_OFF
+
+//		accSkylight = make_float3(1.f,1.f,1.f);
+//#else
+//		accSkylight = evaluateSkyLight(skylight,orgDir);
+//#endif
+	if(isValid) accSkylight = evaluateSkyLight(skylight,orgDir);
 	}
 	col_accum[id] += throughput[id] * accSkylight;
 	ray_dir[id]  = make_float3(0,0,0);
@@ -226,15 +228,16 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					// evaluate subd patch to get position and normal
 					unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 					unsigned int ptexID = 0x00ffffff & is.ref;
-					bool WITH_DISPLACEMENT = true;
+					bool WITH_DISPLACEMENT = true;//false;//true;//false;// true;//false;
 					float mipmapBias = 0.f;
+					float3 dummyP;
 					//!TODO:tangents are only written IF no displacement? Why?
 					if (WITH_DISPLACEMENT)
-						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
+						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&dummyP, (float*)&N);
 					else
-						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&P, (float*)&N, mipmapBias, (float*)&Tx, (float*)&Ty);
+						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&dummyP, (float*)&N);//, mipmapBias, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
-				
+
 					if(idx_subd_material+modelidx < material_count) {
 							mat = mats[idx_subd_material + modelidx];
 					}else{
@@ -242,7 +245,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 						mat = mats[material_count-1];
 					}
 					usePtexTexture = true;
-					 
+					//WATCH OUT: 0.15 is a MAGIC NUMBER to offset so that we dont get self intersections with compressed boxes.
+					 P = ray_orig[id] + (is.t-0.2f) * ray_dir[id];
 #if DEBUG_PBRDF_FOR_SUBD
 					//if DEBUG_BRDF we just take a constant color (faster than using ptex lookup)
 					mat.diffuse_color = mat.parameters->color;
@@ -258,7 +262,15 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					//tri.tc = normalize_vec3f(du+dv);
 #endif
 				}
-				
+
+				float3 org_dir = ray_dir[id];
+				// add lighting to accumulation buffer
+				normalize_vec3f(&org_dir);
+				//bakcfacing check
+				if((org_dir|N) > 0.0f) {
+					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);
+					continue;
+				}
 				// eval ray differentials (stored below)
 				float3 upper_org = ray_diff_org[id],
 					   upper_dir = ray_diff_dir[id],
@@ -287,16 +299,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				// load and evaluate material
 				currentMaterial.init(mat.isPrincipledMaterial(),usePtexTexture,&mat, TC, upper_T, right_T, Tx, Ty);
-				float3 org_dir = ray_dir[id];
 
-				// add lighting to accumulation buffer
-				normalize_vec3f(&org_dir);
-				//bakcfacing check
-				if((org_dir|N) > 0.0f) {
-					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
-					continue;
-				//	N = -1.0f*N;
-				}
 			
 				//invert org dir to be consistent
 				float3 inv_org_dir = -1.0f*org_dir;
@@ -342,6 +345,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					ray_diff_dir[id] = reflect(upper_dir, N);
 					TP *= brdf;
 				}
+
+				
 				float len = length_of_vector(dir);
 				dir /= len;
 				//direction of normal might be better 
@@ -354,7 +359,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				throughput[id] = TP;
 				continue;
 			}
-			handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight);
+			handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);
 			continue;
 		}
 	}
