@@ -116,7 +116,7 @@ void display() {
 			render_gbuffer_visualization(the_scene, gbuffer);
 
 // 		glClear(GL_DEPTH_BUFFER_BIT);
-		render_rayvis();
+// 		render_rayvis();
 	}
 
 	glFinish();

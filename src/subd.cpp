@@ -16,6 +16,8 @@ vector<OSDI::Model*> subd_models;
 static vector<string> subd_files;
 static vector<string> disp_files;
 static vector<string> proxy_files;
+int subd_tess_normal = 1;
+int subd_tess_quant = 1;
 
 void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy) {
 	cout << "add sub model " << filename << endl;
@@ -36,13 +38,16 @@ void load_subd_proxies() {
 rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	if (subd_files.size() == 0) return 0;
 	vector<string> args;
+	ostringstream n; n << subd_tess_normal;
+	ostringstream q; q << subd_tess_quant;
 
 	args.push_back("-n");
-	args.push_back("1");
+	args.push_back(n.str());
 	args.push_back("-q");
-	args.push_back("1");
+	args.push_back(q.str());
 	args.push_back("--node");
-	args.push_back("test");
+// 	args.push_back("test");
+	args.push_back("pre662");
 	for (int i = 0; i < subd_files.size(); ++i) {
 		args.push_back("--model");
 		args.push_back(subd_files[i]);

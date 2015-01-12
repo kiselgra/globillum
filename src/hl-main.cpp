@@ -186,6 +186,8 @@ float focus_distance = 970.0f;
 
 scene_ref the_scene = { -1 };
 
+extern int subd_tess_normal;
+extern int subd_tess_quant;
 
 //// rta setup
 
@@ -699,6 +701,12 @@ extern "C" {
 		int s = scm_to_int(samples);
 		s = max(1, s);
 		gi_algorithm::selected->light_samples(s);
+		return SCM_BOOL_T;
+	}
+
+	SCM_DEFINE(s_subd_tess, "subd-tess", 2, 0, 0, (SCM n, SCM q), "set subd tesselation parameters") {
+		subd_tess_normal = scm_to_int(n);
+		subd_tess_quant = scm_to_int(q);
 		return SCM_BOOL_T;
 	}
 
