@@ -20,4 +20,4 @@
          ;:map "cgskies-0319-free.png"
          :map (string-append home "/render-data/images/skylight-morn.exr")
          :diameter 1000
-         :scale 10))
+         :scale 1))
