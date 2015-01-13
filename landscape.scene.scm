@@ -47,7 +47,7 @@
 	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
 (displacement-scale 3)
-	(subd-tess 3 4)
+	(subd-tess 1 2)
 	(dof-config 0 60 5)
 	(path-samples 64)
 	(path-length 5)
