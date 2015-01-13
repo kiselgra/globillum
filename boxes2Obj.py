@@ -9,7 +9,7 @@ import sys;
 ##                                Settings                                    ##
 ################################################################################
 #path to the file of bounding boxes
-f = open("/home/chris/Projects/repos/siggraph/boxes", "r")
+f = open("/tmp/box-d3.txt", "r")
     
 # number of segments for each sphere (corners) and number of vertices 
 # for the edges
@@ -21,13 +21,17 @@ dSegs=24
 # number of rings for the spheres
 rCount=8
 
-s=0.005 #radius of the sphere
-r=0.0025 #radius of the edges
-smooth=False #for smooth look
+s=0.15 #radius of the sphere
+r=0.1 #radius of the edges
+smooth=True #for smooth look
 
 ################################################################################
 ##                                Settings                                    ##
 ################################################################################
+
+
+sLevel = []
+rLevel = []
 
 
 if bpy.context.scene.objects.values():
@@ -38,11 +42,14 @@ bpy.ops.object.delete()
 for m in bpy.data.meshes:
     m.user_clear()
     bpy.data.meshes.remove(m)
+for m in bpy.data.materials:
+    m.user_clear()
+    bpy.data.materials.remove(m)
 
-def addSphere(loc=(0,0,0)):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=dSegs, ring_count=rCount, size=s, location=loc)
+def addSphere(loc=(0,0,0), l=0):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=dSegs, ring_count=rCount, size=sLevel[l], location=loc)
     
-def addCylinder(loc1=(0,0,0), loc2=(0,0,0)):
+def addCylinder(loc1=(0,0,0), loc2=(0,0,0),l=0):
     print(loc1)
     vec = Vector((loc2[0]-loc1[0],loc2[1]-loc1[1],loc2[2]-loc1[2]))
     pos = Vector((loc2[0]+loc1[0],loc2[1]+loc1[1],loc2[2]+loc1[2]))/2
@@ -52,7 +59,7 @@ def addCylinder(loc1=(0,0,0), loc2=(0,0,0)):
     else:
         rot=Quaternion((1,0,0),pi)
     d = vec.length    
-    bpy.ops.mesh.primitive_cylinder_add(vertices=dSegs, radius=r, depth=d, location=pos)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=dSegs, radius=rLevel[l], depth=d, end_fill_type='NOTHING', location=pos)
     bpy.ops.transform.rotate(value=rot.angle, axis=rot.axis)
 
 def createBox(b):
@@ -67,59 +74,70 @@ def createBox(b):
     v7 = (b.vertices[6].x, b.vertices[6].y, b.vertices[6].z)
     v8 = (b.vertices[7].x, b.vertices[7].y, b.vertices[7].z)
 
-    addCylinder(loc1=v1, loc2=v2)    
+    addCylinder(loc1=v1, loc2=v2, l=b.level)    
     selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v3, loc2=v4)
+    addCylinder(loc1=v3, loc2=v4, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v5, loc2=v6)
+    addCylinder(loc1=v5, loc2=v6, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v7, loc2=v8)
-    selectedObjects.append(bpy.context.active_object)
-
-    addCylinder(loc1=v1, loc2=v3)
-    selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v2, loc2=v4)
-    selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v5, loc2=v7)
-    selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v6, loc2=v8)
+    addCylinder(loc1=v7, loc2=v8, l=b.level)
     selectedObjects.append(bpy.context.active_object)
 
-    addCylinder(loc1=v1, loc2=v5)
+    addCylinder(loc1=v1, loc2=v3, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v2, loc2=v6)
+    addCylinder(loc1=v2, loc2=v4, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v3, loc2=v7)
+    addCylinder(loc1=v5, loc2=v7, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addCylinder(loc1=v4, loc2=v8)
+    addCylinder(loc1=v6, loc2=v8, l=b.level)
+    selectedObjects.append(bpy.context.active_object)
+
+    addCylinder(loc1=v1, loc2=v5, l=b.level)
+    selectedObjects.append(bpy.context.active_object)
+    addCylinder(loc1=v2, loc2=v6, l=b.level)
+    selectedObjects.append(bpy.context.active_object)
+    addCylinder(loc1=v3, loc2=v7, l=b.level)
+    selectedObjects.append(bpy.context.active_object)
+    addCylinder(loc1=v4, loc2=v8, l=b.level)
     selectedObjects.append(bpy.context.active_object)
 
 
-    addSphere(loc=v1)
+    addSphere(loc=v1, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v2)
+    addSphere(loc=v2, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v3)
+    addSphere(loc=v3, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v4)
+    addSphere(loc=v4, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v5)
+    addSphere(loc=v5, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v6)
+    addSphere(loc=v6, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v7)
+    addSphere(loc=v7, l=b.level)
     selectedObjects.append(bpy.context.active_object)
-    addSphere(loc=v8)
+    addSphere(loc=v8, l=b.level)
     selectedObjects.append(bpy.context.active_object)
 
     bpy.ops.object.select_all(action='DESELECT')
     for o in selectedObjects:
         o.select = True
     bpy.ops.object.join()
+    
+    bpy.ops.object.material_slot_add()
+    name = "level_" + str(b.level)
+    bpy.context.active_object.material_slots[''].material = bpy.data.materials[name]
 
     bpy.ops.object.mode_set(mode='OBJECT')
     if smooth:
         bpy.ops.object.shade_smooth()
+        
+def createMaterials(l):
+    for i in range(0,l):
+        name = "level_"+str(i)
+        bpy.data.materials.new(name);
+        sLevel.append(s/(i+1))
+        rLevel.append(r/(i+1))
     
 class Vertex:
     def __init__(self):
@@ -141,11 +159,12 @@ class bcolors:
     UNDERLINE = "\033[4m"
 
 class Box:
-    def __init__(self):
+    def __init__(self, l):
         print(bcolors.OKGREEN + "add new box" + bcolors.ENDC)
         self.center = Vertex();
         self.vertices = [];
         self.boxName='';
+        self.level = l;
 
     def addVertex(self, v):
         print(bcolors.OKBLUE + "add Vertex(%f, %f, %f)" % (v.x, v.y, v.z) + bcolors.ENDC)
@@ -167,7 +186,13 @@ boxes = []
 
 for line in f:
     if "# box begin" in line:
-        boxes.append(Box());
+        vals = line.rstrip().split(" ")
+        l = int(vals[-1])
+        boxes.append(Box(l));
+    elif "# levels" in line:
+        vals = line.rstrip().split(" ")
+        l = int(vals[-1])
+        createMaterials(l)
     elif "#" in line: continue;
     else:
         vals = line.rstrip().split(" ");
