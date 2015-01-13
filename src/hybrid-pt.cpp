@@ -34,6 +34,7 @@ extern std::vector<OSDI::Model*> subd_models;
 // DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
 // DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
 #define DEBUG_PBRDF_FOR_SUBD 0
+#define SKYLIGHT_OFF 1
 
 
 //deinfe BOX_SHOT to get the correct color evaluation for the trex box shot.
@@ -152,7 +153,7 @@ void hybrid_pt::compute() {
 		bouncer->verbose = verbose;
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
-		bouncer->path_samples = vars["pt/passes"].int_val;
+		// bouncer->path_samples = vars["pt/passes"].int_val;
 
 		tracer->trace_progressively(true);
 }
