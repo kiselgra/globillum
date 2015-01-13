@@ -5,7 +5,7 @@
 ;  :proxy "/tmp/trex.obj")
  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hc_upteeth_trexAA.ptx"
   :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hc_upteeth_trexAA.ptx")
- (subd-tess 3 7) ;use normal subdiv for 3 levels, quantization for 5 levels.
+ (subd-tess 3 3) ;use normal subdiv for 3 levels, quantization for 5 levels.
  (displacement-scale 3)
  (path-length 2)
  (path-samples 32)

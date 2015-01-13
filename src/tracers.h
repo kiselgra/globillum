@@ -83,8 +83,9 @@ namespace rta {
 			int n = other_tracers.size();
 			for (int i = 0; i < n; ++i) {
 				sum += copy_intersection_distance_to_max_t();
-				sum += other_tracers[i]->trace_rays();
+				sum += other_tracers[i]->trace_rays();	// alex: hier.
 			}
+			return sum;
 		}
 		void append_tracer(tracer_t *add) {
 			other_tracers.push_back(add);

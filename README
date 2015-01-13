@@ -54,3 +54,4 @@ code
 - materialien und texs in mateirals.h, material-conversion.cpp, siehe hl-main.cpp:347 "cpu_materials", kann unabhängig von gpu_materials werden.
 - bounce-funktion in pt-hybrid.cpp
 
+./src/gi -c nogui.scm -c dinoHead.scene.scm landscape.lights.scm -P /tmp/alex/ --lazy -Fe -Fp
