@@ -181,7 +181,7 @@ std::map<std::string, var> vars;
 float exposure = 10;
 
 // used for dof implementations
-float aperture = .5;
+float aperture = .0f;
 float focus_distance = 970.0f;
 float eye_to_lens = 5.f;
 
@@ -190,6 +190,7 @@ scene_ref the_scene = { -1 };
 extern int subd_tess_normal;
 extern int subd_tess_quant;
 extern float subd_disp_scale;
+extern std::string subd_face_include;
 
 //// rta setup
 
@@ -763,6 +764,14 @@ extern "C" {
 	SCM_DEFINE(s_use_algo, "integrator", 1, 0, 0, (SCM name), "which algorithm to use") {
 		char *n = scm_to_locale_string(name);
 		select_algo = n;
+		free(n);
+		return SCM_BOOL_T;
+	}
+
+
+	SCM_DEFINE(s_use_faces, "use-only-those-faces", 1, 0, 0, (SCM only), "") {
+		char *n = scm_to_locale_string(only);
+		subd_face_include = n;
 		free(n);
 		return SCM_BOOL_T;
 	}

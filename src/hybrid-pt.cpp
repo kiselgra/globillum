@@ -33,6 +33,8 @@ extern std::vector<OSDI::Model*> subd_models;
 #define DEBUG_PBRDF_FOR_SUBD 1
 #define SKYLIGHT_OFF 0
 
+//#define OFFSET_HACK
+
 extern float aperture, focus_distance, eye_to_lens;
 
 void hybrid_pt::activate(rt_set *orig_set) {
@@ -156,9 +158,13 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
  	return skylightData[idx];
 
 }	
-
+float clampFloat(float a){
+	if(a<0.0f) return 0.0f;
+	if(a>1.0f) return 1.0f;
+	return a;
+}
 void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight, bool isValid){
-	float3 accSkylight = make_float3(1.f,0.f,1.f);
+	float3 accSkylight = make_float3(0.f,0.f,0.f);
 	float3 orgDir = ray_dir[id];
 	if (max_t[id] == -1){}
 	else{
@@ -170,6 +176,13 @@ void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float
 //		accSkylight = evaluateSkyLight(skylight,orgDir);
 //#endif
 	if(isValid) accSkylight = evaluateSkyLight(skylight,orgDir);
+
+#if SKYLIGHT_OFF
+	if(isValid) 
+		accSkylight = make_float3(1.f,1.f,1.f);
+	else 
+		accSkylight = make_float3(1.f,0.f,1.f);
+#endif
 	}
 	col_accum[id] += throughput[id] * accSkylight;
 	ray_dir[id]  = make_float3(0,0,0);
@@ -198,6 +211,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				material_t mat;
 				rta::cuda::simple_triangle tri;
 				float3 Tx, Ty;
+
+				float3 geoN;
+
 				bool usePtexTexture = false;
 				// check if we hit a triangle or a subd patch
 				if ((is.ref & 0xff000000) == 0) {
@@ -210,6 +226,12 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					barycentric_interpolation(&N, &bc, &tri.na, &tri.nb, &tri.nc);
 					barycentric_interpolation(&TC, &bc, &tri.ta, &tri.tb, &tri.tc);
 					normalize_vec3f(&N);
+
+					float3 pba = tri.b - tri.a;normalize_vec3f(&pba);
+					float3 pbc = tri.c - tri.a;normalize_vec3f(&pbc);
+
+					cross_vec3f(&geoN,&pba,&pbc);
+					normalize_vec3f(&geoN);	
 
 					//TODO:CHECKME
 					float3 dpos = tri.b - tri.a;
@@ -239,7 +261,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					if (WITH_DISPLACEMENT)
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&dummyP, (float*)&N);
 					else
-						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&dummyP, (float*)&N);//, mipmapBias, (float*)&Tx, (float*)&Ty);
+						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&dummyP, (float*)&geoN);//, mipmapBias, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
 
 					if(idx_subd_material+modelidx < material_count) {
@@ -249,6 +271,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 						mat = mats[material_count-1];
 					}
 					usePtexTexture = true;
+					
 					//WATCH OUT: 0.15 is a MAGIC NUMBER to offset so that we dont get self intersections with compressed boxes.
 					 P = ray_orig[id] + (is.t-0.2f) * ray_dir[id];
 #if DEBUG_PBRDF_FOR_SUBD
@@ -256,11 +279,15 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					mat.diffuse_color = mat.parameters->color;
 #else	
 					//!slow but better with ram. 
+					//clamp uvs
+					//is.beta=clampFloat(is.beta);
+					//is.gamma=clampFloat(is.gamma); 
 					subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);
 #endif
 					//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
 					tri.a = P; tri.b = P+Tx; tri.c = P+Ty;
 					normalize_vec3f(&N);
+					geoN = N;
 					//tri.ta = du;
 					//tri.tb = dv;
 					//tri.tc = normalize_vec3f(du+dv);
@@ -271,12 +298,12 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// add lighting to accumulation buffer
 				normalize_vec3f(&org_dir);
 				//bakcfacing check
-				if((org_dir|N) > 0.0f) {
+				if((org_dir|geoN) > 0.0f) {
 					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);
 					continue;
 				}
-				// eval ray differentials (stored below)
 				float3 upper_org = ray_diff_org[id],
+				// eval ray differentials (stored below)
 					   upper_dir = ray_diff_dir[id],
 					   right_org = ray_diff_org[w*h+id],
 					   right_dir = ray_diff_dir[w*h+id];
@@ -334,13 +361,13 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				//do only diffuse for now
 				float pdf = 1.0f;
 				if (reflection) {
-					org_dir = transform_to_tangent_frame(org_dir, T, B, N);
+		/*			org_dir = transform_to_tangent_frame(org_dir, T, B, N);
 					dir = org_dir;
 					dir.z = -dir.z;
 					dir = transform_from_tangent_frame(dir, T, B, N);
 					// store reflection ray differentials. (todo: change to broadened cone)
 					ray_diff_dir[id] = reflect(upper_dir, N);
-					ray_diff_dir[w*h+id] = reflect(right_dir, N);
+					ray_diff_dir[w*h+id] = reflect(right_dir, N);*/
 				}else{
 					float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
 					currentMaterial.sample(inv_org_dir_ts, dir, random, pdf);
@@ -354,12 +381,15 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				float len = length_of_vector(dir);
 				dir /= len;
 				//direction of normal might be better 
-				P += 0.01f * N; // I hope N is normalized :-)
+#ifdef OFFSET_HACK
+	P += 0.9f * N;
+#endif
+				P += 0.01f * geoN; // I hope N is normalized :-)
 				ray_orig[id] = P;
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/pdf);
-				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(1.f,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
+//				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(1.f,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
 				throughput[id] = TP;
 				continue;
 			}

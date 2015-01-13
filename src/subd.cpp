@@ -19,6 +19,7 @@ static vector<string> proxy_files;
 int subd_tess_normal = 1;
 int subd_tess_quant = 1;
 float subd_disp_scale = 1.0f;
+std::string subd_face_include;
 
 void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy) {
 	cout << "add sub model " << filename << endl;
@@ -49,7 +50,11 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	args.push_back(q.str());
 	args.push_back("--node");
 // 	args.push_back("test");
-	args.push_back("pre662");
+	args.push_back("uni662");
+	if (subd_face_include != "") {
+		args.push_back("-f");
+		args.push_back(subd_face_include);
+	}
 	args.push_back("--scale");
 	args.push_back(f.str());
 	for (int i = 0; i < subd_files.size(); ++i) {
