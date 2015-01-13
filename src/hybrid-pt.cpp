@@ -34,7 +34,6 @@ extern std::vector<OSDI::Model*> subd_models;
 // DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
 // DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
 #define DEBUG_PBRDF_FOR_SUBD 0
-#define SKYLIGHT_OFF 1
 
 
 //deinfe BOX_SHOT to get the correct color evaluation for the trex box shot.
@@ -190,13 +189,6 @@ void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float
 		normalize_vec3f(&orgDir);
 	
 	if(isValid) accSkylight = evaluateSkyLight(skylight,orgDir);
-
-//#if iSKYLIGHT_OFF
-//	if(isValid) 
-//		accSkylight = make_float3(1.f,1.f,1.f);
-//	else 
-//		accSkylight = make_float3(1.f,0.f,1.f);
-//#endif
 
 	}
 	col_accum[id] += throughput[id] * accSkylight;
