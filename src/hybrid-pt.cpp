@@ -30,10 +30,22 @@ extern int idx_subd_material;
 extern std::vector<OSDI::Model*> subd_models;
 #endif
 
+//define wether to use PTEX Texture or not
+// DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
+// DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
 #define DEBUG_PBRDF_FOR_SUBD 0
-#define SKYLIGHT_OFF 1
 
-//#define OFFSET_HACK
+
+//deinfe BOX_SHOT to get the correct color evaluation for the trex box shot.
+//when define BOX_SHOT also the TEASER_SHOT should be defined!
+#define BOX_SHOT
+
+//define TEASER_SHOT for the correct setup for teaser shot (no skylight)
+#define TEASER_SHOT
+
+#ifdef TEASER_SHOT
+	#define OFFSET_HACK
+#endif
 
 extern float aperture, focus_distance, eye_to_lens;
 
@@ -145,7 +157,13 @@ void hybrid_pt::compute() {
 		tracer->trace_progressively(true);
 }
 float3 evaluateSkyLight(gi::light *L, float3 &dir){
+//	if (!L) return make_float3(0,0,0);	// FIXME: black or white? doesnt matter, but I would leave black
+
+#ifdef BOX_SHOT
+	return make_float3(1.f,1.f,1.f);
+#endif
 	if (!L) return make_float3(0,0,0);	// FIXME: black or white? doesnt matter, but I would leave black
+
 	float3 *skylightData = L->skylight.data;
 	float theta = acosf(dir.y);
 	float phi = atan2f(dir.z, dir.x);
@@ -164,27 +182,19 @@ float clampFloat(float a){
 	return a;
 }
 void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight, bool isValid){
-	float3 accSkylight = make_float3(0.f,0.f,0.f);
+	float3 accSkylight = make_float3(1.f,1.f,1.f);
 	float3 orgDir = ray_dir[id];
 	if (max_t[id] == -1){}
 	else{
 		normalize_vec3f(&orgDir);
-//#if SKYLIGHT_OFF
-
-//		accSkylight = make_float3(1.f,1.f,1.f);
-//#else
-//		accSkylight = evaluateSkyLight(skylight,orgDir);
-//#endif
+	
 	if(isValid) accSkylight = evaluateSkyLight(skylight,orgDir);
 
-#if SKYLIGHT_OFF
-	if(isValid) 
-		accSkylight = make_float3(1.f,1.f,1.f);
-	else 
-		accSkylight = make_float3(1.f,0.f,1.f);
-#endif
 	}
 	col_accum[id] += throughput[id] * accSkylight;
+#ifdef TEASER_SHOT
+	if(!isValid) col_accum[id] = make_float3(1.f,1.f,1.f);
+#endif
 	ray_dir[id]  = make_float3(0,0,0);
 	ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
 	max_t[id] = -1;
@@ -196,7 +206,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 										  triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
 										  float3 *to_light, triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
-										  float3 *potential_sample_contribution, gi::light *skylight) {
+										  float3 *potential_sample_contribution, gi::light *skylight, int pathLen) {
 	#pragma omp parallel for 
 	for (int y = 0; y < h; ++y) {
 		materialBRDF currentMaterial;
@@ -299,8 +309,10 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				normalize_vec3f(&org_dir);
 				//bakcfacing check
 				if((org_dir|geoN) > 0.0f) {
-					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);
+#ifndef BOX_SHOT
+					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);
 					continue;
+#endif
 				}
 				float3 upper_org = ray_diff_org[id],
 				// eval ray differentials (stored below)
@@ -389,11 +401,23 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/pdf);
-//				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(1.f,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
+#ifndef BOX_SHOT
+				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(0.9f, 0.9f, 0.9f);//1.f,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
+#endif
 				throughput[id] = TP;
 				continue;
 			}
+
+
+#ifdef TEASER_SHOT
+//			if(pathLen == 1){
+			if(throughput[id].x == 1.0f && throughput[id].y == 1.0f && throughput[id].z == 1.0f){
+				handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);
+				continue;
+			}
+#endif
 			handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);
+			
 			continue;
 		}
 	}
