@@ -25,6 +25,9 @@ s=0.15 #radius of the sphere
 r=0.1 #radius of the edges
 smooth=True #for smooth look
 
+export=True
+outFile="/tmp/boxes.obj"
+
 ################################################################################
 ##                                Settings                                    ##
 ################################################################################
@@ -207,3 +210,6 @@ for line in f:
 for b in boxes:
     createBox(b);
     
+    
+if export:
+    bpy.ops.export_scene.obj(filepath=outFile, use_selection=False, use_animation=False, use_mesh_modifiers=True, use_edges=False, use_smooth_groups=True, use_smooth_groups_bitflags=False,use_normals=True, use_uvs=True, use_materials=True, use_triangles=True, use_nurbs=False, use_vertex_groups=True, use_blen_objects=True, group_by_object=True, group_by_material=True, keep_vertex_order=False, axis_forward='Y', axis_up='Z', global_scale=1, path_mode='AUTO')
