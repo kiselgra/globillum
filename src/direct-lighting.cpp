@@ -16,7 +16,7 @@ using namespace rta;
 extern cuda::material_t *gpu_materials;
 extern cuda::material_t *cpu_materials;
 
-extern float aperture, focus_distance;
+extern float aperture, focus_distance, eye_to_lens;
 
 namespace local {
 
@@ -213,12 +213,16 @@ namespace local {
 		triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
 		gi::cuda::mt_pool3f jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 		update_mt_pool(jitter);
-		set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
+		set.rgen = crgs = new rta::cuda::jittered_lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, jitter);
+// 		set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
 // 		set.rgen = crgs = new cuda::camera_ray_generator_shirley<cuda::gpu_ray_generator_with_differentials>(w, h);
 		gi::cuda::mt_pool3f pool = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 		update_mt_pool(pool);
 		
-		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, jitter, 32, 2);
+		int light_samples = init_light_samples;
+		int path_samples = init_path_samples;
+		// shadow rays: light_samples x path_samples.
+		set.bouncer = new hybrid_arealight_evaluator<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, pool, jitter, light_samples, path_samples);
 		gpu_tracer->ray_bouncer(set.bouncer);
 		gpu_tracer->ray_generator(set.rgen);
 

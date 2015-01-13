@@ -1,5 +1,6 @@
 #include "gi_algorithm.h"
 
+int init_path_samples = 2, init_path_length = 2, init_light_samples = 2;
 
 std::vector<gi_algorithm*> gi_algorithm::algorithms;
 gi_algorithm *gi_algorithm::selected = 0;
