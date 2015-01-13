@@ -73,3 +73,7 @@
 (bookmark "plainSphere.obj" "fuck" '((list 90.604 190.329 290.029)     (list -0.317336 -0.0589916 -0.946477)     (list -0.0477826 0.99779 -0.0461692)))
 
 (bookmark "plainSphere.obj" "teaserShot" '((list 128.753 195.002 233.948)     (list -0.748371 -0.207797 -0.62989)     (list -0.125097 0.976834 -0.173625)))
+(bookmark "boxes-d3.obj" "testShotMiddle" '((list -15.9609 233.09 198.15)     (list 0.993176 -0.116058 -0.0114599)     (list 0.115944 0.993204 -0.0101661)))
+(bookmark "boxes-d3.obj" "testShotClose" '((list -10.9279 230.928 197.275)     (list 0.866092 0.498845 0.0320902)     (list -0.487748 0.829278 0.272757)))
+
+(bookmark "boxes-d3-q.obj" "testShotClose" '((list -10.9279 230.928 197.275)     (list 0.866092 0.498845 0.0320902)     (list -0.487748 0.829278 0.272757)))
