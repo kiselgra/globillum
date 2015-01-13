@@ -138,7 +138,7 @@ void hybrid_pt::compute() {
 		bouncer->verbose = verbose;
 		crgs->setup(&pos, &dir, &up, 2*camera_fovy(current_camera()));
 
-		bouncer->path_samples = vars["pt/passes"].int_val;
+		// bouncer->path_samples = vars["pt/passes"].int_val;
 
 		tracer->trace_progressively(true);
 }
