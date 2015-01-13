@@ -1,0 +1,44 @@
+# Blender MTL File: 'lambda.blend'
+# Material Count: 4
+newmtl Material.001
+Ns 92.156863
+Ka 0.000000 0.000000 0.000000
+Kd 0.640000 0.312938 0.353798
+Ks 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd D:/texturas/piggy-bank.jpg
+
+
+newmtl Material.001_NONE
+Ns 92.156863
+Ka 0.000000 0.000000 0.000000
+Kd 0.640000 0.312938 0.353798
+Ks 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+
+
+newmtl Material.003
+Ns 9.803922
+Ka 0.000000 0.000000 0.000000
+Kd 0.800000 0.507590 0.041481
+Ks 0.395161 0.395161 0.395161
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd D:/texturas/piggy-bank.jpg
+
+
+newmtl Material.003_NONE
+Ns 9.803922
+Ka 0.000000 0.000000 0.000000
+Kd 0.800000 0.507590 0.041481
+Ks 0.395161 0.395161 0.395161
+Ni 1.000000
+d 1.000000
+illum 2
+
+

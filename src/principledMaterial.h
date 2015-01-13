@@ -19,7 +19,7 @@ struct Sample3f{
         float pdf;
 };
 
- inline float dot(const float3 &a, const float3 &b) { return (a|b);}
+ inline float dot(const float3 &a, const float3 &b) { return fabs(a|b);}
 inline float saturate(float a) {
 	  return clamp(a,0.0f,1.0f);
   }
@@ -51,9 +51,9 @@ inline float3 normalize (const float3 &a){
 	  
 	float3 h = normalize(fac * (alphaX2*cosPiEta*T + alphaY2*sinPiEta*Bi) + N);
 	  
-	  float HdotN = (h|N);
-	  float HdotT = (h|T);
-	  float HdotB = (h|Bi);
+	  float HdotN = dot(h,N);
+	  float HdotT = dot(h,T);
+	  float HdotB = dot(h,Bi);
 	  
 	  float w = GTR2_aniso(HdotN,HdotT, HdotB, alphaX2, alphaY2);
 	  
