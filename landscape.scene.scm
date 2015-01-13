@@ -1,7 +1,7 @@
 (let ((home (getenv "HOME")))
   (add-model (string-append home "/globillum/globillum/landscape.obj") :type :obj :is-base #t)
 ;  (add-model (string-append "/tmp/rock.obj") : type :obj)
-  (add-model (string-append "/tmp/bobble-tree.obj") : type :obj)
+;  (add-model (string-append "/tmp/bobble-tree.obj") : type :obj)
   (add-model "/tmp/ram/trex/COLOR/hc_tongue_trexAA.ptx"
 	     :type :subd :disp "/tmp/ram/trex/DISP8/hc_tongue_trexAA.ptx")
   (add-model "/tmp/ram/trex/COLOR/al_1claw_trexAA.ptx"
@@ -46,9 +46,9 @@
 	     :type :subd :disp "/tmp/ram/trex/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
 (displacement-scale 3)
-	(subd-tess 2 2)
-	(dof-config 0.001 900 5)
-	(path-samples 64)
+	(subd-tess 3 1)
+	(dof-config 1 60 5)
+	(path-samples 30)
 	(path-length 5)
 	(light-samples 1) ; per direct lighting path
 ;  (add-model (string-append home "/render-data/models/bunny-70k.obj") :type :obj :trafo '(1 0 0 500

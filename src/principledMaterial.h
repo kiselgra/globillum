@@ -181,7 +181,7 @@ inline float3 normalize (const float3 &a){
 		float NdotL = dot(N,L);
 		float NdotV = dot(N,V);
 		if (NdotL < 0 || NdotV < 0){
-			std::cerr<<"Evaluate negative "<<NdotL<<" and "<<NdotV<<"\n";
+		//	std::cerr<<"Evaluate negative "<<NdotL<<" and "<<NdotV<<"\n";
 			return make_float3(0.0f,0.0f,0.0f);
 		}
 		
