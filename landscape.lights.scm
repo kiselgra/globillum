@@ -5,7 +5,6 @@
        :dir   (list   -1  -0.5  -0.25)
        :up    (list   0   0  1)
        :dim   (list 150 150))
-
 ;(light "area2"
 ;       :type :rect
 ;       :color (list  90  70 50)
@@ -17,7 +16,7 @@
 (let ((home (getenv "HOME")))
   (light "sky"
          :type :sky
-;         :map "glacier.exr" 
+;         :map "pisa.exr" 
      :map (string-append home "/render-data/images/skylight-sunset.exr")
          :diameter 1000
-         :scale 0.5))
+         :scale 1))
