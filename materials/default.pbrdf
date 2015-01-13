@@ -1,10 +1,10 @@
-color 0.8 0.8 0.8
-roughness 0.3
-metallic 0.7
+color 1.0 1.0 1.0 
+roughness 0.9
+metallic 0.0
 opacity 1.0
 subsurface 0.0
-specular 0.5
-tintSpecular 0.5
+specular 0.0
+tintSpecular 0.0
 anisotropic 0.0
 sheen 0.0
 tintSheen 0.0

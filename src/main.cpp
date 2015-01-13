@@ -41,6 +41,7 @@ int valid_pos = 0, curr_pos = 0;
 extern int subd_tess_normal;
 extern int subd_tess_quant;
 extern float subd_disp_scale;
+extern std::string subd_face_include;
 
 framebuffer_ref gbuffer;
 picking_buffer_ref picking;
@@ -644,6 +645,13 @@ SCM_DEFINE(s_use_algo, "integrator", 1, 0, 0, (SCM name), "which algorithm to us
 
 SCM_DEFINE(s_disp_scale, "displacement-scale", 1, 0, 0, (SCM s), "set displacement scale factor (default: 1)") {
 	subd_disp_scale = scm_to_double(s);
+	return SCM_BOOL_T;
+}
+
+SCM_DEFINE(s_use_faces, "use-only-those-faces", 1, 0, 0, (SCM only), "") {
+	char *n = scm_to_locale_string(only);
+	subd_face_include = n;
+	free(n);
 	return SCM_BOOL_T;
 }
 

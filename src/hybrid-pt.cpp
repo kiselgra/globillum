@@ -30,8 +30,8 @@ extern int idx_subd_material;
 extern std::vector<OSDI::Model*> subd_models;
 #endif
 
-#define DEBUG_PBRDF_FOR_SUBD 1
-#define SKYLIGHT_OFF 0
+#define DEBUG_PBRDF_FOR_SUBD 0
+#define SKYLIGHT_OFF 1
 
 //#define OFFSET_HACK
 
