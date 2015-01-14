@@ -47,9 +47,9 @@
 	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
 (displacement-scale 3)
-	(subd-tess 1 2)
+	(subd-tess 3 5)
 	(dof-config 0 60 5)
-	(path-samples 64)
+	(path-samples 32)
 	(path-length 5)
 	(light-samples 1) ; per direct lighting path
 ;  (add-model (string-append home "/render-data/models/bunny-70k.obj") :type :obj :trafo '(1 0 0 500

@@ -19,7 +19,7 @@ struct Sample3f{
         float pdf;
 };
 
- inline float dot(const float3 &a, const float3 &b) { return fabs(a|b);}
+ inline float dot(const float3 &a, const float3 &b) { return (a|b);}
 inline float saturate(float a) {
 	  return clamp(a,0.0f,1.0f);
   }

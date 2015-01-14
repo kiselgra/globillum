@@ -38,7 +38,7 @@ extern std::vector<OSDI::Model*> subd_models;
 
 //deinfe BOX_SHOT to get the correct color evaluation for the trex box shot.
 //when define BOX_SHOT also the TEASER_SHOT should be defined!
-#define BOX_SHOT
+//#define BOX_SHOT
 
 //define TEASER_SHOT for the correct setup for teaser shot (no skylight)
 #define TEASER_SHOT
@@ -394,7 +394,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				dir /= len;
 				//direction of normal might be better 
 #ifdef OFFSET_HACK
-	P += 0.9f * N;
+//	P += 0.9f * N;
 #endif
 				P += 0.01f * geoN; // I hope N is normalized :-)
 				ray_orig[id] = P;
