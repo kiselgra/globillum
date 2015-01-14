@@ -1,18 +1,18 @@
 (let ((home (getenv "HOME")))
- (add-model "/tmp/boxes-d3.obj" :type :obj :is-base #t)
+ (add-model "/tmp/plainSphere.obj" :type :obj :is-base #t)
  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/bc_body_trexAA.ptx"
   :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
   :proxy "/tmp/trex.obj")
-(add-model "/tmp/ram/trex/COLOR/lr_1claw_trexAA.ptx"
-	     :type :subd :disp "/tmp/ram/trex/DISP8/lr_1claw_trexAA.ptx")
- (add-model "/tmp/ram/trex/COLOR/lr_2claw_trexAA.ptx"
-	     :type :subd :disp "/tmp/ram/trex/DISP8/lr_2claw_trexAA.ptx")
-(add-model "/tmp/ram/trex/COLOR/lr_3claw_trexAA.ptx"
-	     :type :subd :disp "/tmp/ram/trex/DISP8/lr_3claw_trexAA.ptx")
-(add-model "/tmp/ram/trex/COLOR/lr_4claw_trexAA.ptx"
-	     :type :subd :disp "/tmp/ram/trex/DISP8/lr_4claw_trexAA.ptx")
- (subd-tess 3 7) ;use normal subdiv for 3 levels, quantization for 5 levels.
- (displacement-scale 4)
+(add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_1claw_trexAA.ptx"
+	     :type :subd :disp "/share/space1/simaprus/TREX/DISP8/lr_1claw_trexAA.ptx")
+ (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_2claw_trexAA.ptx"
+	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_2claw_trexAA.ptx")
+(add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_3claw_trexAA.ptx"
+	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_3claw_trexAA.ptx")
+(add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_4claw_trexAA.ptx"
+	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_4claw_trexAA.ptx")
+ (subd-tess 3 6) ;use normal subdiv for 3 levels, quantization for 5 levels.
+ (displacement-scale 3)
  (path-length 2)
  (path-samples 32)
  (light-samples 32)

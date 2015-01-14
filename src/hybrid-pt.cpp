@@ -14,7 +14,7 @@
 #endif
 
 #include <omp.h>
-
+#include "colormap.h"
 using namespace std;
 using namespace rta;
 using namespace rta::cuda;
@@ -46,6 +46,9 @@ extern std::vector<OSDI::Model*> subd_models;
 #ifdef TEASER_SHOT
 	#define OFFSET_HACK
 #endif
+
+
+//#define DIFF_ERROR_IMAGE
 
 extern float aperture, focus_distance, eye_to_lens;
 
@@ -243,6 +246,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					cross_vec3f(&geoN,&pba,&pbc);
 					normalize_vec3f(&geoN);	
 
+
 					//TODO:CHECKME
 					float3 dpos = tri.b - tri.a;
 					float3 triTb3 = make_float3(tri.tb.x,tri.tb.y,1.0f);
@@ -302,7 +306,55 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					//tri.tb = dv;
 					//tri.tc = normalize_vec3f(du+dv);
 #endif
+
+				#ifdef DIFF_ERROR_IMAGE
+					float3 rayDirection =ray_dir[id]; normalize_vec3f(&rayDirection);
+					float3 correctP = dummyP;
+					float3 correctDir = correctP-ray_orig[id];
+					float3 pr = ray_orig[id] + (correctDir|rayDirection) * rayDirection;
+
+					camera_ref cam = current_camera();
+					matrix4x4f *mat = projection_matrix_of_cam(cam);
+				
+	
+					vec4f correctP_vec4(correctP.x,correctP.y,correctP.z,1.0f);
+					vec4f pr_vec4(pr.x,pr.y,pr.z,1.0f);
+
+					//project to screen space
+					vec4f correctP_proj;
+					vec4f pr_proj;
+					multiply_matrix4x4f_vec4f(&correctP_proj, mat, &correctP_vec4);
+					multiply_matrix4x4f_vec4f(&pr_proj, mat, &pr_vec4);
+
+					float2 aa = make_float2(correctP_proj.x,correctP_proj.y);
+					aa.x = 0.5 * (aa.x * (1.0f/correctP_proj.w)) + 0.5;
+					aa.y = 0.5 * (aa.y * (1.0f/correctP_proj.w)) + 0.5;
+					float2 bb = make_float2(pr_proj.x,pr_proj.y);
+					bb.x = 0.5 * ( bb.x * (1.0f/pr_proj.w)) + 0.5;
+					bb.y = 0.5 * ( bb.y * (1.0f/pr_proj.w)) + 0.5;
+
+					vec2f np;
+					camera_near_plane_size(cam,&np);
+					
+					float2 ds3; 
+					ds3.x = (aa.x-bb.x) * np.x;
+					ds3.y = (aa.y-bb.y) * np.y;
+					float dist_screen = sqrt(ds3.x*ds3.x+ds3.y*ds3.y);
+			
+					
+					float pixel_size = np.y/float(h);
+
+					float3 test;
+					hsvColorMap(&test.x, dist_screen, 0.0f,1.f*pixel_size);
+					col_accum[id] = test;
+					continue;
+				#endif
 				}
+
+				#ifdef DIFF_ERROR_IMAGE
+					col_accum[id] = make_float3(0.0f,0.f,0.f);
+					continue;
+				#endif
 
 				float3 org_dir = ray_dir[id];
 				// add lighting to accumulation buffer
@@ -407,7 +459,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				throughput[id] = TP;
 				continue;
 			}
-
+#ifdef DIFF_ERROR_IMAGE
+		col_accum[id] = make_float3(0.0f,0.0f,0.0f);
+#endif
 
 #ifdef TEASER_SHOT
 //			if(pathLen == 1){

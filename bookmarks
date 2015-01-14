@@ -70,7 +70,6 @@
 (bookmark "plainSphere.obj" "shot2" '((list 60.4868 209.919 251.219)     (list -0.241881 -0.150709 -0.95853)     (list -0.0976184 0.986632 -0.130494)))
 (bookmark "plainSphere.obj" "teaser" '((list 66.604 128.329 204.029)     (list -0.317336 -0.0589916 -0.946477)     (list -0.0477826 0.99779 -0.0461692)))
 
-(bookmark "plainSphere.obj" "fuck" '((list 90.604 190.329 290.029)     (list -0.317336 -0.0589916 -0.946477)     (list -0.0477826 0.99779 -0.0461692)))
 
 (bookmark "plainSphere.obj" "teaserShot" '((list 128.753 195.002 233.948)     (list -0.748371 -0.207797 -0.62989)     (list -0.125097 0.976834 -0.173625)))
 (bookmark "boxes-d3.obj" "testShotMiddle" '((list -15.9609 233.09 198.15)     (list 0.993176 -0.116058 -0.0114599)     (list 0.115944 0.993204 -0.0101661)))
@@ -90,3 +89,14 @@
 (bookmark "plainSphere.obj" "teaserTestShot4" '((list 86.177 242.963 203.629)     (list -0.627306 -0.450899 -0.63496)     (list -0.299478 0.89231 -0.337781)))
 (bookmark "plainSphere.obj" "teaserTestShot5" '((list 98.4239 232.702 198.802)     (list -0.725832 -0.4 -0.559614)     (list -0.246883 0.910826 -0.330825)))
 (bookmark "plainSphere.obj" "teaserTestShot6" '((list 69.3415 234.162 211.174)     (list -0.634829 -0.384408 -0.670241)     (list -0.182232 0.917474 -0.353601)))
+
+(bookmark "plainSphere.obj" "boxesFar" '((list -68.0706 239.947 196.23)     (list 0.990822 -0.130239 0.0361932)     (list 0.130992 0.991196 -0.0192771)))
+(bookmark "plainSphere.obj" "start" '((list -68.0706 239.947 196.23)     (list 0.990822 -0.130239 0.0361932)     (list 0.130992 0.991196 -0.0192771)))
+
+(bookmark "plainSphere.obj" "teaserFoot" '((list 70.9879 52.6198 34.8889)     (list -0.335816 -0.576227 -0.745111)     (list -0.308743 0.814685 -0.490883)))
+(bookmark "plainSphere.obj" "teaserFoot2" '((list 85.4319 56.4585 28.4031)     (list -0.45409 -0.622875 -0.637047)     (list -0.319142 0.781284 -0.536418)))
+(bookmark "plainSphere.obj" "tFoot" '((list -9.29742 60.321 24.8333)     (list -0.36194 -0.723858 -0.587392)     (list -0.469763 0.685885 -0.555774)))
+(bookmark "plainSphere.obj" "teaserFootClose" '((list -13.3023 52.3116 18.3338)     (list -0.36194 -0.723858 -0.587392)     (list -0.469763 0.685885 -0.555774)))
+(bookmark "plainSphere.obj" "teaserFootShot" '((list -3.10699 57.4468 32.2751)     (list -0.440035 -0.528977 -0.725639)     (list -0.357558 0.844471 -0.398776)))
+(bookmark "plainSphere.obj" "teaserFootClose2" '((list -3.99667 64.0887 32.1506)     (list -0.456138 -0.577281 -0.677263)     (list -0.389909 0.813754 -0.431018)))
+(bookmark "plainSphere.obj" "teaserFootShot5" '((list 0.0121834 61.1964 37.4187)     (list -0.440035 -0.528977 -0.725639)     (list -0.357558 0.84447 -0.398776)))
