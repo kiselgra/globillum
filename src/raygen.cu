@@ -99,11 +99,11 @@ namespace rta {
 				float3 pos_on_focal_plane = pos + dir*(1.0f/(dir|view_dir))*focus_distance;
 				float2 jitter = make_float2(0,0);
 				int i=1;
-// 				do {
+				do {
 					random = gi::next_random3f(uniform_random_01, (id+17*i)%(w*h));
 					jitter = make_float2(random.z-0.5f, random.y-0.5f);
-// 					if (i == 100) { jitter.x = jitter.y = 0; break; }
-// 				} while (jitter.x*jitter.x + jitter.y*jitter.y > 1.0f);
+					if (i == 100) { jitter.x = jitter.y = 0; break; }
+				} while (jitter.x*jitter.x + jitter.y*jitter.y > 1.0f);
 
 				float3 jitter_pos = pos + U*jitter.x*aperture + V*jitter.y*aperture;
 				dir = (pos_on_focal_plane - jitter_pos);

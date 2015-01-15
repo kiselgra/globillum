@@ -173,7 +173,7 @@ inline float3 normalize (const float3 &a){
 		return a;
 	}
 
-	float3 evaluatePrincipledBRDF_specular(const float3 &wo, const float3 &N, const float3 &wi, const float3 &R,const PrincipledBRDFParameters& brdfParams){
+	inline float3 evaluatePrincipledBRDF_specular(const float3 &wo, const float3 &N, const float3 &wi, const float3 &R,const PrincipledBRDFParameters& brdfParams){
 		//float3 &N = dg.Ns;
 		const float3 V = wo;
 		const float3 L = wi;
@@ -218,7 +218,7 @@ inline float3 normalize (const float3 &a){
 		return make_float3(sumColor.x,sumColor.y,sumColor.z)*(NdotL)*brdfParams.metallic;
 	}
 
-	float3 evaluatePrincipledBRDF_diffuse(const float3& wo, const float3 &N, const float3& wi, const float3& R,const PrincipledBRDFParameters& brdfParams){
+	inline float3 evaluatePrincipledBRDF_diffuse(const float3& wo, const float3 &N, const float3& wi, const float3& R,const PrincipledBRDFParameters& brdfParams){
 		
 		const float3& V = wo;
 		const float3& L = wi;

@@ -8,7 +8,7 @@
 	   :disp "/share/space1/sihyscha/TurtleBarbarian/displacement_cloth.ptx"
 	   :spec "/share/space1/sihyscha/TurtleBarbarian/specular_cloth.ptx"
 	   :occl "/share/space1/sihyscha/TurtleBarbarian/occlusion_cloth.ptx"
-	   :pose "/share/space1/sihyscha/TurtleBarbarian/anim_cloth8/13.obj"
+	   :pose "/share/space1/sihyscha/TurtleBarbarian/anim_cloth8/013.obj"
 	   :proxy "/share/space1/sihyscha/turtle_barbarian.obj")
 (displacement-scale 1)
 	(subd-tess 1 2)
