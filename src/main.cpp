@@ -60,6 +60,7 @@ float exposure = 10;
 float aperture = .5;
 float focus_distance = 970.0f;
 float eye_to_lens = 5.0f;
+int idx_subd_material = 0;
 
 void display() {
 	

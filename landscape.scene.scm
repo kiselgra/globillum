@@ -1,5 +1,5 @@
 (let ((home (getenv "HOME")))
-(add-model (string-append home "/globillum/plainSphere.obj") :type :obj :is-base #t)
+(add-model "plainSphere.obj" :type :obj :is-base #t)
 ;  (add-model (string-append home "/globillum/globillum/landscape.obj") :type :obj :is-base #t)
 ;  (add-model (string-append "/tmp/rock.obj") : type :obj)
 ;  (add-model (string-append "/tmp/bobble-tree.obj") : type :obj)
@@ -47,7 +47,7 @@
 	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
 (displacement-scale 3)
-	(subd-tess 3 5)
+	(subd-tess 2 2)
 	(dof-config 0 60 5)
 	(path-samples 32)
 	(path-length 5)

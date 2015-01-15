@@ -271,6 +271,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					bool WITH_DISPLACEMENT = true;//false;//true;//false;// true;//false;
 					float mipmapBias = 0.f;
 					float3 dummyP;
+					is.beta = clampFloat(is.beta);
+					is.gamma = clampFloat(is.gamma);
 					//!TODO:tangents are only written IF no displacement? Why?
 					if (WITH_DISPLACEMENT)
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&dummyP, (float*)&N);

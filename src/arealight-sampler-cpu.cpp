@@ -19,6 +19,8 @@ using namespace gi;
 extern vector<OSDI::Model*> subd_models;
 #endif
 
+float clampFloat(float a);
+
 namespace rta {
 	template<typename rng_t>
 	void pixel_generate_arealight_sample_cpu(int2 gid, 
@@ -51,6 +53,8 @@ namespace rta {
 				unsigned int modelidx = (0x7f000000 & is.ref) >> 24;
 				unsigned int ptexID = 0x00ffffff & is.ref;
 				bool WITH_DISPLACEMENT = true;
+				is.beta = clampFloat(is.beta);
+				is.gamma = clampFloat(is.gamma);
 				if (WITH_DISPLACEMENT)
 					subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, true, (float*)&P, (float*)&N);
 				else
