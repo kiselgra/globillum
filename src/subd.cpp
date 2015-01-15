@@ -13,20 +13,38 @@ using namespace std;
 vector<OSDI::Model*> subd_models;
 #endif
 
+// for ptex
 static vector<string> subd_files;
 static vector<string> disp_files;
 static vector<string> proxy_files;
+static vector<string> occlusion_files;
+static vector<string> pose_files;
+static vector<string> spec_files;
+
+// for obj-mod
+// static vector<string> model_files;
+// static vector<string> subdobjproxy_files;
+
 int subd_tess_normal = 1;
 int subd_tess_quant = 1;
 float subd_disp_scale = 1.0f;
 std::string subd_face_include;
 
-void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy) {
+void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy, const std::string &pose, const std::string &spec, const std::string &occ) {
 	cout << "add sub model " << filename << endl;
 	subd_files.push_back(filename);
 	disp_files.push_back(displacement);
+	pose_files.push_back(pose);
+	spec_files.push_back(spec);
+	occlusion_files.push_back(occ);
 	if (proxy != "") proxy_files.push_back(proxy);
 }
+	
+// void add_subd_obj_model(const std::string &filename, const std::string &occlusion, const std::string &spec, const std::string &proxy) {
+// 	cout << "add sub/obj model " << filename << endl;
+// 	objmodel_files.push_back(filename);
+// 	if (proxy != "") subdobjproxy_files.push_back(proxy);
+// }
 	
 void load_subd_proxies() {
 	for (string m : proxy_files) {
@@ -35,6 +53,11 @@ void load_subd_proxies() {
 		scm_c_eval_string(oss.str().c_str());
 	}
 }
+
+// --model-obj
+// --occlu=filename       oclcusion file
+// --pose=filename        set model pose with file
+
 
 #if HAVE_LIBOSDINTERFACE == 1
 rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
@@ -62,6 +85,18 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 		args.push_back(subd_files[i]);
 		args.push_back("--displ");
 		args.push_back(disp_files[i]);
+		if (occlusion_files[i] != "") {
+			args.push_back("--occlu");
+			args.push_back(occlusion_files[i]);
+		}
+		if (spec_files[i] != "") {
+			args.push_back("--spec");
+			args.push_back(spec_files[i]);
+		}
+		if (pose_files[i] != "") {
+			args.push_back("--pose");
+			args.push_back(pose_files[i]);
+		}
 	}
 	// load subd plugin
 	rta::cgls::connection rta_connection("subdiv", args);

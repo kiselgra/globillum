@@ -4,8 +4,12 @@
 ;  (add-model (string-append "/tmp/rock.obj") : type :obj)
 ;  (add-model (string-append "/tmp/bobble-tree.obj") : type :obj)
 (add-model "/share/space1/sihyscha/TurtleBarbarian/color_cloth.ptx"
-	     :type :subd :disp "/share/space1/sihyscha/TurtleBarbarian/displacement_cloth.ptx"
-	     :proxy "/share/space1/sihyscha/turtle_barbarian.obj")
+	   :type :subd 
+	   :disp "/share/space1/sihyscha/TurtleBarbarian/displacement_cloth.ptx"
+	   :spec "/share/space1/sihyscha/TurtleBarbarian/specular_cloth.ptx"
+	   :occl "/share/space1/sihyscha/TurtleBarbarian/occlusion_cloth.ptx"
+	   :pose "/share/space1/sihyscha/TurtleBarbarian/anim_cloth8/200.obj"
+	   :proxy "/share/space1/sihyscha/turtle_barbarian.obj")
 (displacement-scale 2)
 	(subd-tess 3 2)
 	(dof-config 0 60 5)

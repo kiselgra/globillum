@@ -11,7 +11,7 @@
 #include <subdiv/osdi.h>
 #endif
 
-void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy);
+void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy, const std::string &pose, const std::string &spec, const std::string &occ);
 void load_subd_proxies();
 
 #if HAVE_LIBOSDINTERFACE == 1

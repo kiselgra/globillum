@@ -16,7 +16,7 @@
 (let ((home (getenv "HOME")))
   (light "sky"
          :type :sky
-         :map "pisa.exr" 
-;     :map (string-append home "/render-data/images/skylight-sunset.exr")
+         ;:map "pisa.exr" 
+     	 :map (string-append home "/render-data/images/skylight-sunset.exr")
          :diameter 1000
          :scale 1))

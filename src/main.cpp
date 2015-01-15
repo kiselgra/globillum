@@ -560,11 +560,14 @@ int main(int argc, char **argv)
 
 #endif
 
-SCM_DEFINE(s_add_model, "add-model%", 6, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo, SCM subd_disp, SCM subd_proxy), 
+SCM_DEFINE(s_add_model, "add-model%", 9, 0, 0, (SCM filename, SCM type, SCM is_base, SCM trafo, SCM subd_disp, SCM subd_proxy, SCM spec, SCM occl, SCM pose), 
 		   "internal function to load a model.") {
 	char *file = scm_to_locale_string(filename);
 	char *d_file = scm_to_locale_string(subd_disp);
 	char *p_file = scm_to_locale_string(subd_proxy);
+	char *s_file = scm_to_locale_string(spec);
+	char *o_file = scm_to_locale_string(occl);
+	char *pose_file = scm_to_locale_string(pose);
 	int typecode = scm_to_int(type);
 	bool base = scm_is_true(is_base);
 	if (base)
@@ -580,7 +583,7 @@ SCM_DEFINE(s_add_model, "add-model%", 6, 0, 0, (SCM filename, SCM type, SCM is_b
 		return SCM_BOOL_T;
 	}
 	if (typecode == 1) {
-		add_subd_model(file, d_file, p_file);
+		add_subd_model(file, d_file, p_file, pose_file, s_file, o_file);
 #if HAVE_LIBOSDINTERFACE != 1
 		cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
 #endif
@@ -591,6 +594,9 @@ SCM_DEFINE(s_add_model, "add-model%", 6, 0, 0, (SCM filename, SCM type, SCM is_b
 	free(d_file);
 	free(p_file);
 	free(file);
+	free(s_file);
+	free(o_file);
+	free(pose_file);
 	return SCM_BOOL_F;
 }
 
