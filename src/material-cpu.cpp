@@ -4,7 +4,7 @@
 #include <librta/intersect.h>
 
 #if HAVE_LIBOSDINTERFACE == 1
-#include <subdiv/osdi.h>
+#include <rta-0.0.1/subdiv/osdi.h>
 extern std::vector<OSDI::Model*> subd_models;
 #endif
 

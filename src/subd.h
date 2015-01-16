@@ -8,7 +8,7 @@
 #include <librta/librta.h>
 
 #if HAVE_LIBOSDINTERFACE == 1
-#include <subdiv/osdi.h>
+#include <rta-0.0.1/subdiv/osdi.h>
 #endif
 
 void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy, const std::string &pose, const std::string &spec, const std::string &occ);
