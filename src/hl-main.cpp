@@ -32,6 +32,9 @@
 
 using namespace std;
 
+
+#define CAMERA_PATHS 0
+
 //// cmdline stuff
 
 struct Cmdline {
@@ -47,7 +50,6 @@ struct Cmdline {
 	std::list<std::string> image_paths;
 	bool lazy;
 } cmdline;
-
 const char *argp_program_version = VERSION;
 
 static char doc[]       = PACKAGE ": description";
@@ -199,6 +201,9 @@ static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
 int material_count = 0;
+
+int curr_frame = 0;
+
 int idx_subd_material = 0;
 rta::cuda::material_t *gpu_materials = 0;
 rta::cuda::material_t *cpu_materials = 0;
@@ -606,6 +611,15 @@ void actual_main() {
 	char *argv[5];
 	console_ref console = {-1};
 	restart_compute = !cmdline.lazy;
+	curr_frame = 0;
+#if CAMERA_PATHS
+	int maxFrames = 360;
+	vec3f midPoint;
+	float phi = 0.f;// * M_PI/180.f;
+	bool first_rotation = true;
+	float phiAdd = 360.f/float(maxFrames) * M_PI/180.f;
+#endif
+
 	while (true) {
 		if (restart_compute) {
 			if (change_algo) {
@@ -626,6 +640,40 @@ void actual_main() {
 			algo->update();
 			if (quit_loop) break;
 		}
+
+#if CAMERA_PATHS
+		camera_ref cam = current_camera();
+		matrix4x4f *lookat_matrix = lookat_matrix_of_cam(cam);
+		//compute new angle
+		phi = phi + phiAdd;// M_PI/180.f;
+
+		vec3f nextUp; //(0.f,1.f,0.f);
+		nextUp.x = 0.f;
+		nextUp.y = 1.0f;
+		nextUp.z = 0.0f;
+		//look at point is the same as before.
+		vec3f nextDir;
+
+		vec3f xAxisTest(1.f,0.f,0.f);
+		vec3f yAxisTest(0.f,0.f,1.f);
+
+		vec3f testPos(0.f,230.f,0.f);
+		vec3f lookAtPos(0.f,150.f,0.f);
+
+		float rad = 290;
+		vec3f nextPos = testPos + xAxisTest * rad * sin(phi) + yAxisTest*cos(phi)*rad;
+		nextDir = lookAtPos-nextPos;		
+		normalize_vec3f(&nextDir);
+		make_lookat_matrixf(lookat_matrix, &nextPos, &nextDir, &nextUp);//miatrix4x4d *out, const vec3d *pos, const vec3d *dir, const vec3d *up);
+		
+		curr_frame++;
+		// restart rendering
+		if(curr_frame < maxFrames)
+			restart_compute = true;
+		else
+			quit_loop;
+#endif
+		// setup next frame.
 		if (quit_loop) break;
 		usleep(100000);
 	}
@@ -766,7 +814,6 @@ extern "C" {
 		subd_disp_scale = scm_to_double(s);
 		return SCM_BOOL_T;
 	}
-
 	SCM_DEFINE(s_dof_config, "dof-config", 3, 0, 0, (SCM a, SCM d, SCM e), "dof parameters") {
 		aperture = scm_to_double(a);
 		focus_distance = scm_to_double(d);

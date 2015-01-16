@@ -26,6 +26,8 @@ extern rta::cuda::material_t *gpu_materials;
 extern rta::cuda::material_t *cpu_materials;
 extern int material_count;
 extern int idx_subd_material;
+extern int curr_frame;
+
 #if HAVE_LIBOSDINTERFACE == 1
 extern std::vector<OSDI::Model*> subd_models;
 #endif
@@ -33,12 +35,13 @@ extern std::vector<OSDI::Model*> subd_models;
 //define wether to use PTEX Texture or not
 // DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
 // DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
-#define DEBUG_PBRDF_FOR_SUBD 0
+#define DEBUG_PBRDF_FOR_SUBD 1
 
+#define RENDER_UVS 1
 
 //deinfe BOX_SHOT to get the correct color evaluation for the trex box shot.
 //when define BOX_SHOT also the TEASER_SHOT should be defined!
-//#define BOX_SHOT
+#define BOX_SHOT
 
 //define TEASER_SHOT for the correct setup for teaser shot (no skylight)
 #define TEASER_SHOT
@@ -130,7 +133,10 @@ void hybrid_pt::update() {
 		float3 *colors = bouncer->output_color;
 		if (bouncer->path_len == 0) {
 			update_mt_pool(jitter);	// a path is completed, so we generate new random numbers for the primary ray generator.
-			gi::save_image("pt", bouncer->curr_path, w, h, colors);
+			if(curr_frame > 0)
+				gi::save_image("ppt",curr_frame, w, h, colors);
+			else
+				gi::save_image("ppt", bouncer->curr_path, w, h, colors);
 		}
 	}
 }
@@ -196,7 +202,7 @@ void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float
 	}
 	col_accum[id] += throughput[id] * accSkylight;
 #ifdef TEASER_SHOT
-	if(!isValid) col_accum[id] = make_float3(1.f,1.f,1.f);
+	if(!isValid) col_accum[id] = make_float3(0.f,0.f,0.f);
 #endif
 	ray_dir[id]  = make_float3(0,0,0);
 	ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -308,6 +314,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					//tri.tb = dv;
 					//tri.tc = normalize_vec3f(du+dv);
 #endif
+				#if RENDER_UVS
+					mat.diffuse_color = make_float3(is.beta, is.gamma, 0.0f);
+				#endif
 
 				#ifdef DIFF_ERROR_IMAGE
 					float3 rayDirection =ray_dir[id]; normalize_vec3f(&rayDirection);
@@ -350,13 +359,14 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					hsvColorMap(&test.x, dist_screen, 0.0f,1.f*pixel_size);
 					col_accum[id] = test;
 					continue;
+	
 				#endif
 				}
 
-				#ifdef DIFF_ERROR_IMAGE
+			#ifdef DIFF_ERROR_IMAGE
 					col_accum[id] = make_float3(0.0f,0.f,0.f);
 					continue;
-				#endif
+			#endif
 
 				float3 org_dir = ray_dir[id];
 				// add lighting to accumulation buffer
@@ -364,7 +374,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				//bakcfacing check
 				if((org_dir|geoN) > 0.0f) {
 #ifndef BOX_SHOT
-					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);
+					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);//true);//false);
+					col_accum[id] = make_float3(0.f,0.f,0.f);
 					continue;
 #endif
 				}
@@ -448,7 +459,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				dir /= len;
 				//direction of normal might be better 
 #ifdef OFFSET_HACK
-//	P += 0.9f * N;
+	P += 0.9f * geoN;
 #endif
 				P += 0.01f * geoN; // I hope N is normalized :-)
 				ray_orig[id] = P;
@@ -456,7 +467,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/pdf);
 #ifndef BOX_SHOT
-				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(0.9f, 0.9f, 0.9f);//1.f,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
+				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(clamp(TP.x,0.f,1.f), clamp(TP.y,0.f,1.f), clamp(TP.z,0.f,1.f)); //,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
 #endif
 				throughput[id] = TP;
 				continue;
@@ -469,6 +480,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 //			if(pathLen == 1){
 			if(throughput[id].x == 1.0f && throughput[id].y == 1.0f && throughput[id].z == 1.0f){
 				handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);
+				col_accum[id] = make_float3(1.f,1.f,1.f);
 				continue;
 			}
 #endif

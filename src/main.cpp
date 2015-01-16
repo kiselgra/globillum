@@ -61,7 +61,7 @@ float aperture = .5;
 float focus_distance = 970.0f;
 float eye_to_lens = 5.0f;
 int idx_subd_material = 0;
-
+int curr_frame=0;
 void display() {
 	
 	if (cgl_shader_reload_pending)
