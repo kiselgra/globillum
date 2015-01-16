@@ -13,6 +13,7 @@
 #include "gpu_cgls_lights.h"
 #include "gpu-pt.h"
 #include "hybrid-pt.h"
+#include "cpu-pt.h"
 
 #include "subd.h"
 
@@ -364,6 +365,7 @@ void setup_rta(std::string plugin) {
 			plugin = "bbvh";
 			
 	if (plugin == "bbvh-cuda") {
+		use_cuda = true;
 		args.push_back("-A");
 		args.push_back("-b");
 		args.push_back("bsah");
@@ -372,6 +374,9 @@ void setup_rta(std::string plugin) {
 		args.push_back("cis");
 		args.push_back("-l");
 		args.push_back("2f4");
+	}
+	else if (plugin == "bbvh") {
+		use_cuda = false;
 	}
 
 	rta_connection = new rta::cgls::connection(plugin, args);
@@ -415,6 +420,10 @@ void setup_rta(std::string plugin) {
 	*/
 	
 	if (!use_cuda) {
+		if (!set->basic_ctor<rta::simple_aabb, rta::simple_triangle>()->expects_host_triangles()) {
+			cerr << "does not want host tris!" << endl;
+			exit(-1);
+		}
 	}
 	else {
 		if (!set->basic_ctor<rta::cuda::simple_aabb, rta::cuda::simple_triangle>()->expects_host_triangles()) {
@@ -566,7 +575,10 @@ void actual_main() {
 	scm_c_eval_string("(define (lbm) (list-bookmarks scene))");
 	scm_c_eval_string("(define (b n) (if (not (select-bookmark scene n)) (format #t \"Error: No such bookmark.~%\")))");
 
-	setup_rta("bbvh-cuda");
+	if (select_algo == "cpu_pt")
+		setup_rta("bbvh");
+	else
+		setup_rta("bbvh-cuda");
 
 	new local::gpu_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
 	new local::hybrid_arealight_sampler(cmdline.res.x, cmdline.res.y, the_scene);
@@ -575,6 +587,7 @@ void actual_main() {
 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, focus_distance, aperture, 5.f);
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 	new hybrid_pt(cmdline.res.x, cmdline.res.y, the_scene);
+	new cpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
 // 	gi_algorithm::select("gpu_area_lights");

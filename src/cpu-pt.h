@@ -1,5 +1,5 @@
-#ifndef __GI_HYBRID_PT_H__ 
-#define __GI_HYBRID_PT_H__ 
+#ifndef __GI_CPU_PT_H__ 
+#define __GI_CPU_PT_H__ 
 
 #include "gpu-pt.h"
 #include "tracers.h"	// for tandem_tracer
@@ -9,7 +9,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 										  rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
 										  float3 *to_light, rta::triangle_intersection<rta::cuda::simple_triangle> *shadow_ti,
-										  float3 *potential_sample_contribution, gi::light *skylight);
+										  float3 *potential_sample_contribution, gi::light *skylight, int path_len);
 										  
 
 template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::cpu_ray_bouncer<forward_traits> {
@@ -17,7 +17,7 @@ template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::c
 	rta::cuda::material_t *materials;
 	rta::simple_triangle *tri_ptr;
 	// todo: `advanced' ray generators are not avaible as cpu-only versions, atm.
-	rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
+	rta::camera_ray_generator_shirley<rta::ray_generator_with_differentials> *crgs;
 	gi::light *lights;
 	int nr_of_lights;
 	float overall_light_power;
@@ -49,7 +49,7 @@ template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::c
 	}
 
 	cpu_pt_bouncer(uint w, uint h, rta::cuda::material_t *materials, rta::simple_triangle *triangles,
-				   rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs, 
+				   rta::camera_ray_generator_shirley<rta::ray_generator_with_differentials> *crgs, 
 				   gi::light *lights, int nr_of_lights, int max_path_len, int path_samples)
 	: rta::cpu_ray_bouncer<forward_traits>(w, h),
 	  materials(materials), tri_ptr(triangles), crgs(crgs),
@@ -62,11 +62,6 @@ template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::c
 		path_accum_color = new float3[w*h];
 		throughput = new float3[w*h];
 		potential_sample_contribution = new float3[w*h];
-		// path sample directions *have* to be the crgs directions as the brdf requires valid 'last direction' in the data.
-		gpu_path_sample_directions = crgs->gpu_direction;	
-		gpu_path_sample_origins = crgs->gpu_origin;
-		gpu_path_sample_maxt = crgs->gpu_maxt;
-		//
 		path_intersections = new rta::triangle_intersection<rta::simple_triangle>[w*h];
 		shadow_intersections = new rta::triangle_intersection<rta::simple_triangle>[w*h];
 		light_sample_directions = new float3[w*h];
@@ -114,11 +109,11 @@ template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::c
 		gi::clear_array(path_accum_color, w, h, make_float3(0,0,0));
 		this->crgs->generate_rays();
 		int w = this->w, h = this->h;
-		checked_cuda(cudaMemcpy(path_sample_directions,        gpu_path_sample_directions,          w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_sample_origins,           gpu_path_sample_origins,             w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_sample_maxt,              gpu_path_sample_maxt,                w*h*1*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_differentials_directions, this->crgs->differentials_direction, w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_differentials_origins,    this->crgs->differentials_origin,    w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_sample_directions,        gpu_path_sample_directions,          w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_sample_origins,           gpu_path_sample_origins,             w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_sample_maxt,              gpu_path_sample_maxt,                w*h*1*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_differentials_directions, this->crgs->differentials_direction.data, w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_differentials_origins,    this->crgs->differentials_origin.data,    w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
 		curr_path++;
 	}
 	virtual void setup_new_arealight_sample() {
@@ -139,7 +134,7 @@ template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::c
 											 (rta::cuda::simple_triangle*)this->tri_ptr, this->materials, mt_numbers_path, 
 											 throughput, path_accum_color, light_sample_directions, 
 											 (rta::triangle_intersection<rta::cuda::simple_triangle>*)shadow_intersections, 
-											 potential_sample_contribution, skylight);
+											 potential_sample_contribution, skylight, curr_path);
 		if (this->verbose)
 			gi::save_image("accum", curr_bounce, w, h, path_accum_color);
 	}
@@ -209,7 +204,7 @@ class cpu_pt : public gi_algorithm {
 	typedef rta::simple_triangle T;
 protected:
 	int w, h;
-	rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials> *crgs;
+	rta::camera_ray_generator_shirley<rta::ray_generator_with_differentials> *crgs;
 	rta::rt_set set;
 	scene_ref scene;
 	gi::light *cpu_lights;
@@ -220,10 +215,11 @@ protected:
 	rta::simple_triangle *triangles;
 	float overall_light_power;
 	gi::cuda::mt_pool3f jitter; 
+	float3 *cpu_jitter;
 	rta::iterated_cpu_tracers<B, T, rta::closest_hit_tracer> *tracers;
 	rta::iterated_cpu_tracers<B, T, rta::any_hit_tracer> *shadow_tracers;
 public:
-	cpu_pt(int w, int h, scene_ref scene, const std::string &name = "hybrid_pt")
+	cpu_pt(int w, int h, scene_ref scene, const std::string &name = "cpu_pt")
 		: gi_algorithm(name), w(w), h(h),
 		  crgs(0), scene(scene), cpu_lights(0), shadow_tracer(0), tracers(0), shadow_tracers(0) {
 	}

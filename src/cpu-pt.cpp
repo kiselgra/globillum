@@ -30,6 +30,7 @@ extern std::vector<OSDI::Model*> subd_models;
 
 #define DEBUG_PBRDF 0
 
+extern float aperture, focus_distance, eye_to_lens;
 
 void cpu_pt::activate(rt_set *orig_set) {
 	if (activated) return;
@@ -46,12 +47,14 @@ void cpu_pt::activate(rt_set *orig_set) {
 		overall_light_power += cpu_lights[i].power;
 	}
 	
-	triangles = set.basic_as<B, T>()->canonical_triangle_ptr();
+	rta::basic_acceleration_structure<B,T> *bas = set.basic_as<B, T>();
+	triangles = bas->canonical_triangle_ptr();
 
 // 	set.rgen = crgs = new rta::cuda::camera_ray_generator_shirley<rta::cuda::gpu_ray_generator_with_differentials>(w, h);
 	jitter = gi::cuda::generate_mt_pool_on_gpu(w,h); 
 	update_mt_pool(jitter);
-	set.rgen = crgs = new rta::cuda::jittered_ray_generator(w, h, jitter);
+	cpu_jitter = new float3[w*h];
+	set.rgen = crgs = new rta::jittered_lens_ray_generator(w, h, focus_distance, aperture, eye_to_lens, cpu_jitter);
 	int bounces = 1;
 	set.bouncer = pt = new cpu_pt_bouncer<B, T>(w, h, cpu_materials, triangles, crgs, cpu_lights, nr_of_lights, bounces, vars["pt/passes"].int_val);
 	
@@ -72,9 +75,11 @@ void cpu_pt::activate(rt_set *orig_set) {
 	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 	rta::cpu_raytracer<B, T, rta::any_hit_tracer> 
 		*shadow_cpu_tracer = dynamic_cast<rta::cpu_raytracer<B, T, rta::any_hit_tracer>*>(shadow_tracer);
+	shadow_cpu_tracer->ray_bouncer(set.bouncer);
+	shadow_cpu_tracer->ray_generator(set.rgen);
 	shadow_tracers = new rta::iterated_cpu_tracers<B, T, rta::any_hit_tracer>(shadow_cpu_tracer);
 
-	if (original_subd_set) {
+	if (original_subd_set && false) { // this is not supported yet.
 		// subd closest hit
 		rta::cpu_raytracer<B, T, rta::closest_hit_tracer>
 			*subd_tracer = dynamic_cast<rta::cpu_raytracer<B, T, rta::closest_hit_tracer>*>(original_subd_set->rt);
