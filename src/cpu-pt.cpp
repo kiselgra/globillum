@@ -75,9 +75,11 @@ void cpu_pt::activate(rt_set *orig_set) {
 	shadow_tracer = dynamic_cast<rta::closest_hit_tracer*>(set.rt)->matching_any_hit_tracer();
 	rta::cpu_raytracer<B, T, rta::any_hit_tracer> 
 		*shadow_cpu_tracer = dynamic_cast<rta::cpu_raytracer<B, T, rta::any_hit_tracer>*>(shadow_tracer);
+	shadow_cpu_tracer->ray_bouncer(set.bouncer);
+	shadow_cpu_tracer->ray_generator(set.rgen);
 	shadow_tracers = new rta::iterated_cpu_tracers<B, T, rta::any_hit_tracer>(shadow_cpu_tracer);
 
-	if (original_subd_set) {
+	if (original_subd_set && false) { // this is not supported yet.
 		// subd closest hit
 		rta::cpu_raytracer<B, T, rta::closest_hit_tracer>
 			*subd_tracer = dynamic_cast<rta::cpu_raytracer<B, T, rta::closest_hit_tracer>*>(original_subd_set->rt);

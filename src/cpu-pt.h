@@ -109,11 +109,11 @@ template<typename _box_t, typename _tri_t> struct cpu_pt_bouncer : public rta::c
 		gi::clear_array(path_accum_color, w, h, make_float3(0,0,0));
 		this->crgs->generate_rays();
 		int w = this->w, h = this->h;
-		checked_cuda(cudaMemcpy(path_sample_directions,        gpu_path_sample_directions,          w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_sample_origins,           gpu_path_sample_origins,             w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_sample_maxt,              gpu_path_sample_maxt,                w*h*1*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_differentials_directions, this->crgs->differentials_direction.data, w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
-		checked_cuda(cudaMemcpy(path_differentials_origins,    this->crgs->differentials_origin.data,    w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_sample_directions,        gpu_path_sample_directions,          w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_sample_origins,           gpu_path_sample_origins,             w*h*3*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_sample_maxt,              gpu_path_sample_maxt,                w*h*1*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_differentials_directions, this->crgs->differentials_direction.data, w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
+// 		checked_cuda(cudaMemcpy(path_differentials_origins,    this->crgs->differentials_origin.data,    w*h*6*sizeof(float), cudaMemcpyDeviceToHost));
 		curr_path++;
 	}
 	virtual void setup_new_arealight_sample() {

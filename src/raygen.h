@@ -135,7 +135,7 @@ namespace rta {
 					int id = y * w + x;
 					this->max_t(x,y) = FLT_MAX;
 					float fovy = this->fovy / 2.0;
-					float height = tanf(M_PI * this->fovy / 180.0f);
+					float height = tanf(M_PI * fovy / 180.0f);
 					float width = this->aspect * height;
 
 					float3 random = gi::next_random3f(uniform_random_01, id);
