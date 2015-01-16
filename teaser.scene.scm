@@ -1,48 +1,49 @@
-(let ((home (getenv "HOME")))
+(let ((home (getenv "HOME"))
+	  (trex "/disc2/local/"))
   (add-model "plainSphere.obj" :type :obj :is-base #t)
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hc_tongue_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hc_tongue_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/al_1claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/al_1claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/al_2claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/al_2claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/ar_1claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/ar_1claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/ar_2claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/ar_2claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hc_dnteeth_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hc_dnteeth_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hc_gums_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hc_gums_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hc_upteeth_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hc_upteeth_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hl_cornea_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hl_cornea_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hr_cornea_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hr_cornea_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hl_sclera_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hl_sclera_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/hr_sclera_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/hr_sclera_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/ll_1claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/ll_1claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/ll_2claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/ll_2claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/ll_3claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/ll_3claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/ll_4claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/ll_4claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_1claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_1claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_2claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_2claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_3claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_3claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/lr_4claw_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/lr_4claw_trexAA.ptx")
-  (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/bc_body_trexAA.ptx"
-	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
-	     :proxy "/tmp/trex.obj")
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hc_tongue_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hc_tongue_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/al_1claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/al_1claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/al_2claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/al_2claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/ar_1claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/ar_1claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/ar_2claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/ar_2claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hc_dnteeth_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hc_dnteeth_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hc_gums_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hc_gums_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hc_upteeth_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hc_upteeth_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hl_cornea_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hl_cornea_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hr_cornea_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hr_cornea_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hl_sclera_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hl_sclera_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hr_sclera_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hr_sclera_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/ll_1claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/ll_1claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/ll_2claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/ll_2claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/ll_3claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/ll_3claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/ll_4claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/ll_4claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/lr_1claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/lr_1claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/lr_2claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/lr_2claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/lr_3claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/lr_3claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/lr_4claw_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/lr_4claw_trexAA.ptx"))
+  (add-model (string-append trex "/TREX/TREX_ptx/COLOR/bc_body_trexAA.ptx")
+	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx")
+	     :proxy "(string-append trex //trex.obj")
   (displacement-scale 3)
   (subd-tess 2 2)
   (dof-config 0 60 5)

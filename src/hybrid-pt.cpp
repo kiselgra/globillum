@@ -10,7 +10,7 @@
 #include <libhyb/trav-util.h>
 
 #if HAVE_LIBOSDINTERFACE == 1
-#include <subdiv/osdi.h>
+#include <rta-0.0.1/subdiv/osdi.h>
 #endif
 
 #include <omp.h>
