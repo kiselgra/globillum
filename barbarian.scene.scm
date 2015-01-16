@@ -8,12 +8,12 @@
 	   :disp "/share/space1/sihyscha/TurtleBarbarian/displacement_cloth.ptx"
 	   :spec "/share/space1/sihyscha/TurtleBarbarian/specular_cloth.ptx"
 	   :occl "/share/space1/sihyscha/TurtleBarbarian/occlusion_cloth.ptx"
-	   :pose "/share/space1/sihyscha/TurtleBarbarian/anim_cloth8/13.obj"
+	   :pose "/share/space1/sihyscha/TurtleBarbarian/anim_cloth8/003.obj"
 	   :proxy "/share/space1/sihyscha/turtle_barbarian.obj")
 (displacement-scale 1)
-	(subd-tess 1 2)
+	(subd-tess 3 3)
 	(dof-config 0 60 5)
-	(path-samples 8)
+	(path-samples 16)
 	(path-length 5)
 	(light-samples 1) ; per direct lighting path
 ;  (add-model (string-append home "/render-data/models/bunny-70k.obj") :type :obj :trafo '(1 0 0 500
