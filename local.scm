@@ -34,3 +34,4 @@
     (primitive-load "bookmarks"))
 
 
+(define still-computing #f)

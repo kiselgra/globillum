@@ -1,5 +1,6 @@
 (let ((home (getenv "HOME")))
 (add-model "plainSphere.obj" :type :obj :is-base #t)
+;(add-model "/tmp/trex.obj" :type :obj)
 ;  (add-model (string-append home "/globillum/globillum/landscape.obj") :type :obj :is-base #t)
 ;  (add-model (string-append "/tmp/rock.obj") : type :obj)
 ;  (add-model (string-append "/tmp/bobble-tree.obj") : type :obj)
@@ -46,10 +47,10 @@
 (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/bc_body_trexAA.ptx"
 	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
-(displacement-scale 0)
-	(subd-tess 2 1)
+(displacement-scale 3)
+	(subd-tess 3 4)
 	(dof-config 0 60 5)
-	(path-samples 8)
+	(path-samples 16)
 	(path-length 5)
 	(light-samples 1) ; per direct lighting path
 ;  (add-model (string-append home "/render-data/models/bunny-70k.obj") :type :obj :trafo '(1 0 0 500

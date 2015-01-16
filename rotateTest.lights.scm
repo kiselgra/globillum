@@ -21,10 +21,10 @@
 ;       :up    (list   0   0  1)
 ;       :dim   (list 100 100))
 
-(let ((home (getenv "HOME")))
-  (light "sky"
-         :type :sky
-         :map "ennis.exr" 
+;(let ((home (getenv "HOME")))
+ ; (light "sky"
+  ;       :type :sky
+   ;      :map "ennis.exr" 
      	 ;:map (string-append home "/render-data/images/skylight-sunset.exr")
-         :diameter 1000
-         :scale 1))
+    ;     :diameter 1000
+     ;    :scale 1))

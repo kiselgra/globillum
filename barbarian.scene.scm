@@ -11,10 +11,11 @@
 	   :pose "/share/space1/sihyscha/TurtleBarbarian/anim_cloth8/003.obj"
 	   :proxy "/share/space1/sihyscha/turtle_barbarian.obj")
 (displacement-scale 1)
-	(subd-tess 3 3)
+	(subd-tess 3 2)
 	(dof-config 0 60 5)
-	(path-samples 16)
-	(path-length 5)
+	(path-samples 64)
+	(path-length 10)
+;	(render_error_image 1)
 	(light-samples 1) ; per direct lighting path
 ;  (add-model (string-append home "/render-data/models/bunny-70k.obj") :type :obj :trafo '(1 0 0 500
 ;											  0 0 1   0

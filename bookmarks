@@ -48,3 +48,14 @@
 (bookmark "plainSphere.obj" "barbar_kai_sagt_super" '((list 86.2903 179.275 209.846)     (list -0.268075 -0.468607 -0.84175)     (list -0.137476 0.883396 -0.448009)))
 (bookmark "plainSphere.obj" "barbar_besser" '((list 82.6186 173.262 197.944)     (list -0.265468 -0.434729 -0.860545)     (list -0.12728 0.900561 -0.415679)))
 (bookmark "plainSphere.obj" "barbar_closeup1" '((list 6.34779 205.57 29.4417)     (list -0.110137 -0.467415 -0.87715)     (list -0.210426 0.87348 -0.439038)))
+
+(bookmark "plainSphere.obj" "barbar_shoulder" '((list 36.8703 148.621 30.6533)     (list -0.0735658 -0.263799 -0.961768)     (list -0.0470741 0.964225 -0.260872)))
+(bookmark "plainSphere.obj" "barbar_face" '((list -5.72057 156.22 47.5597)     (list -0.404245 -0.190802 -0.894528)     (list -0.0359458 0.980558 -0.192908)))
+(bookmark "plainSphere.obj" "barbar_stomach" '((list -3.09666 96.5848 29.7274)     (list -0.282865 -0.0400919 -0.958321)     (list -0.0382203 0.998803 -0.0305042)))
+(bookmark "plainSphere.obj" "barbar_upper" '((list -7.50169 199.474 32.3447)     (list -0.262231 -0.232105 -0.936676)     (list -0.227827 0.958096 -0.17363)))
+(bookmark "plainSphere.obj" "barbar_foot" '((list 55.8639 -6.22943 60.52)     (list -0.851673 -0.370971 -0.370181)     (list -0.32291 0.927799 -0.186863)))
+(bookmark "plainSphere.obj" "barbar_back" '((list -140.084 164.861 -194.759)     (list 0.446086 -0.411549 0.794754)     (list 0.288534 0.906721 0.307579)))
+(bookmark "plainSphere.obj" "barbar_back_close" '((list -25.6461 160.13 -55.2492)     (list 0.827198 0.0804718 0.556119)     (list 0.0604671 0.971197 -0.230476)))
+
+(bookmark "plainSphere.obj" "start" '((list 69.3415 234.162 211.174)     (list -0.634829 -0.384408 -0.670241)     (list -0.182232 0.917474 -0.353601)))
+
