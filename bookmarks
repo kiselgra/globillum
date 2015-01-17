@@ -26,7 +26,7 @@
 
 (bookmark "plainSphere.obj" "final_trex_teaser_shot" '((list 69.3415 234.162 211.174)     (list -0.634829 -0.384408 -0.670241)     (list -0.182232 0.917474 -0.353601)))
 (bookmark "plainSphere.obj" "final_trex_diffImage_shot" '((list -68.0706 239.947 196.23)     (list 0.990822 -0.130239 0.0361932)     (list 0.130992 0.991196 -0.0192771)))
-(bookmark "plainSphere.obj" "final_trex_teaser_foot" '((list 85.4319 56.4585 28.4031)     (list -0.45409 -0.622875 -0.637047)     (list -0.319142 0.781284 -0.536418)))
+(bookmark "plainSphere.obj" "final_trex_teaser_foot" '((list -9.29742 60.321 24.8333)     (list -0.36194 -0.723858 -0.587392)     (list -0.469763 0.685885 -0.555774)))
 
 (bookmark "plainSphere.obj" "barbarian_shot" '((list 129.3415 184.162 211.174)     (list -0.634829 -0.384408 -0.670241)     (list -0.182232 0.917474 -0.353601)))
 (bookmark "plainSphere.obj" "barbarian_shot-close" '((list 129.3415 184.162 161.174)     (list -0.634829 -0.384408 -0.670241)     (list -0.182232 0.917474 -0.353601)))

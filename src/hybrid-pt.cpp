@@ -35,13 +35,13 @@ extern std::vector<OSDI::Model*> subd_models;
 //define wether to use PTEX Texture or not
 // DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
 // DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
-#define DEBUG_PBRDF_FOR_SUBD 1
+#define DEBUG_PBRDF_FOR_SUBD 0
 
-#define RENDER_UVS 1
+#define RENDER_UVS 0
 
 //deinfe BOX_SHOT to get the correct color evaluation for the trex box shot.
 //when define BOX_SHOT also the TEASER_SHOT should be defined!
-#define BOX_SHOT
+//#define BOX_SHOT
 
 //define TEASER_SHOT for the correct setup for teaser shot (no skylight)
 #define TEASER_SHOT

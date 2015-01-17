@@ -46,7 +46,7 @@
 (add-model "/share/space1/simaprus/TREX/TREX_ptx/COLOR/bc_body_trexAA.ptx"
 	     :type :subd :disp "/share/space1/simaprus/TREX/TREX_ptx/DISP8/bc_body_trexAA.ptx"
 	     :proxy "/tmp/trex.obj")
-(displacement-scale 0)
+(displacement-scale 3)
 	(subd-tess 2 1)
 	(dof-config 0 60 5)
 	(path-samples 8)
