@@ -61,7 +61,7 @@ void load_subd_proxies() {
 
 #if HAVE_LIBOSDINTERFACE == 1
 rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
-	if (subd_files.size() == 0) return 0;
+	if (subd_files.size() == 0 && objmodel_files.size() == 0) return 0;
 	vector<string> args;
 	ostringstream n; n << subd_tess_normal;
 	ostringstream q; q << subd_tess_quant;
