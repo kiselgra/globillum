@@ -22,7 +22,7 @@ static vector<string> pose_files;
 static vector<string> spec_files;
 
 // for obj-mod
-// static vector<string> model_files;
+static vector<string> objmodel_files;
 // static vector<string> subdobjproxy_files;
 
 int subd_tess_normal = 1;
@@ -40,11 +40,11 @@ void add_subd_model(const std::string &filename, const std::string &displacement
 	if (proxy != "") proxy_files.push_back(proxy);
 }
 	
-// void add_subd_obj_model(const std::string &filename, const std::string &occlusion, const std::string &spec, const std::string &proxy) {
-// 	cout << "add sub/obj model " << filename << endl;
-// 	objmodel_files.push_back(filename);
-// 	if (proxy != "") subdobjproxy_files.push_back(proxy);
-// }
+void add_subd_obj_model(const std::string &filename, const std::string &proxy) {
+	cout << "add sub/obj model " << filename << endl;
+	objmodel_files.push_back(filename);
+	if (proxy != "") proxy_files.push_back(proxy);
+}
 	
 void load_subd_proxies() {
 	for (string m : proxy_files) {
@@ -97,6 +97,10 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 			args.push_back("--pose");
 			args.push_back(pose_files[i]);
 		}
+	}
+	for (int i = 0; i < objmodel_files.size(); ++i) {
+		args.push_back("--model-obj");
+		args.push_back(objmodel_files[i]);
 	}
 	// load subd plugin
 	rta::cgls::connection rta_connection("subdiv", args);

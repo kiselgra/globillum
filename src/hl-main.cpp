@@ -863,6 +863,15 @@ extern "C" {
 			cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
 #endif
 		}
+		if (typecode == 2) {
+#if HAVE_LIBOSDINTERFACE == 1
+			subdFilenames.push_back(file);
+			add_subd_obj_model(file, p_file);
+			return SCM_BOOL_T;
+#else
+			cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
+#endif
+		}
 		cerr << "Error. Unknown model code (" << typecode << ")" << endl;
 		free(trf);
 		free(file);

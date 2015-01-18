@@ -16,7 +16,8 @@
 (define* (add-model name
 		    :key type (is-base #f) (trafo '(1 0 0 0  0 1 0 0  0 0 1 0  0 0 0 1))
 		    (disp "") (proxy "") (spec "") (occl "") (pose ""))
-  (cond ((eq? type :obj)  (add-model% name 0 is-base (row-maj->row-maj-str trafo) ""   proxy spec occl pose))
-	((eq? type :subd) (add-model% name 1 is-base (row-maj->row-maj-str trafo) disp proxy spec occl pose))
+  (cond ((eq? type :obj)     (add-model% name 0 is-base (row-maj->row-maj-str trafo) ""   proxy spec occl pose))
+	((eq? type :subd)    (add-model% name 1 is-base (row-maj->row-maj-str trafo) disp proxy spec occl pose))
+	((eq? type :subdobj) (add-model% name 2 is-base (row-maj->row-maj-str trafo) disp proxy spec occl pose))
 	(else (error "unknown model type: " type))))
 

@@ -589,6 +589,14 @@ SCM_DEFINE(s_add_model, "add-model%", 9, 0, 0, (SCM filename, SCM type, SCM is_b
 #endif
 		return SCM_BOOL_T;
 	}
+	if (typecode == 2) {
+#if HAVE_LIBOSDINTERFACE == 1
+		add_subd_obj_model(file, p_file);
+#else
+		cerr << "Error: Support for SubD surfaces was not compiled in!" << endl;
+#endif
+		return SCM_BOOL_T;
+	}
 	cerr << "Error. Unknown model code (" << typecode << ")" << endl;
 	free(trf);
 	free(d_file);

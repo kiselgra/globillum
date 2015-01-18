@@ -12,6 +12,7 @@
 #endif
 
 void add_subd_model(const std::string &filename, const std::string &displacement, const std::string &proxy, const std::string &pose, const std::string &spec, const std::string &occ);
+void add_subd_obj_model(const std::string &filename, const std::string &proxy);
 void load_subd_proxies();
 
 #if HAVE_LIBOSDINTERFACE == 1
