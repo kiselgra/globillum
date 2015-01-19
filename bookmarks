@@ -59,3 +59,6 @@
 
 (bookmark "plainSphere.obj" "start" '((list 69.3415 234.162 211.174)     (list -0.634829 -0.384408 -0.670241)     (list -0.182232 0.917474 -0.353601)))
 
+(bookmark "simpleBox.obj" "sportscar" '((list 1.79231 0.963789 1.70975)     (list -0.749335 -0.386807 -0.537473)     (list -0.302901 0.921985 -0.241234)))
+(bookmark "simpleBox.obj" "start" '((list 1.89572 1.52574 1.80782)     (list -0.647035 -0.526377 -0.551608)     (list -0.444177 0.848243 -0.288425)))
+(bookmark "plainSphere.obj" "barbarRotate" '((list 102.498 73.3408 219.732)     (list -0.536481 -0.0568436 -0.841993)     (list 0.100077 0.986401 -0.130357)))

@@ -83,6 +83,30 @@ inline float3 normalize (const float3 &a){
 	  return (a>0? 1.0f : -1.0f);
 	  }
 
+  inline Sample3f sampleGlass(const float u, const float v, BRDF_TYPE &brdfType, const float3 &V, float ior){
+const float3 &n =  make_float3(0.f,0.f,1.f);
+float c = dot(n,V);
+	float fresnel = SchlickFresnel(c);
+ float3 L;
+	if( u < fresnel){
+		  //reflect
+		  brdfType = SPECULAR_REFLECTION;
+		  L = reflectR(V,n);
+		
+	  }else{
+		  float totalInternal = 1 + ior*(c*c - 1);
+		  if(totalInternal <= 0.0f && ior > 1.0f){
+			  //total internal reflection.
+			float3 val = make_float3(0.0f,0.0f,0.0f);
+			  return Sample3f(val, 0.0f);
+		  }
+		  //refract
+		  brdfType = SPECULAR_TRANSMISSION;
+		  L = (ior*c - signCalc(dot(V,n))*sqrt(totalInternal))*n - ior*V;
+	  }
+	return Sample3f(L,1.0f);
+	}
+
   // sampling of GTR2Aniso specular Lobe
   inline Sample3f sampleGTR2Aniso(const float& u, const float& v, const float& alphaX2, const float& alphaY2, const float3 &T, 
 	  const float3 &Bi, const float3 &V,float metallic, BRDF_TYPE &brdfType, float ior) {
@@ -97,7 +121,7 @@ inline float3 normalize (const float3 &a){
 
 	  float3 L ; //outgoing light vector.
 	  float fresnel = SchlickFresnel(c);
-	  if(ior == 0 || u < fresnel){
+	  if( ior == 0.0f &&  u < fresnel){
 		  //reflect
 		  brdfType = SPECULAR_REFLECTION;
 		  L = reflectR(V,m);
@@ -135,9 +159,6 @@ inline float3 normalize (const float3 &a){
 	  ////// formula 41 from paper Microfacet Models for Refraction (B.Walter et.al)
 	  //// weight computation is the same for reflection and refraction.
 	  float lweight = (fabs(dot(L,m))*Gs)/(fabs(dot(L,n)) * fabs(dot(n,m))) ;
-//if( lweight == 0 ) 
-//		std::cerr<<"Lweight "<<lweight<<" from "<<dot(L,n)<<" , "<<dot(n,m)<<" and "<<dot(L,m)<<" and "<<dot(V,m)<<" and "<<Gs<<" and div "<< (fabs(dot(L,m))*Gs) <<" / "<< (fabs(dot(L,n)) * fabs(dot(n,m)))<<" iand and " << dot(n,m) <<"\n";
-//		std::cerr<<"Lweight is 0 Warning: Division by 0 : "<<lweight<< "\n"; 
 	  return Sample3f(L,lweight);
   }
 
@@ -278,7 +299,6 @@ class PrincipledMaterial : public Material{
 				_Tx = Tx;
 				_Ty = Ty;
                         }
-
 				void init(bool usePtexTexture, const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT, const float3 &Tx, const float3 &Ty){
 					_mat = mat;
 					_type = DIFFUSE;
@@ -294,14 +314,24 @@ class PrincipledMaterial : public Material{
 				}
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-				if(_type == SPECULAR_REFLECTION || _type == SPECULAR_TRANSMISSION){
+				if(_type == SPECULAR_REFLECTION ){
 					return Principled::evaluatePrincipledBRDF_specular(wo, N, wi, _diffuse, (*_mat->parameters));				
+				}else if(_type == SPECULAR_TRANSMISSION){
+					return make_float3(1.f,1.f,1.f)*_mat->parameters->opacity;
 				}
 				return Principled::evaluatePrincipledBRDF_diffuse(wo,N,wi,_diffuse,(*_mat->parameters));
                         }
                         //returns sampled direction wi in Tangent  space.
                         void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
-				if(sampleXYZ.z < _mat->parameters->metallic){
+
+				if(_mat->parameters->opacity < 1.0f){
+					//do some glass shading.
+					float ior = 1.5f;
+					Principled::Sample3f sam = Principled::sampleGlass(sampleXYZ.x, sampleXYZ.y, _type, wo, ior);
+					wi = sam.value;
+					pdfOut = sam.pdf;
+				}
+				else if(sampleXYZ.z < _mat->parameters->metallic){
 					// do specular reflection to get metallic look
 					_type = SPECULAR;
 					float _ior = 0.f;
@@ -310,11 +340,11 @@ class PrincipledMaterial : public Material{
 					Principled::Sample3f sam = Principled::samplePrincipledSpecular(sampleXYZ.x, sampleXYZ.y, (*_mat->parameters), wo, _type, _ior, Tx_ts, Ty_ts);
 					pdfOut = sam.pdf ;//* _mat->parameters->metallic;
 					wi = sam.value;
-					if(pdfOut == 0) {
+					if(pdfOut == 0 || isnan(pdfOut)) {
 						wi = cosineSampleHemisphere(sampleXYZ.x, sampleXYZ.y);
 						_type = DIFFUSE;
 						pdfOut = clamp01(wi.z) / M_PI;
-                                        }
+                    }
 
 				}else{
 					//do diffuse sampling

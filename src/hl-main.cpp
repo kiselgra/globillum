@@ -613,7 +613,7 @@ void actual_main() {
 	restart_compute = !cmdline.lazy;
 	curr_frame = 0;
 #if CAMERA_PATHS
-	int maxFrames = 360;
+	int maxFrames =3*360;
 	vec3f midPoint;
 	float phi = 0.f;// * M_PI/180.f;
 	bool first_rotation = true;
@@ -657,10 +657,13 @@ void actual_main() {
 		vec3f xAxisTest(1.f,0.f,0.f);
 		vec3f yAxisTest(0.f,0.f,1.f);
 
-		vec3f testPos(0.f,230.f,0.f);
-		vec3f lookAtPos(0.f,150.f,0.f);
+	//	vec3f testPos(0.f,230.f,0.f);   trex
+	//	vec3f lookAtPos(0.f,150.f,0.f); trex
+	//	float rad = 290; trex
 
-		float rad = 290;
+		vec3f testPos(0.f,60.f,0.f);
+		vec3f lookAtPos(0.f,60.f,0.f);
+		float rad = 250;
 		vec3f nextPos = testPos + xAxisTest * rad * sin(phi) + yAxisTest*cos(phi)*rad;
 		nextDir = lookAtPos-nextPos;		
 		normalize_vec3f(&nextDir);

@@ -374,7 +374,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				//bakcfacing check
 				if((org_dir|geoN) > 0.0f) {
 #ifndef BOX_SHOT
-					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);//true);//false);
+					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);//true);//false);
 					col_accum[id] = make_float3(0.f,0.f,0.f);
 					continue;
 #endif
@@ -405,8 +405,14 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				ray_diff_org[id] = upper_P;
 				ray_diff_org[w*h+id] = right_P;
 
+				float3 T, B;				
+				make_tangent_frame(N, T, B);
+				normalize_vec3f(&T);
+				normalize_vec3f(&B);
+
+
 				// load and evaluate material
-				currentMaterial.init(mat.isPrincipledMaterial(),usePtexTexture,&mat, TC, upper_T, right_T, Tx, Ty);
+				currentMaterial.init(mat.isPrincipledMaterial(),usePtexTexture,&mat, TC, upper_T, right_T, T, B);
 
 			
 				//invert org dir to be consistent
@@ -428,11 +434,11 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// compute next path segment by sampling the brdf
 				float3 random = next_random3f(uniform_random, id);
 
-				float3 T, B;				
+			/*	float3 T, B;				
 				make_tangent_frame(N, T, B);
 				normalize_vec3f(&T);
 				normalize_vec3f(&B);
-
+*/
 				float3 dir;
 				bool reflection = false;
 				//do only diffuse for now
@@ -448,7 +454,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				}else{
 					float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
 					currentMaterial.sample(inv_org_dir_ts, dir, random, pdf);
+					//if(pdf <= 0.0001f) std::cerr<<"PDF IS TOOO SMALL :"<<pdf<<"\n";
 					dir = transform_from_tangent_frame(dir,T,B,N);
+					//if(isnan(dir.x) || isnan(dir.y) ||isnan(dir.z)) std::cerr<<"dir is nan: "<<dir.x<<","<<dir.y<<","<<dir.z<<", and "<<pdf<<"\n";
 					float3 brdf = currentMaterial.evaluate(inv_org_dir,dir,N);
 					ray_diff_dir[id] = reflect(upper_dir, N);
 					TP *= brdf;
