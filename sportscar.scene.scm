@@ -93,6 +93,8 @@
   (add-model "/share/space1/kiselgra/sportscar/m_mWinkler_polySurfaceShape52.obj" :type :subdobj)
   (add-model "/share/space1/kiselgra/sportscar/m_mGomBlack_polySurfaceShape185.obj" :type :subdobj)
   (add-model "/share/space1/kiselgra/sportscar/m_mGlassMat_polySurfaceShape38.obj" :type :subdobj)
+  (add-model "/share/space1/kiselgra/sportscar/m_mGlassMat_Glass2.obj" :type :subdobj)
+  (add-model "/share/space1/kiselgra/sportscar/m_mGlassMat_Glass.obj" :type :subdobj)
 	(subd-tess 2 1)
 	(dof-config 0 60 5)
 	(path-samples 64)
