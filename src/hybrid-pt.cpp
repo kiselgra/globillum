@@ -35,7 +35,7 @@ extern std::vector<OSDI::Model*> subd_models;
 //define wether to use PTEX Texture or not
 // DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
 // DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
-#define DEBUG_PBRDF_FOR_SUBD 0
+#define DEBUG_PBRDF_FOR_SUBD 1
 
 #define RENDER_UVS 0
 
@@ -233,6 +233,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				float3 geoN;
 
+				bool is_uv_hit = false;
 				bool usePtexTexture = false;
 				// check if we hit a triangle or a subd patch
 				if ((is.ref & 0xff000000) == 0) {
@@ -316,6 +317,9 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 #endif
 				#if RENDER_UVS
 					mat.diffuse_color = make_float3(is.beta, is.gamma, 0.0f);
+					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);//true);//false);
+					col_accum[id] = mat.diffuse_color;
+					continue;
 				#endif
 
 				#ifdef DIFF_ERROR_IMAGE
@@ -375,7 +379,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				if((org_dir|geoN) > 0.0f) {
 #ifndef BOX_SHOT
 					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);//true);//false);
-					col_accum[id] = make_float3(0.f,0.f,0.f);
+				//	col_accum[id] = make_float3(0.f,0.f,0.f);
 					continue;
 #endif
 				}
@@ -433,36 +437,17 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				// compute next path segment by sampling the brdf
 				float3 random = next_random3f(uniform_random, id);
-
-			/*	float3 T, B;				
-				make_tangent_frame(N, T, B);
-				normalize_vec3f(&T);
-				normalize_vec3f(&B);
-*/
 				float3 dir;
 				bool reflection = false;
 				//do only diffuse for now
 				float pdf = 1.0f;
-				if (reflection) {
-		/*			org_dir = transform_to_tangent_frame(org_dir, T, B, N);
-					dir = org_dir;
-					dir.z = -dir.z;
-					dir = transform_from_tangent_frame(dir, T, B, N);
-					// store reflection ray differentials. (todo: change to broadened cone)
-					ray_diff_dir[id] = reflect(upper_dir, N);
-					ray_diff_dir[w*h+id] = reflect(right_dir, N);*/
-				}else{
-					float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
-					currentMaterial.sample(inv_org_dir_ts, dir, random, pdf);
-					//if(pdf <= 0.0001f) std::cerr<<"PDF IS TOOO SMALL :"<<pdf<<"\n";
-					dir = transform_from_tangent_frame(dir,T,B,N);
-					//if(isnan(dir.x) || isnan(dir.y) ||isnan(dir.z)) std::cerr<<"dir is nan: "<<dir.x<<","<<dir.y<<","<<dir.z<<", and "<<pdf<<"\n";
-					float3 brdf = currentMaterial.evaluate(inv_org_dir,dir,N);
-					ray_diff_dir[id] = reflect(upper_dir, N);
-					TP *= brdf;
-				}
+				float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
+				currentMaterial.sample(inv_org_dir_ts, dir, random, pdf);
+				dir = transform_from_tangent_frame(dir,T,B,N);
+				float3 brdf = currentMaterial.evaluate(inv_org_dir,dir,N);
+				TP *= brdf;
 
-				
+				ray_diff_dir[id] = reflect(upper_dir, N);
 				float len = length_of_vector(dir);
 				dir /= len;
 				//direction of normal might be better 

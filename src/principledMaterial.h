@@ -84,27 +84,36 @@ inline float3 normalize (const float3 &a){
 	  }
 
   inline Sample3f sampleGlass(const float u, const float v, BRDF_TYPE &brdfType, const float3 &V, float ior){
-const float3 &n =  make_float3(0.f,0.f,1.f);
-float c = dot(n,V);
+	const float3 &n =  make_float3(0.f,0.f,1.f);
+	float c = dot(n,V);
 	float fresnel = SchlickFresnel(c);
- float3 L;
+	float3 L;
+	bool entering = c > 0.f;
+	float pdf = 0.f;
 	if( u < fresnel){
 		  //reflect
 		  brdfType = SPECULAR_REFLECTION;
 		  L = reflectR(V,n);
-		
+		  pdf = 1.f;
+		  return Sample3f(L,1.f);
 	  }else{
 		  float totalInternal = 1 + ior*(c*c - 1);
-		  if(totalInternal <= 0.0f && ior > 1.0f){
+		  if(totalInternal <= 0.0f ){ //&& ior > 1.0f){
 			  //total internal reflection.
-			float3 val = make_float3(0.0f,0.0f,0.0f);
-			  return Sample3f(val, 0.0f);
+			 L = reflect(V,n);
+			pdf = 1.f;
+//			float3 val = make_float3(0.0f,0.0f,0.0f);
+			  return Sample3f(L,pdf);
 		  }
+		  if(entering){
+			//
+		}
 		  //refract
 		  brdfType = SPECULAR_TRANSMISSION;
 		  L = (ior*c - signCalc(dot(V,n))*sqrt(totalInternal))*n - ior*V;
+		  pdf = 1.0f;
 	  }
-	return Sample3f(L,1.0f);
+	return Sample3f(L,pdf);
 	}
 
   // sampling of GTR2Aniso specular Lobe
@@ -123,7 +132,7 @@ float c = dot(n,V);
 	  float fresnel = SchlickFresnel(c);
 	  if( ior == 0.0f &&  u < fresnel){
 		  //reflect
-		  brdfType = SPECULAR_REFLECTION;
+		  brdfType = DISNEY_REFLECTION;
 		  L = reflectR(V,m);
 		
 	  }else{
@@ -134,7 +143,7 @@ float c = dot(n,V);
 			  return Sample3f(val, 0.0f);
 		  }
 		  //refract
-		  brdfType = SPECULAR_TRANSMISSION;
+		  brdfType = DISNEY_REFLECTION;// SPECULAR_TRANSMISSION;
 		  L = (ior*c - signCalc(dot(V,n))*sqrt(totalInternal))*m - ior*V;
 	  }
 	  //flip if neccessary
@@ -314,10 +323,15 @@ class PrincipledMaterial : public Material{
 				}
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
-				if(_type == SPECULAR_REFLECTION ){
+				if(_type == DISNEY_REFLECTION ){
 					return Principled::evaluatePrincipledBRDF_specular(wo, N, wi, _diffuse, (*_mat->parameters));				
+				}else if(_type == SPECULAR_REFLECTION){
+					float3 out = make_float3(1.f,1.f,1.f) / fabs(wi|N);
+					return out;
+					//i//return make_float3(1.f,1.f,1.f)*_mat->parameters->opacity;
 				}else if(_type == SPECULAR_TRANSMISSION){
-					return make_float3(1.f,1.f,1.f)*_mat->parameters->opacity;
+					float3 out = _diffuse/fabs(wi|N);
+					return out;
 				}
 				return Principled::evaluatePrincipledBRDF_diffuse(wo,N,wi,_diffuse,(*_mat->parameters));
                         }

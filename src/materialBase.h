@@ -39,7 +39,7 @@ inline float3 cosineSampleHemisphere(float u, float v){
 
                 inline float clamp01(float a){ return (a<0.f? 0.0f : a );}//(a>1.f? 1.0f : a));}
 enum BRDF_TYPE{
-      SPECULAR, DIFFUSE, TRANSMISSIVE, SPECULAR_REFLECTION, SPECULAR_TRANSMISSION
+      SPECULAR, DIFFUSE, TRANSMISSIVE, SPECULAR_REFLECTION, SPECULAR_TRANSMISSION, DISNEY_REFLECTION
                 };
 
 class Material{
