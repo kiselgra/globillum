@@ -1,0 +1,13 @@
+color 0.1 0.1 0.1
+roughness 0.1
+metallic 0.3
+opacity 1.0
+subsurface 0.0
+specular 0.0
+tintSpecular 0.0
+anisotropic 0.0
+sheen 0.0
+tintSheen 0.0
+clearcoat 0.8
+glossClearcoat 0.8
+transmission0.0
