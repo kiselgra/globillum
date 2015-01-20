@@ -1,5 +1,6 @@
 (let ((home (getenv "HOME"))
-	  (trex "/disc2/local/"))
+	  ;(trex "/disc2/local/"))
+	  (trex "/share/space1/simaprus"))
   (add-model "plainSphere.obj" :type :obj :is-base #t)
   (add-model (string-append trex "/TREX/TREX_ptx/COLOR/hc_tongue_trexAA.ptx")
 	     :type :subd :disp (string-append trex "/TREX/TREX_ptx/DISP8/hc_tongue_trexAA.ptx"))
