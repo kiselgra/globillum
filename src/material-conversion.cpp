@@ -40,7 +40,7 @@ namespace rta {
 			return gpu_tex;
 		}
 
-		cuda::material_t* convert_and_upload_materials(int &N, std::vector<std::string> &subdFilenames) {
+		cuda::material_t* convert_and_upload_materials(int &N, std::vector<std::string> &subdFilenamesSet) {
 			vector<rta::material_t*> coll;
 			for (int i = 0; ; ++i)  {
 				try {
@@ -52,6 +52,31 @@ namespace rta {
 			}
 			//HACK: ADD DEFAULT PBRT MATERIAL: always last one!
 			coll.push_back(rta::material(0));
+			std::vector<std::string> subdFilenames;
+//			for(auto it = subdFilenamesSet.begin(); it!=subdFilenamesSet.end(); ++it){
+			for(int i=0; i<subdFilenamesSet.size(); i++){
+				std::string materialPath("materials/");
+				std::string materialEnd(".pbrdf");
+				std::string searchFileName = materialPath + subdFilenamesSet[i] + materialEnd;
+				std::ifstream in(searchFileName.c_str());
+				if(in.is_open()){
+					std::cerr<<"Could open "<<searchFileName<<"\n";
+					subdFilenames.push_back(searchFileName);
+					in.close();
+				}else{
+					std::cerr << "Could not find " << searchFileName << "\n";
+				}
+			}
+			// add default material.
+			std::string materialPath("materials/default.pbrdf");
+			std::ifstream in(materialPath);
+			if(!in.is_open()) std::cerr << "WARNING: Could not open Default PBRDF Material " << materialPath << "\n";
+			else{
+				subdFilenames.push_back(materialPath);
+  				in.close();
+			}
+
+
 			N = coll.size() + subdFilenames.size();
 			int numObjMaterials = coll.size();
 			for(int i=0; i<subdFilenames.size(); i++) coll.push_back(rta::material(0));
@@ -62,12 +87,12 @@ namespace rta {
 			for (int i = 0; i < N; ++i) {
 				if(i >= numObjMaterials){
 					//subdFilenames!
-					std::string materialPath("materials/");
-					std::string testFile = materialPath + subdFilenames[subdidx] + std::string(".pbrdf");
-					std::ifstream in(testFile.c_str());
+					//std::string materialPath("materials/");
+//					std::string testFile = materialPath + subdFilenames[subdidx] + std::string(".pbrdf");
+//					std::ifstream in(testFile.c_str());
 					cuda::material_t *m = &materials[i];
 
-					if(in.is_open()){
+				/*	if(in.is_open()){
 						in.close();
 						m->parameters = new PrincipledBRDFParameters(testFile);
 					}else{
@@ -76,12 +101,14 @@ namespace rta {
 						if(!in.is_open()) std::cerr<<"WARNING: Could not open PBRDF Material "<<materialPath<<"\n";
 						else in.close();
 						m->parameters = new PrincipledBRDFParameters(materialPath);
-					}
+					}*/
+					m->parameters = new PrincipledBRDFParameters(subdFilenames[subdidx]);
+					std::cerr<< "SETTING material "<<i<<" to subd "<<subdidx<<" to subd filename "<<subdFilenames[subdidx]<<"\n";
 					subdidx++;
 					continue;
 				}
 				rta::material_t *src = coll[i];
-				if(i ==coll.size()-1){
+/*				if(i ==coll.size()-1){
 					std::string materialPath("materials/default.pbrdf");
 					std::ifstream in(materialPath.c_str());		
 					cuda::material_t *m = &materials[i];
@@ -92,7 +119,7 @@ namespace rta {
 						m->parameters = 0;
 					}
 					continue; // equivalent with break, since this is the last material element.
-				}
+				}*/
 				std::string materialPath ("materials/");
 				std::string pbrdfEnding (".pbrdf");		
 				std::string defaultMaterial = materialPath + src->name + pbrdfEnding;

@@ -42,7 +42,7 @@ void init (const rta::cuda::material_t* mat, const float2 &T, const float2 &uppe
                                         return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
                                 }
                         }
- void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
+ void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut, bool enterGlass) {
                                 float pd = _diffuse.x + _diffuse.y + _diffuse.z;
                                 float ps = _specular.x + _specular.y + _specular.z;
                                 float sumPds = pd + ps;
@@ -96,7 +96,7 @@ class LambertianMaterial : public Material{
                                 return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
                         }
                         //returns sampled direction wi in Tangent  space.
-                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
+                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut, bool enterGlass) {
                                 wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y);
                                 pdfOut = clamp01(wi.z) * (1.0f/M_PI);
                         }

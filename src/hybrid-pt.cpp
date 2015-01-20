@@ -269,6 +269,8 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					normalize_vec3f(&Tx);
 					cross_vec3f(&Ty,&Tx,&N);
 					normalize_vec3f(&Ty);
+mat = mats[material_count-1];
+
 				}
 				else {
 #if HAVE_LIBOSDINTERFACE == 1
@@ -286,13 +288,14 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					else
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&dummyP, (float*)&geoN);//, mipmapBias, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
-
-					if(idx_subd_material+modelidx < material_count) {
-							mat = mats[idx_subd_material + modelidx];
-					}else{
-						std::cerr << "Warning: Could not open material at subd model idx " << modelidx <<". There are only " << material_count <<" materials present.\n";
-						mat = mats[material_count-1];
+					
+					int materialIndex = idx_subd_material  - 1 +  subd_models[modelidx]->GetMaterialIndex() ;//+ idx_subd_material;
+					if(materialIndex < 0  || materialIndex>= material_count){
+						std::cerr << "Warning: Material index " << materialIndex <<" build from "<<subd_models[modelidx]->GetMaterialIndex()<< "  is out of bounds " << material_count << "\n";
+						materialIndex = material_count - 1; // Set to default material.
 					}
+
+					mat = mats[materialIndex];
 					usePtexTexture = true;
 					
 					//WATCH OUT: 0.15 is a MAGIC NUMBER to offset so that we dont get self intersections with compressed boxes.
@@ -305,7 +308,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					//clamp uvs
 					//is.beta=clampFloat(is.beta);
 					//is.gamma=clampFloat(is.gamma); 
-					subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);
+					subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&mat.diffuse_color);					
 #endif
 					//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
 					tri.a = P; tri.b = P+Tx; tri.c = P+Ty;
@@ -376,13 +379,6 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// add lighting to accumulation buffer
 				normalize_vec3f(&org_dir);
 				//bakcfacing check
-				if((org_dir|geoN) > 0.0f) {
-#ifndef BOX_SHOT
-					handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);//true);//false);
-				//	col_accum[id] = make_float3(0.f,0.f,0.f);
-					continue;
-#endif
-				}
 				float3 upper_org = ray_diff_org[id],
 				// eval ray differentials (stored below)
 					   upper_dir = ray_diff_dir[id],
@@ -417,13 +413,36 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 				// load and evaluate material
 				currentMaterial.init(mat.isPrincipledMaterial(),usePtexTexture,&mat, TC, upper_T, right_T, T, B);
+//				currentMaterial.init(true,false,&mat, TC, upper_T, right_T, T, B);
 
-			
-				//invert org dir to be consistent
+				float3 random = next_random3f(uniform_random, id);
+				float3 dir;
+				float pdf = 1.0f;
+				bool enterGlass = true;
+				if((org_dir|geoN) > 0.0f) {
+					if(currentMaterial.isGlass()) {
+						enterGlass = false;
+						//geoN *= -1.f;
+						N *= -1.f;
+						//geoN *= -1.f;
+//						N *= -1.f;
+					}else{
+#ifndef BOX_SHOT
+						handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);//true);//false);
+						col_accum[id] = make_float3(0.f,0.f,0.f);
+						continue;
+#endif
+					}
+				}
 				float3 inv_org_dir = -1.0f*org_dir;
-				// attention: recycling of 'is'
-				is = shadow_ti[id];
+				float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
+				currentMaterial.sample(inv_org_dir_ts, dir, random,pdf, enterGlass);
+				dir = transform_from_tangent_frame(dir,T,B,N);
+				
+				//do shading for non-glass materials.
 				float3 TP = throughput[id];
+				if(!currentMaterial.isGlass()){
+				is = shadow_ti[id];
 				if (!is.valid()) {
 					float3 weight = potential_sample_contribution[id];
 					// attention: we need the throughput *before* the bounce
@@ -431,36 +450,46 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					float3 light_dir = to_light[id];
 					normalize_vec3f(&light_dir);
 					// the whole geometric term is already computed in potential_sample_contribution.
-					float3 brdf = currentMaterial.evaluate(inv_org_dir,light_dir,N);
-					col_accum[id] +=  brdf *curr;
+					float3 brdfLight = currentMaterial.evaluate(inv_org_dir,light_dir,N);
+					col_accum[id] +=  brdfLight *curr;
 				}
-
+				}
 				// compute next path segment by sampling the brdf
-				float3 random = next_random3f(uniform_random, id);
-				float3 dir;
-				bool reflection = false;
-				//do only diffuse for now
-				float pdf = 1.0f;
-				float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
-				currentMaterial.sample(inv_org_dir_ts, dir, random, pdf);
-				dir = transform_from_tangent_frame(dir,T,B,N);
 				float3 brdf = currentMaterial.evaluate(inv_org_dir,dir,N);
 				TP *= brdf;
-
 				ray_diff_dir[id] = reflect(upper_dir, N);
 				float len = length_of_vector(dir);
 				dir /= len;
 				//direction of normal might be better 
+//				if(enterGlass){
+//					P -= 0.01f * geoN;
+					//col_accum[id] = make_float3(1.f,1.f,1.f);
+//				}else{
 #ifdef OFFSET_HACK
-	P += 0.9f * geoN;
+//	P += 0.9f * geoN;
 #endif
-				P += 0.01f * geoN; // I hope N is normalized :-)
+//				P += 0.01f * geoN; // I hope N is normalized :-)
+
+				float offsetFactor = 0.3f;
+/*				if(currentMaterial.principled.isTransmissive()){
+					if (enterGlass)
+						P -= offsetFactor * geoN;
+					else P += offsetFactor * geoN;
+				}else{
+					if(enterGlass)
+						P += offsetFactor * geoN;
+					else
+						P -= offsetFactor * geoN;
+				}*/
+				P += offsetFactor * dir;
+				//col_accum[id] = TP;
+//}
 				ray_orig[id] = P;
 				ray_dir[id]  = dir;
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/pdf);
 #ifndef BOX_SHOT
-				if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(clamp(TP.x,0.f,1.f), clamp(TP.y,0.f,1.f), clamp(TP.z,0.f,1.f)); //,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
+		//		if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(clamp(TP.x,0.f,1.f), clamp(TP.y,0.f,1.f), clamp(TP.z,0.f,1.f)); //,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
 #endif
 				throughput[id] = TP;
 				continue;

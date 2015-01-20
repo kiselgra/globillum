@@ -30,7 +30,6 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-
 using namespace std;
 
 scene_ref the_scene;
@@ -205,7 +204,7 @@ void setup_rta(std::string plugin) {
 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
 
-	std::vector<std::string> dummyF(0);
+	std::vector<std::string> dummyF;
 	gpu_materials = rta::cuda::convert_and_upload_materials(material_count,dummyF);
 	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
 

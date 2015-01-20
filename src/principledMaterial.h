@@ -83,37 +83,37 @@ inline float3 normalize (const float3 &a){
 	  return (a>0? 1.0f : -1.0f);
 	  }
 
-  inline Sample3f sampleGlass(const float u, const float v, BRDF_TYPE &brdfType, const float3 &V, float ior){
+  inline Sample3f sampleGlass(const float u, const float v, BRDF_TYPE &brdfType, const float3 &V, float ior, bool sampleGlass){
 	const float3 &n =  make_float3(0.f,0.f,1.f);
 	float c = dot(n,V);
 	float fresnel = SchlickFresnel(c);
 	float3 L;
-	bool entering = c > 0.f;
+	//bool entering = c > 0.f;
 	float pdf = 0.f;
-	if( u < fresnel){
+	if( u > fresnel){
 		  //reflect
 		  brdfType = SPECULAR_REFLECTION;
-		  L = reflectR(V,n);
+		  L = -V;//reflectR(V,n);
 		  pdf = 1.f;
 		  return Sample3f(L,1.f);
 	  }else{
 		  float totalInternal = 1 + ior*(c*c - 1);
 		  if(totalInternal <= 0.0f ){ //&& ior > 1.0f){
-			  //total internal reflection.
-			 L = reflect(V,n);
+			 //total internal reflection.
+			L = reflect(V,n);
+			brdfType = SPECULAR_REFLECTION;
 			pdf = 1.f;
-//			float3 val = make_float3(0.0f,0.0f,0.0f);
-			  return Sample3f(L,pdf);
+			 return Sample3f(L,pdf);
 		  }
-		  if(entering){
-			//
-		}
 		  //refract
 		  brdfType = SPECULAR_TRANSMISSION;
 		  L = (ior*c - signCalc(dot(V,n))*sqrt(totalInternal))*n - ior*V;
 		  pdf = 1.0f;
-	  }
-	return Sample3f(L,pdf);
+	  }/*
+		brdfType = SPECULAR_TRANSMISSION;
+		L = -V;
+		pdf = 1.f;*/
+    	return Sample3f(L,pdf);
 	}
 
   // sampling of GTR2Aniso specular Lobe
@@ -321,29 +321,36 @@ class PrincipledMaterial : public Material{
 					_Tx = Tx;
 					_Ty = Ty;
 				}
+				bool isGlass() const{
+					return (_mat->parameters->opacity < 1.f);
+				}
                         // evaluates brdf based on in/out directions wi/wo in world space
                         float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const{
 				if(_type == DISNEY_REFLECTION ){
 					return Principled::evaluatePrincipledBRDF_specular(wo, N, wi, _diffuse, (*_mat->parameters));				
 				}else if(_type == SPECULAR_REFLECTION){
-					float3 out = make_float3(1.f,1.f,1.f) / fabs(wi|N);
+					float3 out = make_float3(1.f,1.f,1.f) ;// *_mat->parameters->opacity / fabs(wi|N);
 					return out;
 					//i//return make_float3(1.f,1.f,1.f)*_mat->parameters->opacity;
 				}else if(_type == SPECULAR_TRANSMISSION){
-					float3 out = _diffuse/fabs(wi|N);
+					float3 out = make_float3(1.f,1.f,1.f);// * (1.f - _mat->parameters->opacity);
+					//if(_entering) out *= _diffuse;
+					out *= 1.f/fabs(wi|N);
 					return out;
 				}
 				return Principled::evaluatePrincipledBRDF_diffuse(wo,N,wi,_diffuse,(*_mat->parameters));
                         }
                         //returns sampled direction wi in Tangent  space.
-                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut) {
+                        void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut, bool enterGlass) {
 
 				if(_mat->parameters->opacity < 1.0f){
 					//do some glass shading.
-					float ior = 1.5f;
-					Principled::Sample3f sam = Principled::sampleGlass(sampleXYZ.x, sampleXYZ.y, _type, wo, ior);
+					float ior = 1.9f;
+					Principled::Sample3f sam = Principled::sampleGlass(sampleXYZ.x, sampleXYZ.y, _type, wo, ior, enterGlass);
+					_entering = enterGlass;
 					wi = sam.value;
 					pdfOut = sam.pdf;
+					return;
 				}
 				else if(sampleXYZ.z < _mat->parameters->metallic){
 					// do specular reflection to get metallic look
@@ -378,5 +385,6 @@ class PrincipledMaterial : public Material{
                         const rta::cuda::material_t *_mat;
 			float3 _Tx;
 			float3 _Ty;
+			bool _entering;
                 };
 }

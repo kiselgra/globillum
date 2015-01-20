@@ -56,7 +56,7 @@ class Material{
                                 // wi : sampled direction in Tangent space
                                 // pdfOut : corresponding pdf to sampled direction
                                 // float3 : brdf value (no return value because we cannot switch to tangent space)
-                                virtual void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut){
+                                virtual void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut, bool enterGlass = false){
                                         wi.x = 0.0f;
                                         wi.y = 0.0f;
                                         wi.z = 0.0f;
@@ -69,6 +69,9 @@ class Material{
                                 }
                                 bool isDiffuse() const { return (_type == DIFFUSE);}
                                 bool isSpecular() const {return (_type == SPECULAR);}
+								bool isTransmissive()const {return (_type == SPECULAR_TRANSMISSION);}
+								bool isReflective() const {return (_type == SPECULAR_REFLECTION);}
+							//	bool isGlass() const{if(_type == SPECULAR_REFLECTION || _type == SPECULAR_TRANSMISSION) return true; return false ;}
                                 protected:
                                         BRDF_TYPE _type;
                                         float3 _diffuse;

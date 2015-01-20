@@ -27,13 +27,25 @@ struct materialBRDF{
 		if(isSimple) simple.init(mat,TC,upper_T,right_T);
 		else principled.init(usePtexTexture,mat, TC, upper_T, right_T, Tx, Ty);
 	}
-	void sample(const float3 &inv_org_dir_ts, float3 &dir, const float3 &random, float &pdf){
-		if(isSimple) simple.sample(inv_org_dir_ts, dir, random, pdf);
-		else principled.sample(inv_org_dir_ts, dir, random, pdf);
+	void sample(const float3 &inv_org_dir_ts, float3 &dir, const float3 &random, float &pdf, bool enterGlass){
+		if(isSimple) simple.sample(inv_org_dir_ts, dir, random, pdf, enterGlass);
+		else principled.sample(inv_org_dir_ts, dir, random, pdf, enterGlass);
 	}
 	float3 evaluate(const float3 &inv_org_dir, const float3 &light_dir, const float3 &N)
 	{
 		if(isSimple) return simple.evaluate(inv_org_dir,light_dir,N);
 		else return principled.evaluate(inv_org_dir,light_dir,N);
+	}
+	bool specTrans() const{ 
+		if(isSimple) return false;
+		else return principled.isTransmissive();
+	}
+	bool specReflect() const{
+		if(isSimple) return false;
+		else return principled.isReflective();
+	}
+	bool isGlass() const{
+		if(isSimple) return false;
+		else return (principled.isGlass());
 	}	
 };
