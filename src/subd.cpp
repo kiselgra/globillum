@@ -103,7 +103,7 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 		args.push_back(objmodel_files[i]);
 	}
 	// load subd plugin
-	rta::cgls::connection rta_connection("subdiv", args);
+	rta::cgls::connection rta_connection("/soft/devtools/kai/14.04/lib/rta/subdiv.so", args);
 	rta::basic_flat_triangle_list<rta::simple_triangle> fake;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(fake, w, h));
 
