@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 
+#include <string.h> // because of bug in png++
 #include <png++/png.hpp>
 
 #include "config.h"

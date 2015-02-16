@@ -390,8 +390,9 @@ void setup_rta(std::string plugin) {
 
 	//go over all subd file paths and get their actual filename 
 	// this name will be used to identify wether we have a corresponding material filename .pbrdf
+	std::vector<std::string> SubdMaterialNames;
+#if HAVE_LIBOSDINTERFACE == 1
 	std::map<std::string,int> subdMaterialNames;
-	std::vector<std::string> subdMaterialNamesVec(0);
 	for(int i=0; i<subd_models.size(); i++){
 		//int idx = subdFilenames[i].rfind('/');
 		//if(idx != std::string::npos){
@@ -400,19 +401,20 @@ void setup_rta(std::string plugin) {
 		std::string s = subd_models[i]->GetMaterialName();//etMaterialName(&s);
 		auto it = subdMaterialNames.find(s);
 		if( it==subdMaterialNames.end()){
-			int idx = subdMaterialNamesVec.size();
+			int idx = SubdMaterialNames.size();
 			subdMaterialNames.insert(std::pair<std::string,int> (s,idx));
 			subd_models[i]->SetMaterialIndex(idx);
-			subdMaterialNamesVec.push_back(s);
-std::cerr<<"Set subd model " << i <<" to material index " << idx << ", of currently "<<subdMaterialNamesVec.size()<<" materials.\n";
+			SubdMaterialNames.push_back(s);
+			std::cerr<<"Set subd model " << i <<" to material index " << idx << ", of currently "<<SubdMaterialNames.size()<<" materials.\n";
 		}else{
 			int idx = (*it).second;
 			subd_models[i]->SetMaterialIndex(idx);
-			std::cerr<<"Set subd model " << i <<" to material index " << idx << ", of currently "<<subdMaterialNamesVec.size()<<" materials.\n";
+			std::cerr<<"Set subd model " << i <<" to material index " << idx << ", of currently "<<SubdMaterialNames.size()<<" materials.\n";
 		}
 	}
 	std::cerr << "Found " << subdMaterialNames.size() << " subd material names.\n";
-	for (int i=0; i<subdMaterialNamesVec.size(); i++)	std::cerr<<"Material "<<i<<" is "<<subdMaterialNamesVec[i]<<"\n";
+	for (int i=0; i<SubdMaterialNames.size(); i++)	std::cerr<<"Material "<<i<<" is "<<SubdMaterialNames[i]<<"\n";
+#endif
 	/*
 	ctd = rta::cgls::connection::convert_scene_to_cuda_triangle_data(the_scene);
 	static rta::basic_flat_triangle_list<rta::simple_triangle> the_ftl = ctd->cpu_ftl();
@@ -421,10 +423,10 @@ std::cerr<<"Set subd model " << i <<" to material index " << idx << ", of curren
 // 	add_objfile_to_flat_tri_list(cmdline.filename, *ftl);
 // 	ftl = &the_ftl;
 	rta::rt_set *set = new rta::rt_set(rta::plugin_create_rt_set(*ftl, rays_w, rays_h));
-	gpu_materials = rta::cuda::convert_and_upload_materials(material_count,subdMaterialNamesVec);
+	gpu_materials = rta::cuda::convert_and_upload_materials(material_count,SubdMaterialNames);
 	cpu_materials = rta::cuda::download_materials(gpu_materials, material_count);
-	std::cerr<<"material all :"<<material_count<<", materials subd "<<subdMaterialNamesVec.size()<<"\n";
-	idx_subd_material = material_count - subdMaterialNamesVec.size();//subdFilenames.size();
+	std::cerr<<"material all :"<<material_count<<", materials subd "<<SubdMaterialNames.size()<<"\n";
+	idx_subd_material = material_count - SubdMaterialNames.size();
 	/*
 
 	if (!use_cuda) {
