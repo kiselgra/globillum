@@ -73,7 +73,8 @@ rta::rt_set* generate_compressed_bvhs_and_tracer(int w, int h) {
 	args.push_back(q.str());
 	args.push_back("--node");
 // 	args.push_back("test");
-	args.push_back("uni662");
+// 	args.push_back("uni662");
+	args.push_back("uni332a");
 	if (subd_face_include != "") {
 		args.push_back("-f");
 		args.push_back(subd_face_include);
