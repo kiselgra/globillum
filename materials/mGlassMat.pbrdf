@@ -1,6 +1,6 @@
-color 1.0 1.0 1.0
-roughness 0.9
-metallic 0.1
+color 0.3 0.3 0.3
+roughness 0.0
+metallic 1.0
 opacity 0.0
 subsurface 0.0
 specular 0.0
