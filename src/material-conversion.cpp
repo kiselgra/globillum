@@ -40,99 +40,93 @@ namespace rta {
 			return gpu_tex;
 		}
 
-		cuda::material_t* convert_and_upload_materials(int &N, std::vector<std::string> &subdFilenamesSet) {
+		/*! \brief Convert rta materials to our material type, \ref rta::cuda::material_t (ok, the namespace is confusing).
+		 *
+		 *  We first generate GPU materials and then download them (via \ref download_materials) to get host-side representations.
+		 *
+		 *  @Magda: can you check the following?
+		 *
+		 *  \note This distinction became somewhat blurred, as the pricipled materials (disney brdf?) are only generated on the cpu.
+		 *  \note The copying to GPU data simply copies the host-pointer to the principled materials, so this pointer will be dangerous.
+		 *  \note SubD files are not associated with a material definition (is that true?) and thus we look up materials on a per-file 
+		 *        name basis.
+		 *  \note We also add principled materials parameters to materials for which we find a material definition under
+		 *        ./materials/${material.name}.pbrdf. This is still somewhat unflexible. Maybe we'll provide a path via the config
+		 *        mechanism at some point...
+		 *  \note The last material definition is always a `default' principled material to be used for SubD meshes when not suitable 
+		 *        material is found.
+		 */
+		cuda::material_t* convert_and_upload_materials(int &N, std::vector<std::string> &SubdFilenamesSet) {
+			// collect all rta materials into `coll'.
+			// this is a bit hacky as rta does directly not tell us how many materials there are.
 			vector<rta::material_t*> coll;
-			for (int i = 0; ; ++i)  {
+			for (int i = 0; ; ++i)
 				try {
 					coll.push_back(rta::material(i));
 				}
 				catch (runtime_error &e) {
 					break;
 				}
-			}
-			//HACK: ADD DEFAULT PBRT MATERIAL: always last one!
+
+			// find all subd meshes for which there is a material definition.
+			std::string MaterialPath("materials/");
+			std::string MaterialEnd(".pbrdf");
 			coll.push_back(rta::material(0));
-			std::vector<std::string> subdFilenames;
-//			for(auto it = subdFilenamesSet.begin(); it!=subdFilenamesSet.end(); ++it){
-			for(int i=0; i<subdFilenamesSet.size(); i++){
-				std::string materialPath("materials/");
-				std::string materialEnd(".pbrdf");
-				std::string searchFileName = materialPath + subdFilenamesSet[i] + materialEnd;
+			std::vector<std::string> SubdFilenames;
+			for(int i=0; i<SubdFilenamesSet.size(); i++){
+				std::string searchFileName = MaterialPath + SubdFilenamesSet[i] + MaterialEnd;
 				std::ifstream in(searchFileName.c_str());
 				if(in.is_open()){
 					std::cerr<<"Could open "<<searchFileName<<"\n";
-					subdFilenames.push_back(searchFileName);
+					SubdFilenames.push_back(searchFileName);
 					in.close();
 				}else{
 					std::cerr << "Could not find " << searchFileName << "\n";
 				}
 			}
-			// add default material.
-			std::string materialPath("materials/default.pbrdf");
-			std::ifstream in(materialPath);
-			if(!in.is_open()) std::cerr << "WARNING: Could not open Default PBRDF Material " << materialPath << "\n";
+			
+			// add default fallback material for SubD meshes.
+			std::string defaultmat(MaterialPath + "default" + MaterialEnd);
+			std::ifstream in(defaultmat);
+			if(!in.is_open()) std::cerr << "WARNING: Could not open Default PBRDF Material " << defaultmat << "\n";
 			else{
-				subdFilenames.push_back(materialPath);
+				SubdFilenames.push_back(defaultmat);
   				in.close();
 			}
 
-
-			N = coll.size() + subdFilenames.size();
+			// add extra materials from subd to material collection.
+			N = coll.size() + SubdFilenames.size();
 			int numObjMaterials = coll.size();
-			for(int i=0; i<subdFilenames.size(); i++) coll.push_back(rta::material(0));
+			for(int i=0; i<SubdFilenames.size(); i++) coll.push_back(rta::material(0));
+			
+			// convert all registered rta materials (including default and subd) to our material type.
 			cuda::material_t *materials = new cuda::material_t[coll.size()];
 			data_size = 0;
 			T=0;
 			int subdidx = 0;
 			for (int i = 0; i < N; ++i) {
-				if(i >= numObjMaterials){
-					//subdFilenames!
-					//std::string materialPath("materials/");
-//					std::string testFile = materialPath + subdFilenames[subdidx] + std::string(".pbrdf");
-//					std::ifstream in(testFile.c_str());
+				// materials for subd meshes are managed simply by their pbrdf.
+				// -> could this not be integrated via material names?
+				if(i >= numObjMaterials) {
 					cuda::material_t *m = &materials[i];
-
-				/*	if(in.is_open()){
-						in.close();
-						m->parameters = new PrincipledBRDFParameters(testFile);
-					}else{
-						std::string materialPath("materials/default.pbrdf");
-						std::ifstream in(materialPath);
-						if(!in.is_open()) std::cerr<<"WARNING: Could not open PBRDF Material "<<materialPath<<"\n";
-						else in.close();
-						m->parameters = new PrincipledBRDFParameters(materialPath);
-					}*/
-					m->parameters = new PrincipledBRDFParameters(subdFilenames[subdidx]);
-					std::cerr<< "SETTING material "<<i<<" to subd "<<subdidx<<" to subd filename "<<subdFilenames[subdidx]<<"\n";
+					m->parameters = new PrincipledBRDFParameters(SubdFilenames[subdidx]);
+					std::cerr<< "SETTING material "<<i<<" to subd "<<subdidx<<" to subd filename "<<SubdFilenames[subdidx]<<"\n";
 					subdidx++;
 					continue;
 				}
 				rta::material_t *src = coll[i];
-/*				if(i ==coll.size()-1){
-					std::string materialPath("materials/default.pbrdf");
-					std::ifstream in(materialPath.c_str());		
-					cuda::material_t *m = &materials[i];
-					if(in.is_open()){
-						in.close();
-						m->parameters = new PrincipledBRDFParameters(materialPath);
-					}else{
-						m->parameters = 0;
-					}
-					continue; // equivalent with break, since this is the last material element.
-				}*/
-				std::string materialPath ("materials/");
-				std::string pbrdfEnding (".pbrdf");		
-				std::string defaultMaterial = materialPath + src->name + pbrdfEnding;
+				cout << "material " << src->name << endl;
+				std::string DefaultMaterial = MaterialPath + src->name + MaterialEnd;
 				//a bit hacky. if there is a material in ./materials/ with the current material filename + .pbrdf ending
 				//we use the parameters defined in the file and use the principled BRDF material evaluation for that object.
-				std::ifstream in(defaultMaterial.c_str());
-				bool useDefaultMaterial = (!in.is_open());
+				std::ifstream in(DefaultMaterial.c_str());
+				bool UseDefaultMaterial = (!in.is_open());
 				cuda::material_t *m = &materials[i];
-				if(useDefaultMaterial) m->parameters = 0;
-				else{ 
-					cout << "Found pbrdf material -> " << defaultMaterial << endl;
+				if (UseDefaultMaterial) m->parameters = 0;
+				else {
+					cout << "Found pbrdf material -> " << DefaultMaterial << endl;
 					in.close(); 
-					m->parameters = new PrincipledBRDFParameters(defaultMaterial);
+					m->parameters = new PrincipledBRDFParameters(DefaultMaterial);
 				}
 				m->diffuse_color.x = src->diffuse_color.x;
 				m->diffuse_color.y = src->diffuse_color.y;

@@ -35,7 +35,7 @@ extern std::vector<OSDI::Model*> subd_models;
 //define wether to use PTEX Texture or not
 // DEBUG_PBRDF_FOR_SUBD == 1: uses materials/default parameters for color
 // DEBUG_PBRDF_FOR_SUBD == 0: uses ptex texture for diffuse color
-#define DEBUG_PBRDF_FOR_SUBD 1
+// #define DEBUG_PBRDF_FOR_SUBD 1
 
 #define RENDER_UVS 0
 
@@ -44,7 +44,7 @@ extern std::vector<OSDI::Model*> subd_models;
 //#define BOX_SHOT
 
 //define TEASER_SHOT for the correct setup for teaser shot (no skylight)
-#define TEASER_SHOT
+//#define TEASER_SHOT
 
 #ifdef TEASER_SHOT
 	#define OFFSET_HACK
@@ -133,7 +133,7 @@ void hybrid_pt::update() {
 		float3 *colors = bouncer->output_color;
 		if (bouncer->path_len == 0) {
 			update_mt_pool(jitter);	// a path is completed, so we generate new random numbers for the primary ray generator.
-			if(curr_frame > 0)
+			if (curr_frame > 0)
 				gi::save_image("ppt",curr_frame, w, h, colors);
 			else
 				gi::save_image("ppt", bouncer->curr_path, w, h, colors);
@@ -165,7 +165,7 @@ void hybrid_pt::compute() {
 
 		tracer->trace_progressively(true);
 }
-float3 evaluateSkyLight(gi::light *L, float3 &dir){
+float3 evaluateSkyLight(gi::light *L, float3 &dir) {
 //	if (!L) return make_float3(0,0,0);	// FIXME: black or white? doesnt matter, but I would leave black
 
 #ifdef BOX_SHOT
@@ -181,28 +181,28 @@ float3 evaluateSkyLight(gi::light *L, float3 &dir){
 	float t = theta/float(M_PI);
 	int idx = int(t*L->skylight.h) * L->skylight.w + int(s*L->skylight.w);
 	//TODO: This should actually not happen :(
-	if(idx < 0 || idx >= L->skylight.h * L->skylight.w) {return make_float3(0.f,0.f,0.f);}
+	if (idx < 0 || idx >= L->skylight.h * L->skylight.w) {return make_float3(0.f,0.f,0.f);}
  	return skylightData[idx];
 
 }	
-float clampFloat(float a){
-	if(a<0.0f) return 0.0f;
-	if(a>1.0f) return 1.0f;
+float clampFloat(float a) {
+	if (a<0.0f) return 0.0f;
+	if (a>1.0f) return 1.0f;
 	return a;
 }
-void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight, bool isValid){
+void handle_invalid_intersection(int id, float3 *ray_orig,float3 *ray_dir, float* max_t,float3* throughput,float3 *col_accum,gi::light *skylight, bool isValid) {
 	float3 accSkylight = make_float3(1.f,1.f,1.f);
 	float3 orgDir = ray_dir[id];
-	if (max_t[id] == -1){}
-	else{
+	if (max_t[id] == -1) {}
+	else {
 		normalize_vec3f(&orgDir);
 	
-	if(isValid) accSkylight = evaluateSkyLight(skylight,orgDir);
+	if (isValid) accSkylight = evaluateSkyLight(skylight,orgDir);
 
 	}
 	col_accum[id] += throughput[id] * accSkylight;
 #ifdef TEASER_SHOT
-	if(!isValid) col_accum[id] = make_float3(0.f,0.f,0.f);
+	if (!isValid) col_accum[id] = make_float3(0.f,0.f,0.f);
 #endif
 	ray_dir[id]  = make_float3(0,0,0);
 	ray_orig[id] = make_float3(FLT_MAX, FLT_MAX, FLT_MAX);
@@ -249,28 +249,24 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 
 					float3 pba = tri.b - tri.a;normalize_vec3f(&pba);
 					float3 pbc = tri.c - tri.a;normalize_vec3f(&pbc);
-
 					cross_vec3f(&geoN,&pba,&pbc);
 					normalize_vec3f(&geoN);	
-
 
 					//TODO:CHECKME
 					float3 dpos = tri.b - tri.a;
 					float3 triTb3 = make_float3(tri.tb.x,tri.tb.y,1.0f);
 					float3 triTa3 = make_float3(tri.ta.x,tri.ta.y,1.0f);
 					float3 duv3 = triTb3 - triTa3;
-					if(duv3.x == 0) {
+					if (duv3.x == 0) {
 						dpos = tri.c - tri.a;
 						float3 triTb3 = make_float3(tri.tc.x,tri.tc.y,1.0f);
 						duv3 = tri.c - tri.a;
-						if(duv3.x == 0) duv3.x = 1.0f;
+						if (duv3.x == 0) duv3.x = 1.0f;
 					}
 					Tx = dpos * (1.0f/duv3.x);
 					normalize_vec3f(&Tx);
 					cross_vec3f(&Ty,&Tx,&N);
 					normalize_vec3f(&Ty);
-mat = mats[material_count-1];
-
 				}
 				else {
 #if HAVE_LIBOSDINTERFACE == 1
@@ -288,9 +284,8 @@ mat = mats[material_count-1];
 					else
 						subd_models[modelidx]->EvalLimit(ptexID, is.beta, is.gamma, false, (float*)&dummyP, (float*)&geoN);//, mipmapBias, (float*)&Tx, (float*)&Ty);
 					// evaluate color and store it in the material as diffuse component
-					
 					int materialIndex = idx_subd_material  - 1 +  subd_models[modelidx]->GetMaterialIndex() ;//+ idx_subd_material;
-					if(materialIndex < 0  || materialIndex>= material_count){
+					if (materialIndex < 0  || materialIndex>= material_count) {
 						std::cerr << "Warning: Material index " << materialIndex <<" build from "<<subd_models[modelidx]->GetMaterialIndex()<< "  is out of bounds " << material_count << "\n";
 						materialIndex = material_count - 1; // Set to default material.
 					}
@@ -334,7 +329,6 @@ mat = mats[material_count-1];
 					camera_ref cam = current_camera();
 					matrix4x4f *mat = projection_matrix_of_cam(cam);
 				
-	
 					vec4f correctP_vec4(correctP.x,correctP.y,correctP.z,1.0f);
 					vec4f pr_vec4(pr.x,pr.y,pr.z,1.0f);
 
@@ -358,15 +352,12 @@ mat = mats[material_count-1];
 					ds3.x = (aa.x-bb.x) * np.x;
 					ds3.y = (aa.y-bb.y) * np.y;
 					float dist_screen = sqrt(ds3.x*ds3.x+ds3.y*ds3.y);
-			
-					
 					float pixel_size = np.y/float(h);
 
 					float3 test;
 					hsvColorMap(&test.x, dist_screen, 0.0f,1.f*pixel_size);
 					col_accum[id] = test;
 					continue;
-	
 				#endif
 				}
 
@@ -386,7 +377,8 @@ mat = mats[material_count-1];
 					   right_dir = ray_diff_dir[w*h+id];
 				float3 upper_P, right_P;
 				float2 upper_T, right_T;
-				/* temporarily disabled ray differentials. (had to enable it to get correct texture lookup for .obj) Undefined behavior in case of Subd Models!
+				/* temporarily disabled ray differentials. (had to enable it to get correct texture lookup for .obj) 
+				 * 	Undefined behavior in case of Subd Models!
 				 * we could just declare the triangle with the material above and load it in the triangle-branch.
 				 * in the subd-brach we could get the tangents from the osdi lib and generate some triangle from it.
 				 * the following call is actually just a plane intersection.*/
@@ -410,7 +402,6 @@ mat = mats[material_count-1];
 				normalize_vec3f(&T);
 				normalize_vec3f(&B);
 
-
 				// load and evaluate material
 				currentMaterial.init(mat.isPrincipledMaterial(),usePtexTexture,&mat, TC, upper_T, right_T, T, B);
 //				currentMaterial.init(true,false,&mat, TC, upper_T, right_T, T, B);
@@ -419,14 +410,15 @@ mat = mats[material_count-1];
 				float3 dir;
 				float pdf = 1.0f;
 				bool enterGlass = true;
-				if((org_dir|geoN) > 0.0f) {
-					if(currentMaterial.isGlass()) {
+				if ((org_dir|geoN) > 0.0f) {
+					if (currentMaterial.isGlass()) {
 						enterGlass = false;
 						//geoN *= -1.f;
 						N *= -1.f;
 						//geoN *= -1.f;
 //						N *= -1.f;
-					}else{
+					}
+					else {
 #ifndef BOX_SHOT
 						handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,true);//false);//true);//false);
 						col_accum[id] = make_float3(0.f,0.f,0.f);
@@ -441,18 +433,18 @@ mat = mats[material_count-1];
 				
 				//do shading for non-glass materials.
 				float3 TP = throughput[id];
-				if(!currentMaterial.isGlass()){
-				is = shadow_ti[id];
-				if (!is.valid()) {
-					float3 weight = potential_sample_contribution[id];
-					// attention: we need the throughput *before* the bounce
-					float3 curr = TP * weight;
-					float3 light_dir = to_light[id];
-					normalize_vec3f(&light_dir);
-					// the whole geometric term is already computed in potential_sample_contribution.
-					float3 brdfLight = currentMaterial.evaluate(inv_org_dir,light_dir,N);
-					col_accum[id] +=  brdfLight *curr;
-				}
+				if (!currentMaterial.isGlass()) {
+					is = shadow_ti[id];
+					if (!is.valid()) {
+						float3 weight = potential_sample_contribution[id];
+						// attention: we need the throughput *before* the bounce
+						float3 curr = TP * weight;
+						float3 light_dir = to_light[id];
+						normalize_vec3f(&light_dir);
+						// the whole geometric term is already computed in potential_sample_contribution.
+						float3 brdfLight = currentMaterial.evaluate(inv_org_dir,light_dir,N);
+						col_accum[id] +=  brdfLight *curr;
+					}
 				}
 				// compute next path segment by sampling the brdf
 				float3 brdf = currentMaterial.evaluate(inv_org_dir,dir,N);
@@ -461,22 +453,24 @@ mat = mats[material_count-1];
 				float len = length_of_vector(dir);
 				dir /= len;
 				//direction of normal might be better 
-//				if(enterGlass){
+//				if (enterGlass) {
 //					P -= 0.01f * geoN;
 					//col_accum[id] = make_float3(1.f,1.f,1.f);
-//				}else{
+//				}
+//				else {
 #ifdef OFFSET_HACK
 //	P += 0.9f * geoN;
 #endif
 //				P += 0.01f * geoN; // I hope N is normalized :-)
 
 				float offsetFactor = 0.3f;
-/*				if(currentMaterial.principled.isTransmissive()){
+/*				if (currentMaterial.principled.isTransmissive()) {
 					if (enterGlass)
 						P -= offsetFactor * geoN;
 					else P += offsetFactor * geoN;
-				}else{
-					if(enterGlass)
+				}
+				else {
+					if (enterGlass)
 						P += offsetFactor * geoN;
 					else
 						P -= offsetFactor * geoN;
@@ -489,7 +483,7 @@ mat = mats[material_count-1];
 				max_t[id]    = FLT_MAX;
 				TP *= (1.0f/pdf);
 #ifndef BOX_SHOT
-		//		if(TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(clamp(TP.x,0.f,1.f), clamp(TP.y,0.f,1.f), clamp(TP.z,0.f,1.f)); //,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
+		//		if (TP.x > 1.0f || TP.y > 1.0f || TP.z > 1.0f) TP = make_float3(clamp(TP.x,0.f,1.f), clamp(TP.y,0.f,1.f), clamp(TP.z,0.f,1.f)); //,1.f,1.f);//std::cerr << "Throughput > 1 :"<<TP.x<<","<<TP.y<<","<<TP.z<<"\n";
 #endif
 				throughput[id] = TP;
 				continue;
@@ -499,8 +493,8 @@ mat = mats[material_count-1];
 #endif
 
 #ifdef TEASER_SHOT
-//			if(pathLen == 1){
-			if(throughput[id].x == 1.0f && throughput[id].y == 1.0f && throughput[id].z == 1.0f){
+//			if (pathLen == 1) {
+			if (throughput[id].x == 1.0f && throughput[id].y == 1.0f && throughput[id].z == 1.0f) {
 				handle_invalid_intersection(id, ray_orig, ray_dir, max_t, throughput,col_accum,skylight,false);
 				col_accum[id] = make_float3(1.f,1.f,1.f);
 				continue;

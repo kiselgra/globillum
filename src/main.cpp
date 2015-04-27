@@ -17,6 +17,7 @@
 #include "gi_algorithm.h"
 #include "gpu_cgls_lights.h"
 #include "gpu-pt.h"
+#include "hybrid-pt.h"
 
 #include "material.h"
 #include "vars.h"
@@ -528,6 +529,7 @@ void actual_main()
 // 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, 45.f, .5f, 5.f);
 	new local::gpu_cgls_lights_dof(cmdline.res.x, cmdline.res.y, the_scene, focus_distance, aperture, 5.f);
 // 	new gpu_pt(cmdline.res.x, cmdline.res.y, the_scene);
+	new hybrid_pt(cmdline.res.x, cmdline.res.y, the_scene);
 
 // 	gi_algorithm::select("gpu_cgls_lights");
 // 	gi_algorithm::select("gpu_area_lights");

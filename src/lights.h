@@ -16,14 +16,14 @@ namespace gi {
 	// from pbrt: Monte Carlo Rendering with Natural Illumination
 	// http://web.cs.wpi.edu/~emmanuel/courses/cs563/S07/projects/envsample.pdf
 	class Distribution1D{
-		public:
-		Distribution1D(){}
+	public:
+		Distribution1D() : PDF(0), CDF(0), size(0) {}
 		~Distribution1D(){
-			if(PDF) delete[] PDF; PDF = 0;
-			if(CDF) delete[] CDF; CDF = 0;
+			delete[] PDF; PDF = 0;
+			delete[] CDF; CDF = 0;
 		}
 		float init(const float* data, const int size){
-			_size = size;
+			this->size = size;
 			PDF = new float[size];
 			CDF = new float[size+1];
 			// sum up all input data.
@@ -45,8 +45,8 @@ namespace gi {
 		}
 		//find index such that CDF[index]<= randU < CDF[index+1]
 		int binarySearchCDF(float randU) {	
-			float* b = std::upper_bound(CDF, CDF + _size, randU);
-			int index = clamp(int(b-CDF)-1,0,_size-1);
+			float* b = std::upper_bound(CDF, CDF + size, randU);
+			int index = clamp(int(b-CDF)-1,0,size-1);
 			return index;
 		}
 		void sample(const float randU, float &x, float &p) {
@@ -55,19 +55,15 @@ namespace gi {
 			x = (1.0-t) * idx + t*(idx+1);
 			p = PDF[idx];
 		}
-		protected:
-		int _size;
+	protected:
+		int size;
 		float* PDF;
 		float* CDF;
 	};
 
 	class Distribution2D{
-		public:
-		Distribution2D(){}
-		~Distribution2D(){
-			if(xDistr) delete[] xDistr; xDistr = 0;
-		}
-		void init(const float* data, const int w, const int h){
+	public:
+		Distribution2D(const float* data, const int w, const int h) {
 			xDistr = new Distribution1D[h];
 			width = w;
 			height = h;
@@ -78,6 +74,9 @@ namespace gi {
 			}
 			yDistr.init(&colSum[0],h);
 		}
+		~Distribution2D(){
+			delete[] xDistr; xDistr = 0;
+		}
 		void sample(const float randU, const float randV, float &outU, float &outV, float &outPdf) {
 			float yPdf, xPdf;
 			yDistr.sample(randU, outU, yPdf);
@@ -85,7 +84,7 @@ namespace gi {
 			xDistr[idx].sample(randV,outV,xPdf);
 			outPdf = yPdf * xPdf;
 		}
-		protected:
+	protected:
 		int width;
 		int height;
 		Distribution1D yDistr;			//distribution to select row.
@@ -102,7 +101,9 @@ namespace gi {
 		char *map;
 		float3 *data;
 		int w, h;
-		Distribution2D* lightDistribution;
+		/*! we use a ptr here because we don't want to spead the union's (\ref gi::light) constraints (trivially constructable)
+		 *  to the distribution's code. */
+		Distribution2D *lightDistribution;
 		void initSkylight(){
 			float* importance = new float[w*h];
 			for(int y=0; y<h; y++){
@@ -112,10 +113,10 @@ namespace gi {
 				}
 
 			}
-			lightDistribution->init(importance,w,h);
+			lightDistribution = new Distribution2D(importance,w,h);
 			delete [] importance;
 		}
-		void deleteSkylight(){
+		void deleteSkylight() {
 			delete lightDistribution;
 		}
 		float3 toDirection(float theta, float phi) const{
