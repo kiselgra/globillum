@@ -61,7 +61,7 @@ namespace gi {
 		sl->w = tex.w;
 		sl->h = tex.h;
 		sl->data = new float3[sl->w * sl->h];
-		memcpy(sl->data, tex.data[0], sizeof(float3)*sl->w*sl->h);
+		memcpy(sl->data, tex.data, sizeof(float3)*sl->w*sl->h);
 		sl->initSkylight();
 	}
 }
