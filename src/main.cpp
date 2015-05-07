@@ -167,6 +167,8 @@ static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
 int material_count = 0;
+double time_trace_step = 0.0;
+double time_adaptive_subd_eval = 0.0;
 rta::cuda::material_t *gpu_materials = 0;
 rta::cuda::material_t *cpu_materials = 0;
 

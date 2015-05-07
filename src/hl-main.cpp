@@ -38,7 +38,6 @@ using namespace std;
 extern vector<OSDI::Model*> subd_models;
 #endif
 //// cmdline stuff
-
 struct Cmdline {
 	bool verbose;
 	const char *filename;
@@ -199,6 +198,8 @@ extern std::string subd_face_include;
 
 //// rta setup
 
+double time_adaptive_subd_eval = 0.0;
+double time_trace_step = 0.0;
 static rta::cgls::connection *rta_connection = 0;
 rta::basic_flat_triangle_list<rta::simple_triangle> *ftl = 0;
 rta::cgls::connection::cuda_triangle_data *ctd = 0;
@@ -641,7 +642,7 @@ void actual_main() {
 	bool first_rotation = true;
 	float phiAdd = 360.f/float(maxFrames) * M_PI/180.f;
 #endif
-
+	bool printTime = true;
 	while (true) {
 		if (restart_compute) {
 			if (change_algo) {
@@ -657,12 +658,18 @@ void actual_main() {
 			}
 			algo->compute();
 			restart_compute = false;
+			printTime = true;
 		}
 		while (algo->progressive() && algo->in_progress()) {
 			algo->update();
-			if (quit_loop) break;
+			if (quit_loop) {
+				break;
+			}
 		}
-
+		if(printTime){
+			std::cerr<<"Time tracing: "<<time_trace_step<<", time FAS : "<<time_adaptive_subd_eval<<"\n";
+			printTime = false;
+		}
 #if CAMERA_PATHS
 		camera_ref cam = current_camera();
 		matrix4x4f *lookat_matrix = lookat_matrix_of_cam(cam);

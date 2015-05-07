@@ -5,6 +5,7 @@
 #include "tracers.h"	// for tandem_tracer
 #include "lights.h"	// for tandem_tracer
 
+extern double time_trace_step;
 void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3 *ray_dir, float *max_t, float3 *ray_diff_org, float3 *ray_diff_dir,
 										  rta::triangle_intersection<rta::cuda::simple_triangle> *ti, rta::cuda::simple_triangle *triangles, 
 										  rta::cuda::material_t *mats, float3 *uniform_random, float3 *throughput, float3 *col_accum,
@@ -155,14 +156,19 @@ template<typename _box_t, typename _tri_t> struct hybrid_pt_bouncer : public rta
 
 		if (path_len == 0 && this->gpu_last_intersection == gpu_path_intersections) {
 			compute_light_sample = true;
+			//std::cout << " - (first ray trace: " << tracers->closest_hit_tracer->timings[path_len] << ")" << std::endl;
+			time_trace_step +=  tracers->closest_hit_tracer->timings[path_len]; 
 		}
 		else {
 			if (this->gpu_last_intersection == gpu_shadow_intersections) {
 				compute_path_segment = true;
-				std::cout << " - (shadow trace: " << tracers->any_hit_tracer->timings[path_len] << ")" << std::endl;
+			//	std::cout << " - (shadow trace: " << tracers->any_hit_tracer->timings[path_len] << ")" << std::endl;
+				time_trace_step += tracers->any_hit_tracer->timings[path_len];
 			}
 			else {
 				compute_light_sample = true;
+			//	std::cout << " - (ray trace: " << tracers->closest_hit_tracer->timings[path_len] << ")" << std::endl;
+				time_trace_step += tracers->closest_hit_tracer->timings[path_len];
 			}
 		}
 			
