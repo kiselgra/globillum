@@ -131,12 +131,12 @@ namespace rta {
 
 				float3 L ; //outgoing light vector.
 				float fresnel = SchlickFresnel(c);
-				if (ior == 0.0f &&  u < fresnel) {
+			//	if (ior == 0.0f &&  u < fresnel) {
 					//reflect
 					brdfType = DISNEY_REFLECTION;
 					L = reflectR(V,m);
 
-				}
+			/*	}
 				else {
 					float totalInternal = 1 + ior*(c*c - 1);
 					if (totalInternal <= 0.0f && ior > 1.0f) {
@@ -147,7 +147,7 @@ namespace rta {
 					//refract
 					brdfType = DISNEY_REFLECTION;// SPECULAR_TRANSMISSION;
 					L = (ior*c - signCalc(dot(V,n))*sqrt(totalInternal))*m - ior*V;
-				}
+				}*/
 				//flip if neccessary
 				//	  float3 VV = V;
 				if (dot(L,n) < 0) {
@@ -163,13 +163,15 @@ namespace rta {
 					std::cerr<<"Warning: Division by 0 : "<<dotLm << " or " << dotVm << "\n"; 
 				float tanThetaL = sqrt(1-dotLm*dotLm)/dotLm;
 				float tanThetaV = sqrt(1-dotVm*dotVm)/dotVm;
+				float roughg2 = roughg * roughg;
 				////// formula 23 from Microfacet Models for Refraction (B.Walter)
 				//// G1 estimate is formula 34
-				float Gs = G1(L,m,n,roughg*roughg,tanThetaL) * G1(V,m,n,roughg*roughg,tanThetaV);
+				float Gs = G1(L,m,n,roughg2,tanThetaL) * G1(V,m,n,roughg2,tanThetaV);
 
 				////// formula 41 from paper Microfacet Models for Refraction (B.Walter et.al)
 				//// weight computation is the same for reflection and refraction.
 				float lweight = (fabs(dot(L,m))*Gs)/(fabs(dot(L,n)) * fabs(dot(n,m))) ;
+				if(lweight < 0.01f) lweight = 0.01f;
 				return Sample3f(L,lweight);
 			}
 
@@ -213,7 +215,6 @@ namespace rta {
 				float NdotL = dot(N,L);
 				float NdotV = dot(N,V);
 				if (NdotL < 0 || NdotV < 0) {
-					//	std::cerr<<"Evaluate negative "<<NdotL<<" and "<<NdotV<<"\n";
 					return make_float3(0.0f,0.0f,0.0f);
 				}
 

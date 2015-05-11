@@ -70,7 +70,7 @@ class Material{
                                 bool isDiffuse() const { return (_type == DIFFUSE);}
                                 bool isSpecular() const {return (_type == SPECULAR);}
 								bool isTransmissive()const {return (_type == SPECULAR_TRANSMISSION);}
-								bool isReflective() const {return (_type == SPECULAR_REFLECTION);}
+								bool isReflective() const {return (_type == SPECULAR_REFLECTION || _type == DISNEY_REFLECTION);}
 							//	bool isGlass() const{if(_type == SPECULAR_REFLECTION || _type == SPECULAR_TRANSMISSION) return true; return false ;}
                                 protected:
                                         BRDF_TYPE _type;

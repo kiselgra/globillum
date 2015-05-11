@@ -312,7 +312,8 @@ bool sample_material(int id, float3 &T, float3 &B, float3 &N, float3 *uniform_ra
 			enterGlass = false;
 			N *= -1.f;
 		}else{
-			return false;
+			N *= -1.f;
+//			return false;
 		}
 	}
 	float3 inv_org_dir_ts = transform_to_tangent_frame(inv_org_dir,T,B,N);
@@ -326,7 +327,7 @@ bool sample_material(int id, float3 &T, float3 &B, float3 &N, float3 *uniform_ra
 float3 evaluate_material(int id, float3 *throughput,float3 *to_light, float3* potential_sample_contribution,float3 &N, float3* col_accum, 
 	float3 &inv_org_dir,materialBRDF &currentMaterial,triangle_intersection<rta::cuda::simple_triangle> *shadow_ti, float3 &sampledDirection){
 	//do shading for non-glass materials.
-	if (!currentMaterial.isGlass()) {
+	if (!currentMaterial.isGlass() && !currentMaterial.specReflect()) {
 		triangle_intersection<rta::cuda::simple_triangle> is = shadow_ti[id];
 		if (!is.valid()) {
 			float3 weight = potential_sample_contribution[id];
@@ -368,13 +369,17 @@ void getHitDataSubdSurface(triangle_intersection<rta::cuda::simple_triangle>& is
 	}
 	hdata.mat = mats[materialIndex];
 	hdata.usePtexTexture = false;//true;
-					
+			
 	//clamp uvs (not necessary)
 	if(subd_models[modelidx]->HasColor()){
 		hdata.usePtexTexture = true;
 		subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&hdata.mat.diffuse_color);					
+	}else{
+		if(hdata.mat.isPrincipledMaterial())	
+			hdata.mat.diffuse_color = hdata.mat.parameters->color;
 	}
 	//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
+	hdata.P = hdata.limitPosition;
 	hdata.tri.a = hdata.P; hdata.tri.b = hdata.P+hdata.Tx; hdata.tri.c = hdata.P+hdata.Ty;
 	normalize_vec3f(&hdata.N);
 	hdata.TC.x = is.beta;
@@ -443,7 +448,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				} else {
 #if HAVE_LIBOSDINTERFACE == 1
 					getHitDataSubdSurface(is, mats,hdata);
-					hdata.P = ray_orig[id] + (is.t-0.2f) * ray_dir[id];
+					hdata.P = ray_orig[id] + (is.t) * org_dir;//ray_dir[id];
 #endif
 				}
 				/****************************************************************************************************************************/
@@ -495,12 +500,18 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				// SETUP NEXT RAY
 				/****************************************************************************************************************************/
 				// offset position.
-				float offsetFactor = 0.3f;
-				hdata.P += offsetFactor * org_dir;//hdata.N;
+				float offsetFactor = 0.3f;// Offset for car model : 0.001f, offset for Trex: 0.3f
+				if(currentMaterial.isGlass())
+					hdata.P += offsetFactor * org_dir;
+				else
+					hdata.P += offsetFactor * hdata.N;
 				ray_orig[id] = hdata.P;
 				ray_dir[id]  = sampledDirection;
 				max_t[id]    = FLT_MAX;
 				throughput[id] = TP *  brdf/pdf;
+				if(throughput[id].x > 1) throughput[id].x = 1.f;
+				if(throughput[id].y > 1.f) throughput[id].y = 1.f;
+				if(throughput[id].z > 1.f) throughput[id].z = 1.f;
 				continue;
 
 			}//end isValid(is);
