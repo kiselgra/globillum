@@ -88,24 +88,25 @@ namespace rta {
 			_diffuse = _mat->diffuseColor(T,upperT,rightT);
 		}
 
-		void init(const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT) {
+		void init(bool useMatDiffuse, const rta::cuda::material_t *mat, const float2 &T, const float2 &upperT, const float2 &rightT) {
 			_mat = mat;
 			_type = DIFFUSE;
-			_diffuse = _mat->diffuseColor(T,upperT,rightT);//*mat->parameters->color;
+			if(useMatDiffuse) _diffuse = mat->diffuse_color;
+			else	_diffuse = _mat->diffuseColor(T,upperT,rightT);//*mat->parameters->color;
 		}
 
 		// evaluates brdf based on in/out directions wi/wo in world space
 		float3 evaluate(const float3 &wo, const float3 &wi, const float3& N) const {
-			return _diffuse * (1.0f/M_PI) * clamp01(wi|N);
+			return _diffuse * (1.0f/M_PI) * fabs(wi|N);
 		}
 		//returns sampled direction wi in Tangent  space.
 		void sample(const float3 &wo, float3 &wi, const float3 &sampleXYZ, float &pdfOut, bool enterGlass) {
 			wi = cosineSampleHemisphere(sampleXYZ.x,sampleXYZ.y);
-			pdfOut = clamp01(wi.z) * (1.0f/M_PI);
+			pdfOut = fabs(wi.z) * (1.0f/M_PI);
 		}
 		//computes pdf based on wi/wo in world space
 		float pdf(const float3 &wo, const float3 &wi, const float3 &N) const {
-			return clamp01(wi|N) * (1.0f/M_PI);
+			return fabs(wi|N) * (1.0f/M_PI);
 		}
 	private:
 		const rta::cuda::material_t *_mat;

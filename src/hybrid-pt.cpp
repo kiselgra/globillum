@@ -36,19 +36,20 @@ extern std::vector<OSDI::Model*> subd_models;
 
 #define RENDER_UVS 0  		//	render uvs image.
 #define DIFF_ERROR_IMAGE 0	// 	render diff error image.
+#define RENDER_PATTERN 1
 
-#if RENDER_UVS || DIFF_ERROR_IMAGE
+#if RENDER_UVS || DIFF_ERROR_IMAGE || RENDER_PATTERN
 	#define NO_BACKGROUND
 #endif
 
-//#define NO_BACKGROUND // i.e. for rendering teaser image.
+#define NO_BACKGROUND // i.e. for rendering teaser image.
 
 //evaluate the time necessary for CPU-FAS.
 #define TIME_ADAPTIVE_SUBD_EVAL 0
 
 
 float max_pixel_error = 5.0f; // maximal pixel error for DIFF_ERROR_IMAGE
-float3 background_color = make_float3(0.f,0.f,0.f); // background color i.e. for teaser image should be white.
+float3 background_color = make_float3(1.f,1.f,1.f); // background color i.e. for teaser image should be white.
 extern float aperture, focus_distance, eye_to_lens;
 
 
@@ -242,6 +243,29 @@ float3 handle_error_image(int id, float3 *ray_dir, float3 *ray_orig, float3 &dum
 	return test;
 }
 
+float3 handle_pattern_image(float u, float v){
+	float3 whiteC = make_float3(0.8f,0.8f,0.8f);
+	float3 blackC = make_float3(0.2f,0.2f,0.2f);
+	float3 color = whiteC;
+	//int uInt = int(u*100.0f);
+	//int vInt = int(v*100.0f);
+float uInt = u;
+float vInt = v;	
+	
+	if(uInt >= 0.45f && uInt <= 0.55f) return blackC;
+	if(vInt >= 0.45f && vInt <= 0.55f) return blackC;
+
+	if(uInt >= 0.25f && uInt <= 0.3f) return blackC;
+	if(vInt >= 0.25f && vInt <= 0.3f) return blackC;
+
+	if(uInt >= 0.7f && uInt <= 0.75f) return blackC;
+	if(vInt >= 0.7f && vInt <= 0.75f) return blackC;
+
+	//if(vInt >= 0.1f && vInt <= 0.15f) return blackC;
+//	if(vInt >= 0.85 && vInt <=0.9) return blackC;
+	return whiteC;
+}
+
 //Time for evaluating FAS.
 void time_adaptive_subd(int w, int h,triangle_intersection<rta::cuda::simple_triangle> *ti, bool with_disp){
 	wall_time_t start = wall_time_in_ms();
@@ -327,7 +351,7 @@ bool sample_material(int id, float3 &T, float3 &B, float3 &N, float3 *uniform_ra
 float3 evaluate_material(int id, float3 *throughput,float3 *to_light, float3* potential_sample_contribution,float3 &N, float3* col_accum, 
 	float3 &inv_org_dir,materialBRDF &currentMaterial,triangle_intersection<rta::cuda::simple_triangle> *shadow_ti, float3 &sampledDirection){
 	//do shading for non-glass materials.
-	if (!currentMaterial.isGlass() && !currentMaterial.specReflect()) {
+	if (!currentMaterial.isGlass()){// && !currentMaterial.specReflect()) {
 		triangle_intersection<rta::cuda::simple_triangle> is = shadow_ti[id];
 		if (!is.valid()) {
 			float3 weight = potential_sample_contribution[id];
@@ -369,8 +393,12 @@ void getHitDataSubdSurface(triangle_intersection<rta::cuda::simple_triangle>& is
 	}
 	hdata.mat = mats[materialIndex];
 	hdata.usePtexTexture = false;//true;
-			
+		
 	//clamp uvs (not necessary)
+	#if RENDER_UVS || DIFF_ERROR_IMAGE || RENDER_PATTERN
+		//do nothing
+		hdata.mat.diffuse_color = make_float3(1.f,0.f,1.f);
+	#else
 	if(subd_models[modelidx]->HasColor()){
 		hdata.usePtexTexture = true;
 		subd_models[modelidx]->EvalColor(ptexID, is.beta, is.gamma, (float*)&hdata.mat.diffuse_color);					
@@ -378,6 +406,7 @@ void getHitDataSubdSurface(triangle_intersection<rta::cuda::simple_triangle>& is
 		if(hdata.mat.isPrincipledMaterial())	
 			hdata.mat.diffuse_color = hdata.mat.parameters->color;
 	}
+	#endif
 	//!TODO Setup "correct" triangle for ray differentials, is this neccessary?
 	hdata.P = hdata.limitPosition;
 	hdata.tri.a = hdata.P; hdata.tri.b = hdata.P+hdata.Tx; hdata.tri.c = hdata.P+hdata.Ty;
@@ -451,16 +480,33 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 					hdata.P = ray_orig[id] + (is.t) * org_dir;//ray_dir[id];
 #endif
 				}
+				bool isPrincipled = hdata.mat.isPrincipledMaterial();
 				/****************************************************************************************************************************/
 				// HANDLE DIFFERENT RENDERING SETUPS : i.e. render uvs, render error image
 				/****************************************************************************************************************************/
 				#if RENDER_UVS
 					hdata.mat.diffuse_color = make_float3(hdata.TC.x, hdata.TC.y, 0.0f);
 					handle_no_hit(id,org_dir,ray_orig,ray_dir,max_t,throughput,col_accum,skylight,false,hdata.mat.diffuse_color);
+					isPrincipled = false;
 					continue;
 				#elif DIFF_ERROR_IMAGE
 					float3 errorColor = handle_error_image(id, ray_dir, ray_orig,hdata.limitPosition,h);
 					handle_no_hit(id,org_dir,ray_orig,ray_dir,max_t,throughput,col_accum,skylight,false,errorColor);
+					isPrincipled = false;
+					continue;
+				#elif RENDER_PATTERN
+					float3 col = make_float3(0.0f,0.0f,0.0f);
+					if ((is.ref & 0xff000000) != 0) {
+						unsigned int ptexID = 0x00ffffff & is.ref;
+						if(ptexID == 0) col.x = 1.f;
+						else if(ptexID==1) col.y = 1.f;
+						else col.z = 1.f;
+					}
+					float3 pattern = handle_pattern_image(hdata.TC.x,hdata.TC.y) * col;//*make_float3(hdata.TC.x, hdata.TC.y, 0.0f);
+					hdata.mat.diffuse_color = pattern;
+					hdata.usePtexTexture = true;//false;
+					isPrincipled = false;
+					handle_no_hit(id,org_dir,ray_orig,ray_dir,max_t,throughput,col_accum,skylight,false,pattern);
 					continue;
 				#endif
 				/****************************************************************************************************************************/
@@ -479,7 +525,7 @@ void compute_path_contribution_and_bounce(int w, int h, float3 *ray_orig, float3
 				normalize_vec3f(&T);
 				normalize_vec3f(&B);
 				// load Material.
-				currentMaterial.init(hdata.mat.isPrincipledMaterial(),hdata.usePtexTexture,&hdata.mat, hdata.TC, upper_T, right_T, T, B);
+				currentMaterial.init(isPrincipled,hdata.usePtexTexture,&hdata.mat, hdata.TC, upper_T, right_T, T, B);
 
 				// sample Material.	
 				float pdf = 1.f;

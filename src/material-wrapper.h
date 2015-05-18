@@ -24,7 +24,7 @@ struct materialBRDF{
 	void init(bool isPrincipled,bool usePtexTexture, const rta::cuda::material_t *mat, const float2 &TC, const float2 &upper_T, const float2 &right_T, const float3 &Tx, const float3 &Ty){
 
 		isSimple = (!isPrincipled);
-		if(isSimple) simple.init(mat,TC,upper_T,right_T);
+		if(isSimple) simple.init(usePtexTexture,mat,TC,upper_T,right_T);
 		else principled.init(usePtexTexture,mat, TC, upper_T, right_T, Tx, Ty);
 	}
 	void sample(const float3 &inv_org_dir_ts, float3 &dir, const float3 &random, float &pdf, bool enterGlass){
