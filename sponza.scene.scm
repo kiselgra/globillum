@@ -14,6 +14,6 @@
 	(path-samples 64)
 	(path-length 3)
 	(light-samples 1) ; per direct lighting path
-	(integrator "hybrid_pt")
-	;(integrator "hybrid_area_lights")
+	;(integrator "hybrid_pt")
+	(integrator "hybrid_area_lights")
 )

@@ -31,3 +31,4 @@
 (bookmark "plainSphere.obj" "zacken" '((list 0.2 1.5 0.2)     (list 0.2 -1.5 0.2)     (list 0.0 0.0 -1.0)))
 (bookmark "plainSphere.obj" "start" '((list 0.2 1.5 0.2)     (list 0.2 -1.5 0.2)     (list 0.0 0.0 -1.0)))
 (bookmark "plainSphere.obj" "nosering" '((list -15.722 233.066 198.142)     (list 0.990822 -0.130239 0.0361932)     (list 0.130993 0.991196 -0.0192771)))
+(bookmark "sponza.noflag.obj" "start" '((list -1088.35 282.074 104.406)     (list 0.943884 -0.112288 -0.310601)     (list 0.100661 0.993494 -0.0532666)))

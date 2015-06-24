@@ -14,10 +14,10 @@
 ;       :up    (list   0   0  1)
 ;       :dim   (list 100 100))
 
-(let ((home (getenv "HOME")))
-  (light "sky"
-         :type :sky
-         ;:map "cgskies-0319-free.png"
-         :map (string-append home "/render-data/images/skylight-morn.exr")
-         :diameter 1000
-         :scale .01))
+;(let ((home (getenv "HOME")))
+;  (light "sky"
+;         :type :sky
+;         ;:map "cgskies-0319-free.png"
+;         :map (string-append home "/render-data/images/skylight-morn.exr")
+;         :diameter 1000
+;         :scale .01))

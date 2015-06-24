@@ -36,7 +36,7 @@ extern std::vector<OSDI::Model*> subd_models;
 
 #define RENDER_UVS 0  		//	render uvs image.
 #define DIFF_ERROR_IMAGE 0	// 	render diff error image.
-#define RENDER_PATTERN 1
+#define RENDER_PATTERN 0
 
 #if RENDER_UVS || DIFF_ERROR_IMAGE || RENDER_PATTERN
 	#define NO_BACKGROUND
@@ -370,6 +370,7 @@ float3 evaluate_material(int id, float3 *throughput,float3 *to_light, float3* po
 
 }
 
+#if HAVE_LIBOSDINTERFACE == 1
 void getHitDataSubdSurface(triangle_intersection<rta::cuda::simple_triangle>& is,rta::cuda::material_t *mats, RayHitData &hdata){
 
 // evaluate subd patch to get position and normal
@@ -415,6 +416,7 @@ void getHitDataSubdSurface(triangle_intersection<rta::cuda::simple_triangle>& is
 	hdata.TC.y = is.gamma;
 
 }
+#endif
 
 void getHitDataTriangle(triangle_intersection<rta::cuda::simple_triangle>& is, rta::cuda::simple_triangle *triangles, rta::cuda::material_t *mats, RayHitData &hdata){
 	// load hit triangle and compute hitpoint geometry
